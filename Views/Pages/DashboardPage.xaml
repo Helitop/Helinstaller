@@ -1,0 +1,385 @@
+﻿<Page
+    x:Class="Helinstaller.Views.Pages.DashboardPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+    mc:Ignorable="d" Margin="0,15,0,0" >
+
+    <Grid>
+        <ScrollViewer
+            HorizontalScrollBarVisibility="Disabled"
+            VerticalScrollBarVisibility="Auto">
+            <WrapPanel
+                Margin="20"
+                HorizontalAlignment="Stretch"
+                VerticalAlignment="Stretch"
+                Orientation="Horizontal">
+                <ui:Button
+                    x:Name="WinRARButton"
+                    Margin="10"
+                    Width="140"
+                    Height="140"
+                    Appearance="Transparent"
+                    Tag="WinRAR"
+                    Click="TileButton_Click">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <ui:Image
+                            Grid.Row="0"
+                            Source="/Assets/winrar.png"
+                            VerticalAlignment="Center"
+                            HorizontalAlignment="Center" MaxWidth="80" MaxHeight="80" />
+                        <TextBlock
+                            x:Name="WinRARButtonText"
+                            Grid.Row="1"
+                            Text="WinRAR"
+                            FontSize="16"
+                            FontWeight="SemiBold"
+                            HorizontalAlignment="Center"
+                            Margin="0,5,0,5" />
+                    </Grid>
+                </ui:Button>
+                <ui:Button
+    x:Name="OfficeButton"
+    Margin="10"
+    Width="140"
+    Height="140"
+    Appearance="Transparent"
+    Tag="Office"
+    Click="TileButton_Click">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <ui:Image
+            Grid.Row="0"
+            Source="/Assets/office.png"
+            VerticalAlignment="Center"
+            HorizontalAlignment="Center" MaxWidth="80" MaxHeight="80" />
+                        <TextBlock
+            x:Name="OfficeButtonText"
+            Grid.Row="1"
+            Text="Office"
+            FontSize="16"
+            FontWeight="SemiBold"
+            HorizontalAlignment="Center"
+            Margin="0,5,0,5" />
+                    </Grid>
+                </ui:Button>
+
+                <ui:Button
+                    x:Name="DiscordButton"
+                    Margin="10"
+                    Width="140"
+                    Height="140"
+                    Appearance="Transparent"
+                    Tag="Discord"
+                    Click="TileButton_Click">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <ui:Image
+                            Grid.Row="0"
+                            Source="/Assets/discord.png"
+                            VerticalAlignment="Center"
+                            HorizontalAlignment="Center" MaxWidth="80" MaxHeight="80" />
+                        <TextBlock
+                            x:Name="DiscordButtonText"
+                            Grid.Row="1"
+                            Text="Discord"
+                            FontSize="16"
+                            FontWeight="SemiBold"
+                            HorizontalAlignment="Center"
+                            Margin="0,5,0,5" />
+                    </Grid>
+                </ui:Button>
+                <ui:Button
+                    x:Name="TorrentButton"
+                    Margin="10"
+                    Width="140"
+                    Height="140"
+                    Appearance="Transparent"
+                    Tag="µTorrent"
+                    Click="TileButton_Click">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <ui:Image
+                            Grid.Row="0"
+                            Source="/Assets/µtorrent.png"
+                            VerticalAlignment="Center"
+                            HorizontalAlignment="Center" MaxWidth="80" MaxHeight="80" />
+                        <TextBlock
+                            x:Name="TorrentButtonText"
+                            Grid.Row="1"
+                            Text="µTorrent"
+                            FontSize="16"
+                            FontWeight="SemiBold"
+                            HorizontalAlignment="Center"
+                            Margin="0,5,0,5" />
+                    </Grid>
+                </ui:Button>
+                <ui:Button
+                    x:Name="SteamButton"
+                    Margin="10"
+                    Width="140"
+                    Height="140"
+                    Appearance="Transparent"
+                    Tag="Steam"
+                    Click="TileButton_Click">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <ui:Image
+                            Grid.Row="0"
+                            Source="/Assets/steam.png"
+                            VerticalAlignment="Center"
+                            HorizontalAlignment="Center" MaxWidth="80" MaxHeight="80" />
+                        <TextBlock
+                            x:Name="SteamButtonText"
+                            Grid.Row="1"
+                            Text="Steam"
+                            FontSize="16"
+                            FontWeight="SemiBold"
+                            HorizontalAlignment="Center"
+                            Margin="0,5,0,5" />
+                    </Grid>
+                </ui:Button>
+                <ui:Button
+                    x:Name="ZapretButton"
+                    Margin="10"
+                    Width="140"
+                    Height="140"
+                    Appearance="Transparent"
+                    Tag="Zapret"
+                    Click="TileButton_Click">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <ui:SymbolIcon
+                            Grid.Row="0"
+                            Symbol="Folder16"
+                            FontSize="80"
+                            VerticalAlignment="Center"
+                            HorizontalAlignment="Center"/>
+                        <TextBlock
+                            x:Name="ZapretButtonText"
+                            Grid.Row="1"
+                            Text="Zapret"
+                            FontSize="16"
+                            FontWeight="SemiBold"
+                            HorizontalAlignment="Center"
+                            Margin="0,5,0,5" />
+                    </Grid>
+                </ui:Button>
+                <ui:Button
+                    x:Name="EPButton"
+                    Margin="10"
+                    Width="140"
+                    Height="140"
+                    Appearance="Transparent"
+                    Tag="EP"
+                    Click="TileButton_Click">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <ui:SymbolIcon
+                            Grid.Row="0"
+                            Symbol="Folder16"
+                            FontSize="80"
+                            VerticalAlignment="Center"
+                            HorizontalAlignment="Center"/>
+                        <TextBlock
+                            x:Name="EPButtonText"
+                            Grid.Row="1"
+                            Text="ExplorerPatcher"
+                            FontSize="16"
+                            FontWeight="SemiBold"
+                            HorizontalAlignment="Center"
+                            Margin="0,5,0,5" />
+                    </Grid>
+                </ui:Button>
+                <ui:Button
+                    x:Name="PTButton"
+                    Margin="10"
+                    Width="140"
+                    Height="140"
+                    Appearance="Transparent"
+                    Tag="PT"
+                    Click="TileButton_Click">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <ui:Image
+                        Grid.Row="0"
+                        Source="/Assets/powertoys.png"
+                        VerticalAlignment="Center"
+                        HorizontalAlignment="Center" MaxWidth="80" MaxHeight="80" />
+                        <TextBlock
+                            x:Name="PTButtonText"
+                            Grid.Row="1"
+                            Text="PowerToys"
+                            FontSize="16"
+                            FontWeight="SemiBold"
+                            HorizontalAlignment="Center"
+                            Margin="0,5,0,5" />
+                    </Grid>
+                </ui:Button>
+                <ui:Button
+                    x:Name="MeridiusButton"
+                    Margin="10"
+                    Width="140"
+                    Height="140"
+                    Appearance="Transparent"
+                    Tag="Meridius"
+                    Click="TileButton_Click">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <ui:Image
+                        Grid.Row="0"
+                        Source="/Assets/meridius.png"
+                        VerticalAlignment="Center"
+                        HorizontalAlignment="Center" MaxWidth="80" MaxHeight="80" />
+                        <TextBlock
+                            x:Name="MeridiusButtonText"
+                            Grid.Row="1"
+                            Text="Meridius"
+                            FontSize="16"
+                            FontWeight="SemiBold"
+                            HorizontalAlignment="Center"
+                            Margin="0,5,0,5" />
+                    </Grid>
+                </ui:Button>
+                <ui:Button
+                    x:Name="TBButton"
+                    Margin="10"
+                    Width="140"
+                    Height="140"
+                    Appearance="Transparent"
+                    Tag="TB"
+                    Click="TileButton_Click">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <ui:Image
+                        Grid.Row="0"
+                        Source="/Assets/translucenttb.png"
+                        VerticalAlignment="Center"
+                        HorizontalAlignment="Center" MaxWidth="80" MaxHeight="80" />
+                        <TextBlock
+                            x:Name="TBButtonText"
+                            Grid.Row="1"
+                            Text="TranslucentTB"
+                            FontSize="16"
+                            FontWeight="SemiBold"
+                            HorizontalAlignment="Center"
+                            Margin="0,5,0,5" />
+                    </Grid>
+                </ui:Button>
+                <ui:Button
+                    x:Name="NvidiaButton"
+                    Margin="10"
+                    Width="140"
+                    Height="140"
+                    Appearance="Transparent"
+                    Tag="Nvidia"
+                    Click="TileButton_Click">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <ui:Image
+                        CornerRadius="20"
+                        Grid.Row="0"
+                        Source="/Assets/nvidia.png"
+                        VerticalAlignment="Center"
+                        HorizontalAlignment="Center" MaxWidth="80" MaxHeight="80" />
+                        <TextBlock
+                            x:Name="NvidiaButtonText"
+                            Grid.Row="1"
+                            Text="Nvidia App"
+                            FontSize="16"
+                            FontWeight="SemiBold"
+                            HorizontalAlignment="Center"
+                            Margin="0,5,0,5" />
+                    </Grid>
+                </ui:Button>
+                <ui:Button
+                    x:Name="AMDButton"
+                    Margin="10"
+                    Width="140"
+                    Height="140"
+                    Appearance="Transparent"
+                    Tag="AMD"
+                    Click="TileButton_Click">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <ui:Image
+                        CornerRadius="20"
+                        Grid.Row="0"
+                        Source="/Assets/amd.png"
+                        VerticalAlignment="Center"
+                        HorizontalAlignment="Center" MaxWidth="80" MaxHeight="80" />
+                        <TextBlock
+                            x:Name="AMDButtonText"
+                            Grid.Row="1"
+                            Text="AMD Adrenalin"
+                            FontSize="16"
+                            FontWeight="SemiBold"
+                            HorizontalAlignment="Center"
+                            Margin="0,5,0,5" />
+                    </Grid>
+                </ui:Button>
+            </WrapPanel>
+        </ScrollViewer>
+        <Grid
+        x:Name="TransitionGrid"
+        IsHitTestVisible="False"
+        Visibility="Collapsed">
+            <Rectangle
+            x:Name="AnimatedRectangle"
+            HorizontalAlignment="Left"
+            VerticalAlignment="Top" />
+        </Grid>
+    </Grid>
+
+</Page>
