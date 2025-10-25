@@ -10,7 +10,7 @@
     d:DataContext="{d:DesignInstance viewmodels:AppPageViewmodel, IsDesignTimeCreatable=True}"
     ui:Design.Background="{DynamicResource ApplicationBackgroundBrush}"
     ui:Design.Foreground="{DynamicResource TextFillColorPrimaryBrush}"
-    Foreground="{DynamicResource TextFillColorPrimaryBrush}" Cursor="" Margin="0,15,0,0" >
+    Foreground="{DynamicResource TextFillColorPrimaryBrush}" Cursor="" Margin="0,15,0,0" Loaded="Page_Loaded">
     <Grid>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="Auto"/>
@@ -64,16 +64,30 @@
                                 <Setter Property="IsEnabled" Value="False" />
                                 <Setter Property="Content">
                                     <Setter.Value>
-                                        <Grid>
-                                            <ui:ProgressRing
+                                        <ui:ProgressRing
                                             Height="24" Width="24"
                                             IsIndeterminate="False"
                                             Progress="{Binding ProgressValue}"
                                             HorizontalAlignment="Center"
                                             VerticalAlignment="Center" />
-                                        </Grid>
                                     </Setter.Value>
                                 </Setter>
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding IsChecking}" Value="True">
+                                <Setter Property="IsEnabled" Value="False" />
+                                <Setter Property="Content">
+                                    <Setter.Value>
+                                        <ui:ProgressRing
+                                            Height="24" Width="24"
+                                            IsIndeterminate="True"
+                                            HorizontalAlignment="Center"
+                                            VerticalAlignment="Center" />
+                                    </Setter.Value>
+                                </Setter>
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding IsInstalled}" Value="True">
+                                <Setter Property="IsEnabled" Value="False" />
+                                <Setter Property="Content" Value="Установлено" />
                             </DataTrigger>
                         </Style.Triggers>
                     </Style>

@@ -1,0 +1,80 @@
+﻿<Page
+    x:Class="Helinstaller.Views.Pages.Advices"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+    xmlns:anim="clr-namespace:Helinstaller.Animations"
+    mc:Ignorable="d" Margin="0,15,0,0">
+    <Grid Height="750" VerticalAlignment="Top">
+        <StackPanel HorizontalAlignment="Stretch" Orientation="Vertical">
+            <ui:Card>
+                <StackPanel Orientation="Horizontal" CanHorizontallyScroll="True">
+                    <ui:SymbolIcon Symbol="Clipboard32"/>
+                    <ui:TextBlock Margin="15,0,0,0" HorizontalAlignment="Left" Text="WIN + V для меню буфера обмена."/>
+                </StackPanel>
+            </ui:Card>
+            <ui:Card>
+                <StackPanel Orientation="Horizontal" CanHorizontallyScroll="True">
+                    <ui:SymbolIcon Symbol="TasksApp28"/>
+                    <ui:TextBlock Margin="15,0,0,0" HorizontalAlignment="Left" Text="Диспетчер Задач позволяет посмотреть нагрузку на ПК и завершать работу приложений. CTRL + SHIFT + ESC для открытия."/>
+                </StackPanel>
+            </ui:Card>
+            <ui:Card>
+                <StackPanel Orientation="Horizontal" CanHorizontallyScroll="True">
+                    <ui:SymbolIcon Symbol="Shield32"/>
+                    <ui:TextBlock Margin="15,0,0,0" HorizontalAlignment="Left" Text="Зачастую, антивирусы лишние - неоправданно нагружают систему. Хватает и стандартного Защитника Windows."/>
+                </StackPanel>
+            </ui:Card>
+            <ui:Card>
+                <StackPanel Orientation="Horizontal" CanHorizontallyScroll="True">
+                    <ui:SymbolIcon Symbol="Delete32"/>
+                    <ui:TextBlock Margin="15,0,0,0" HorizontalAlignment="Left" Text="Не ставь Яндекс, умоляю."/>
+                </StackPanel>
+            </ui:Card>
+            <ui:Card>
+                <StackPanel Orientation="Horizontal" CanHorizontallyScroll="True">
+                    <ui:SymbolIcon Symbol="Earth32"/>
+                    <ui:TextBlock Margin="15,0,0,0" HorizontalAlignment="Left" Text="Лучший по моему мнению браузер - Edge. После него я бы поставил Chrome и только потом Firefox."/>
+                </StackPanel>
+            </ui:Card>
+            <ui:Card>
+                <StackPanel Orientation="Horizontal" CanHorizontallyScroll="True">
+                    <ui:SymbolIcon Symbol="System24"/>
+                    <ui:TextBlock Margin="15,0,0,0" HorizontalAlignment="Left" Text="Иногда, проще переустановить систему, чем разобраться что занимает так много памяти."/>
+                </StackPanel>
+            </ui:Card>
+            <ui:Card>
+                <StackPanel Orientation="Horizontal" CanHorizontallyScroll="True">
+                    <ui:SymbolIcon Symbol="Key32"/>
+                    <ui:TextBlock Margin="15,0,0,0" HorizontalAlignment="Left" Text="У кого-то есть мнение, что наличие купленного ключа Windows - гарант от всех проблем с переустановкой. Может, скажем ему/ей?"/>
+                </StackPanel>
+            </ui:Card>
+            <ui:Card>
+                <StackPanel Orientation="Horizontal" CanHorizontallyScroll="True">
+                    <ui:SymbolIcon Symbol="Delete32"/>
+                    <ui:TextBlock Margin="15,0,0,0" HorizontalAlignment="Left" Text="Софт для очистки ОЗУ, CCleaner, удаление всего что только можно из системы не спасёт от лагов. От лагов спасёт обновить компьютер."/>
+                </StackPanel>
+            </ui:Card>
+            <ui:Card>
+                <StackPanel Orientation="Horizontal" CanHorizontallyScroll="True">
+                    <ui:SymbolIcon Symbol="ArrowUpload24"/>
+                    <ui:TextBlock Margin="15,0,0,0" HorizontalAlignment="Left" Text="Лучше хранить копии важных файлов на облаке/отдельном диске. Я так месяц работы потерял."/>
+                </StackPanel>
+            </ui:Card>
+            <ui:Card>
+                <StackPanel Orientation="Horizontal" CanHorizontallyScroll="True">
+                    <ui:SymbolIcon Symbol="ClockArrowDownload20"/>
+                    <ui:TextBlock Margin="15,0,0,0" HorizontalAlignment="Left" Text="Чтобы отключить старт ненужных приложений при входе в систему, зайди в соответвующую вкладку в Диспетчере Задач."/>
+                </StackPanel>
+            </ui:Card>
+            <ui:Card>
+                <StackPanel Orientation="Horizontal" CanHorizontallyScroll="True">
+                    <ui:SymbolIcon Symbol="ArrowReset48"/>
+                    <ui:TextBlock Margin="15,0,0,0" HorizontalAlignment="Left" Text="Большинство проблем решается перезагрузкой. Я серьёзно."/>
+                </StackPanel>
+            </ui:Card>
+        </StackPanel>
+    </Grid>
+</Page>

@@ -2,6 +2,7 @@
 using System.IO;
 using System.Net.Http;
 using System.Text.Json;
+using System.Windows.Controls;
 using Wpf.Ui.Abstractions.Controls;
 
 
@@ -25,7 +26,98 @@ namespace Helinstaller.ViewModels.Pages
         private bool _isInstalling = false;
 
         [ObservableProperty]
+        private bool _isInstalled = false;
+
+        [ObservableProperty]
+        private bool _isChecking = false;
+
+        [ObservableProperty]
         private double _progressValue = 0;
+
+        [RelayCommand]
+        private async Task Check()
+        {
+            IsChecking = true;
+            await IsProgramInstalledByPowerShell(Title);
+            IsChecking = false;
+        }
+        private async Task IsProgramInstalledByPowerShell(string programNamePart)
+        {
+            if (string.IsNullOrEmpty(programNamePart))
+            {
+                IsInstalled = false;
+                return;
+            }
+
+            string searchName = programNamePart.Trim().ToLowerInvariant();
+
+            // Исправленный скрипт PowerShell.
+            string psCommand = $@"
+        $results = @();
+        
+        # Поиск UWP/Store приложений для ВСЕХ пользователей
+        $results += Get-AppxPackage -AllUsers | 
+                    Where-Object {{$_.Name -match '{searchName}' -or $_.PackageFamilyName -match '{searchName}'}} | 
+                    Select-Object -ExpandProperty Name; 
+
+        # Поиск классических приложений (Win32) - включает HKLM и HKCU
+        $results += Get-ItemProperty HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*, 
+                         HKLM:\Software\Wow6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*,
+                         HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*,
+                         HKCU:\Software\Wow6432Node\Microsoft\Windows\CurrentVersion\Uninstall\* |
+                    Where-Object {{$_.DisplayName -ne $null -and ($_.DisplayName -match '{searchName}' -or $_.Publisher -match '{searchName}')}} |
+                    Select-Object -ExpandProperty DisplayName;
+
+        $results | Select-Object -Unique;
+    ";
+
+            try
+            {
+                ProcessStartInfo startInfo = new ProcessStartInfo
+                {
+                    FileName = "powershell.exe",
+                    Arguments = $"-NoProfile -ExecutionPolicy Bypass -Command \"{psCommand.Replace("\"", "\"\"")}\"",
+                    RedirectStandardOutput = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                };
+
+                using (Process process = Process.Start(startInfo))
+                {
+                    if (process == null)
+                    {
+                        IsInstalled = false;
+                        return;
+                    }
+
+                    Task<string> readOutputTask = process.StandardOutput.ReadToEndAsync();
+                    Task waitForExitTask = process.WaitForExitAsync();
+                    Task timeoutTask = Task.Delay(30000);
+
+                    Task processCompleteTask = Task.WhenAll(readOutputTask, waitForExitTask);
+
+                    Task completedTask = await Task.WhenAny(processCompleteTask, timeoutTask);
+
+                    if (completedTask == timeoutTask)
+                    {
+                        try { process.Kill(); } catch { /* ignore */ }
+                        IsInstalled = false;
+                        return;
+                    }
+
+                    await processCompleteTask;
+
+                    string output = readOutputTask.Result.Trim();
+
+                    IsInstalled = !string.IsNullOrEmpty(output);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Ошибка при проверке PowerShell: {ex.Message}");
+                IsInstalled = false;
+            }
+        }
 
         [RelayCommand]
         private async Task Install()
@@ -81,7 +173,12 @@ namespace Helinstaller.ViewModels.Pages
             }
         }
 
-        public Task OnNavigatedToAsync() => Task.CompletedTask;
+
+
+        public async Task OnNavigatedToAsync()
+        {
+        }
+
         public Task OnNavigatedFromAsync() => Task.CompletedTask;
 
         private async Task InstallWinRAR()

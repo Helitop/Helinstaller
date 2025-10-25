@@ -40,6 +40,13 @@ namespace Helinstaller.ViewModels.Windows
             },
             new NavigationViewItem()
             {
+                Content = "Советы",
+                Icon = new SymbolIcon { Symbol = SymbolRegular.Question16 },
+                TargetPageType = typeof(Views.Pages.Advices)
+
+            },
+            new NavigationViewItem()
+            {
                 Content = "Пожертвование",
                 Visibility = Visibility.Collapsed,
                 TargetPageType = typeof(Views.Pages.Donate)

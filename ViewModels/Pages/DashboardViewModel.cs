@@ -27,12 +27,20 @@ namespace Helinstaller.ViewModels.Pages
         private bool _isInstalling = false;
 
         [ObservableProperty]
+        private bool _isInstalled = false;
+
+        [ObservableProperty]
+        private bool _isChecking = false;
+
+        [ObservableProperty]
         private double _progressValue = 0;
+
 
         // Определяем команду с атрибутом [RelayCommand] для навигации
         [RelayCommand]
         public void OnNavigateToApp(string appName)
         {
+            
             switch (appName)
             {
 
@@ -108,8 +116,8 @@ namespace Helinstaller.ViewModels.Pages
                     AppIconPath = "/Assets/amd.png";
                     AppPreviewPath = "/Assets/amdprev.png";
                     break;
-
             }
+
         }
 
         public Task OnNavigatedToAsync()

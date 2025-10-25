@@ -13,15 +13,15 @@
             VerticalScrollBarVisibility="Auto">
             <WrapPanel
                 Margin="20"
-                HorizontalAlignment="Stretch"
+                HorizontalAlignment="Center"
                 VerticalAlignment="Stretch"
                 Orientation="Horizontal">
                 <ui:Button
                     x:Name="WinRARButton"
-                    Margin="10"
+                    Margin="5"
                     Width="140"
                     Height="140"
-                    Appearance="Transparent"
+                    Appearance="Secondary"
                     Tag="WinRAR"
                     Click="TileButton_Click">
                     <Grid>
@@ -47,10 +47,10 @@
                 </ui:Button>
                 <ui:Button
     x:Name="OfficeButton"
-    Margin="10"
+    Margin="5"
     Width="140"
     Height="140"
-    Appearance="Transparent"
+    Appearance="Secondary"
     Tag="Office"
     Click="TileButton_Click">
                     <Grid>
@@ -77,10 +77,10 @@
 
                 <ui:Button
                     x:Name="DiscordButton"
-                    Margin="10"
+                    Margin="5"
                     Width="140"
                     Height="140"
-                    Appearance="Transparent"
+                    Appearance="Secondary"
                     Tag="Discord"
                     Click="TileButton_Click">
                     <Grid>
@@ -106,10 +106,10 @@
                 </ui:Button>
                 <ui:Button
                     x:Name="TorrentButton"
-                    Margin="10"
+                    Margin="5"
                     Width="140"
                     Height="140"
-                    Appearance="Transparent"
+                    Appearance="Secondary"
                     Tag="µTorrent"
                     Click="TileButton_Click">
                     <Grid>
@@ -135,10 +135,10 @@
                 </ui:Button>
                 <ui:Button
                     x:Name="SteamButton"
-                    Margin="10"
+                    Margin="5"
                     Width="140"
                     Height="140"
-                    Appearance="Transparent"
+                    Appearance="Secondary"
                     Tag="Steam"
                     Click="TileButton_Click">
                     <Grid>
@@ -164,10 +164,10 @@
                 </ui:Button>
                 <ui:Button
                     x:Name="ZapretButton"
-                    Margin="10"
+                    Margin="5"
                     Width="140"
                     Height="140"
-                    Appearance="Transparent"
+                    Appearance="Secondary"
                     Tag="Zapret"
                     Click="TileButton_Click">
                     <Grid>
@@ -194,10 +194,10 @@
                 </ui:Button>
                 <ui:Button
                     x:Name="EPButton"
-                    Margin="10"
+                    Margin="5"
                     Width="140"
                     Height="140"
-                    Appearance="Transparent"
+                    Appearance="Secondary"
                     Tag="EP"
                     Click="TileButton_Click">
                     <Grid>
@@ -224,10 +224,10 @@
                 </ui:Button>
                 <ui:Button
                     x:Name="PTButton"
-                    Margin="10"
+                    Margin="5"
                     Width="140"
                     Height="140"
-                    Appearance="Transparent"
+                    Appearance="Secondary"
                     Tag="PT"
                     Click="TileButton_Click">
                     <Grid>
@@ -253,10 +253,10 @@
                 </ui:Button>
                 <ui:Button
                     x:Name="MeridiusButton"
-                    Margin="10"
+                    Margin="5"
                     Width="140"
                     Height="140"
-                    Appearance="Transparent"
+                    Appearance="Secondary"
                     Tag="Meridius"
                     Click="TileButton_Click">
                     <Grid>
@@ -282,10 +282,10 @@
                 </ui:Button>
                 <ui:Button
                     x:Name="TBButton"
-                    Margin="10"
+                    Margin="5"
                     Width="140"
                     Height="140"
-                    Appearance="Transparent"
+                    Appearance="Secondary"
                     Tag="TB"
                     Click="TileButton_Click">
                     <Grid>
@@ -311,10 +311,10 @@
                 </ui:Button>
                 <ui:Button
                     x:Name="NvidiaButton"
-                    Margin="10"
+                    Margin="5"
                     Width="140"
                     Height="140"
-                    Appearance="Transparent"
+                    Appearance="Secondary"
                     Tag="Nvidia"
                     Click="TileButton_Click">
                     <Grid>
@@ -341,10 +341,10 @@
                 </ui:Button>
                 <ui:Button
                     x:Name="AMDButton"
-                    Margin="10"
+                    Margin="5"
                     Width="140"
                     Height="140"
-                    Appearance="Transparent"
+                    Appearance="Secondary"
                     Tag="AMD"
                     Click="TileButton_Click">
                     <Grid>

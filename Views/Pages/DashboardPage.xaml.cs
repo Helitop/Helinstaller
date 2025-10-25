@@ -18,10 +18,11 @@ namespace Helinstaller.Views.Pages
             InitializeComponent();
         }
 
-        private void TileButton_Click(object sender, RoutedEventArgs e)
+        private async void TileButton_Click(object sender, RoutedEventArgs e)
         {
             if (sender is Button button && button.Tag is string tag)
             {
+                
                 ViewModel.OnNavigateToApp(tag);
                 var appPageViewModel = new AppPageViewmodel
                 {
@@ -30,13 +31,26 @@ namespace Helinstaller.Views.Pages
                     IconPath = ViewModel.AppIconPath,
                     PreviewPath = ViewModel.AppPreviewPath,
                     IsInstalling = ViewModel.IsInstalling,
-                    ProgressValue = ViewModel.ProgressValue
+                    ProgressValue = ViewModel.ProgressValue,
+                    IsChecking = ViewModel.IsChecking,
+                    IsInstalled = ViewModel.IsInstalled
                 };
+                // 1. Запуск асинхронной команды БЕЗ await.
+                // Команда Check() начнет работать в фоновом режиме, но UI-поток
+                // сразу перейдет к следующей строке (навигации).
+                if (appPageViewModel.CheckCommand is IAsyncRelayCommand asyncCommand)
+                {
+                    // ВАЖНО: УДАЛИТЕ await. 
+                    // Это запустит задачу, но не заблокирует текущий метод.
+                    asyncCommand.ExecuteAsync(null);
+                }
 
+                // 2. Сразу же выполняем синхронную навигацию.
+                // Пользователь мгновенно видит новую страницу.
                 bool v = _navigationService.Navigate(typeof(AppPage), appPageViewModel);
+
             }
             ;
-
         }
     }
 }

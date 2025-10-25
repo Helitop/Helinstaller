@@ -19,13 +19,14 @@
     WindowBackdropType="Mica"
     WindowCornerPreference="Round"
     WindowStartupLocation="CenterScreen"
-    mc:Ignorable="d" ResizeMode="NoResize" MaxHeight="650" MaxWidth="1100" ExtendsContentIntoTitleBar="True">
+    mc:Ignorable="d" ResizeMode="NoResize" MaxHeight="650" MaxWidth="1100" ExtendsContentIntoTitleBar="True" Initialized="FluentWindow_Initialized">
     <Grid>
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-        </Grid.RowDefinitions>
-        <ui:NavigationView
+        <Grid x:Name="MainGrid" Visibility="Hidden" Opacity="0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+            <ui:NavigationView
             x:Name="RootNavigation"
             Grid.Row="1"
             Padding="42,0,42,0"
@@ -36,57 +37,58 @@
             IsPaneToggleVisible="True"
             MenuItemsSource="{Binding ViewModel.MenuItems, Mode=OneWay}"
             PaneDisplayMode="Top" TransitionDuration="500">
-            <ui:NavigationView.Header>
-                <ui:BreadcrumbBar x:Name="BreadcrumbBar" Margin="42,32,42,20" Visibility="Collapsed"/>
-            </ui:NavigationView.Header>
-            <ui:NavigationView.ContentOverlay>
-                <Grid x:Name="ContentGrid">
-                    <ui:SnackbarPresenter x:Name="SnackbarPresenter" />
-                </Grid>
-            </ui:NavigationView.ContentOverlay>
+                <ui:NavigationView.Header>
+                    <ui:BreadcrumbBar x:Name="BreadcrumbBar" Margin="42,32,42,20" Visibility="Collapsed"/>
+                </ui:NavigationView.Header>
+                <ui:NavigationView.ContentOverlay>
+                    <Grid x:Name="ContentGrid">
+                        <ui:SnackbarPresenter x:Name="SnackbarPresenter" />
+                    </Grid>
+                </ui:NavigationView.ContentOverlay>
 
-        </ui:NavigationView>
+            </ui:NavigationView>
 
-        <ContentPresenter
+            <ContentPresenter
             x:Name="RootContentDialog"
             Grid.Row="0"
             Grid.RowSpan="2" />
 
-        <ui:TitleBar
+            <ui:TitleBar
             x:Name="TitleBar"
             Title="{Binding ViewModel.ApplicationTitle}"
             Grid.Row="0"
             CloseWindowByDoubleClickOnIcon="True" ShowMaximize="False">
-            <ui:TitleBar.Icon>
-                <ui:ImageIcon Source="/Assets/H.png" />
-            </ui:TitleBar.Icon>
-        </ui:TitleBar>
-        <StackPanel HorizontalAlignment="Right" VerticalAlignment="Bottom" Orientation="Horizontal" Grid.Row="1">
-            <ui:HyperlinkButton Height="30" FlowDirection="LeftToRight" HorizontalAlignment="Right" VerticalAlignment="Bottom" Grid.Row="1" Foreground="White" NavigateUri="https://t.me/hltp325">
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                    <ui:TextBlock Text="HLTP"/>
-                    <ui:Image HorizontalAlignment="Right" VerticalAlignment="Center" Margin="5,0,0,0" HorizontalContentAlignment="Right" Width="20" Source="/Assets/tg.png"/>
-                </StackPanel>
-            </ui:HyperlinkButton>
-            <ui:HyperlinkButton Height="30" FlowDirection="LeftToRight" HorizontalAlignment="Right" VerticalAlignment="Bottom" Grid.Row="1" Foreground="White" NavigateUri="https://github.com/Helitop">
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                    <ui:TextBlock Text="Helitop"/>
-                    <ui:Image HorizontalAlignment="Right" VerticalAlignment="Center" Margin="5,0,0,0" HorizontalContentAlignment="Right" Width="20" Source="/Assets/github.png"/>
-                </StackPanel>
-            </ui:HyperlinkButton>
-            <ui:HyperlinkButton Height="30" FlowDirection="LeftToRight" HorizontalAlignment="Right" VerticalAlignment="Bottom" Grid.Row="1" Foreground="White" NavigateUri="https://www.tiktok.com/@helicopter6622">
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                    <ui:TextBlock Text="@helicopter6622"/>
-                    <ui:Image HorizontalAlignment="Right" VerticalAlignment="Center" Margin="5,0,0,0" HorizontalContentAlignment="Right" Width="20" Source="/Assets/tt.png"/>
-                </StackPanel>
-            </ui:HyperlinkButton>
-            <ui:HyperlinkButton Height="30" FlowDirection="LeftToRight" HorizontalAlignment="Right" VerticalAlignment="Bottom" Grid.Row="1" Foreground="White" NavigateUri="https://www.youtube.com/@HelitopAnimation">
-                <StackPanel Orientation="Horizontal">
-                    <ui:TextBlock Text="@HelitopAnimation"/>
-                    <ui:Image Source="/Assets/yt.png" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="5,0,0,0" HorizontalContentAlignment="Right" Width="20" />
-                </StackPanel>
-            </ui:HyperlinkButton>
-            <ui:HyperlinkButton 
+                <ui:TitleBar.Icon>
+                    <ui:ImageIcon Source="/Assets/H.png" />
+                </ui:TitleBar.Icon>
+            </ui:TitleBar>
+            <StackPanel VerticalAlignment="Bottom" Orientation="Horizontal" FlowDirection="RightToLeft" Grid.Row="1" HorizontalAlignment="Stretch" Background="#4C000000">
+
+                <ui:HyperlinkButton Height="30" FlowDirection="LeftToRight" HorizontalAlignment="Right" VerticalAlignment="Bottom" Grid.Row="1" Foreground="White" NavigateUri="https://t.me/hltp325" OverridesDefaultStyle="True">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <ui:TextBlock Text="HLTP"/>
+                        <ui:Image HorizontalAlignment="Right" VerticalAlignment="Center" Margin="5,0,0,0" HorizontalContentAlignment="Right" Width="20" Source="/Assets/tg.png"/>
+                    </StackPanel>
+                </ui:HyperlinkButton>
+                <ui:HyperlinkButton Height="30" FlowDirection="LeftToRight" HorizontalAlignment="Right" VerticalAlignment="Bottom" Grid.Row="1" Foreground="White" NavigateUri="https://github.com/Helitop">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <ui:TextBlock Text="Helitop"/>
+                        <ui:Image HorizontalAlignment="Right" VerticalAlignment="Center" Margin="5,0,0,0" HorizontalContentAlignment="Right" Width="20" Source="/Assets/github.png"/>
+                    </StackPanel>
+                </ui:HyperlinkButton>
+                <ui:HyperlinkButton Height="30" FlowDirection="LeftToRight" HorizontalAlignment="Right" VerticalAlignment="Bottom" Grid.Row="1" Foreground="White" NavigateUri="https://www.tiktok.com/@helicopter6622">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <ui:TextBlock Text="@helicopter6622"/>
+                        <ui:Image HorizontalAlignment="Right" VerticalAlignment="Center" Margin="5,0,0,0" HorizontalContentAlignment="Right" Width="20" Source="/Assets/tt.png"/>
+                    </StackPanel>
+                </ui:HyperlinkButton>
+                <ui:HyperlinkButton Height="30" FlowDirection="LeftToRight" HorizontalAlignment="Right" VerticalAlignment="Bottom" Grid.Row="1" Foreground="White" NavigateUri="https://www.youtube.com/@HelitopAnimation">
+                    <StackPanel Orientation="Horizontal">
+                        <ui:TextBlock Text="@HelitopAnimation"/>
+                        <ui:Image Source="/Assets/yt.png" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="5,0,0,0" HorizontalContentAlignment="Right" Width="20" />
+                    </StackPanel>
+                </ui:HyperlinkButton>
+                <ui:HyperlinkButton 
                     Height="30" 
                     FlowDirection="LeftToRight" 
                     HorizontalAlignment="Right" 
@@ -94,12 +96,18 @@
                     Grid.Row="1" 
                     Foreground="White" 
                     Command="{Binding ViewModel.ToDonationCommand}">
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                    <ui:TextBlock Text="Закинуть на сухарики"/>
-                    <ui:Image HorizontalAlignment="Right" VerticalAlignment="Center" Margin="5,0,0,0" HorizontalContentAlignment="Right" Width="20" Source="/Assets/tbank.png" CornerRadius="20"/>
-                </StackPanel>
-            </ui:HyperlinkButton>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <ui:TextBlock Text="Закинуть на сухарики"/>
+                        <ui:Image HorizontalAlignment="Right" VerticalAlignment="Center" Margin="5,0,0,0" HorizontalContentAlignment="Right" Width="20" Source="/Assets/tbank.png" CornerRadius="20"/>
+                    </StackPanel>
+                </ui:HyperlinkButton>
+            </StackPanel>
+        </Grid>
+        <StackPanel x:Name="LoadingPanel" VerticalAlignment="Center">
+            <ui:TextBlock x:Name="desc" Text="Подключение..." FontSize="24" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,0,0,20"/>
+            <ui:SymbolIcon x:Name="stat" MaxHeight="60" MaxWidth="60" Visibility="Collapsed" Symbol="CloudCheckmark48" VerticalAlignment="Center" Foreground="{DynamicResource {x:Static SystemColors.AccentColorBrushKey}}" FontSize="64"/>
+            <ui:ProgressRing x:Name="ring" MaxHeight="60" MaxWidth="60" IsIndeterminate="True" VerticalAlignment="Center"/>
         </StackPanel>
     </Grid>
-    
+
 </ui:FluentWindow>
