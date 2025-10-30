@@ -47,55 +47,78 @@
             Text="{Binding Description}"
             Width="390"
             Margin="0,15,0,0" HorizontalAlignment="Left" />
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
 
-            <ui:Button
+                </Grid.ColumnDefinitions>
+                <ui:Button
     x:Name="InstallButton"
     Width="200"
     Height="40"
     Appearance="Primary"
     Command="{Binding InstallCommand}"
     HorizontalAlignment="Left"
-    Margin="0,15,0,0">
-                <ui:Button.Style>
-                    <Style TargetType="ui:Button" BasedOn="{StaticResource DefaultUiButtonStyle}">
-                        <Setter Property="Content" Value="Установить" />
-                        <Style.Triggers>
-                            <DataTrigger Binding="{Binding IsInstalling}" Value="True">
-                                <Setter Property="IsEnabled" Value="False" />
-                                <Setter Property="Content">
-                                    <Setter.Value>
-                                        <ui:ProgressRing
+    Margin="0,15,0,0" Click="InstallButton_Click">
+                    <ui:Button.Style>
+                        <Style TargetType="ui:Button" BasedOn="{StaticResource DefaultUiButtonStyle}">
+                            <Setter Property="Content" Value="Установить" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsChecking}" Value="True">
+                                    <Setter Property="IsEnabled" Value="False" />
+                                    <Setter Property="Content">
+                                        <Setter.Value>
+                                            <ui:ProgressRing
+                                            Height="24" Width="24"
+                                            IsIndeterminate="True"
+                                            HorizontalAlignment="Center"
+                                            VerticalAlignment="Center" />
+                                        </Setter.Value>
+                                    </Setter>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding IsInstalled}" Value="True">
+                                    <Setter Property="Content" Value="Установлено" />
+                                    <Setter Property="IsEnabled" Value="False" />
+                                </DataTrigger>
+                                <MultiDataTrigger>
+                                    <MultiDataTrigger.Conditions>
+                                        <Condition Binding="{Binding IsInstalled}" Value="True"/>
+                                        <Condition Binding="{Binding IsInstalling}" Value="False"/>
+                                        <Condition Binding="{Binding ElementName=ForceInstallSwitch, Path=IsChecked}" Value="True" />
+                                    </MultiDataTrigger.Conditions>
+                                    <Setter Property="IsEnabled" Value="True" />
+                                </MultiDataTrigger>
+                                <DataTrigger Binding="{Binding IsInstalling}" Value="True">
+                                    <Setter Property="IsEnabled" Value="False" />
+                                    <Setter Property="Content">
+                                        <Setter.Value>
+                                            <ui:ProgressRing
                                             Height="24" Width="24"
                                             IsIndeterminate="False"
                                             Progress="{Binding ProgressValue}"
                                             HorizontalAlignment="Center"
                                             VerticalAlignment="Center" />
-                                    </Setter.Value>
-                                </Setter>
-                            </DataTrigger>
-                            <DataTrigger Binding="{Binding IsChecking}" Value="True">
-                                <Setter Property="IsEnabled" Value="False" />
-                                <Setter Property="Content">
-                                    <Setter.Value>
-                                        <ui:ProgressRing
-                                            Height="24" Width="24"
-                                            IsIndeterminate="True"
-                                            HorizontalAlignment="Center"
-                                            VerticalAlignment="Center" />
-                                    </Setter.Value>
-                                </Setter>
-                            </DataTrigger>
-                            <DataTrigger Binding="{Binding IsInstalled}" Value="True">
-                                <Setter Property="IsEnabled" Value="False" />
-                                <Setter Property="Content" Value="Установлено" />
-                            </DataTrigger>
-                        </Style.Triggers>
-                    </Style>
-                </ui:Button.Style>
-            </ui:Button>
+                                        </Setter.Value>
+                                    </Setter>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </ui:Button.Style>
+                </ui:Button>
+            </Grid>
+            <ui:CardExpander Margin="0,15,0,0" HorizontalAlignment="Left" MaxWidth="370" Width="370">
+                <ui:CardExpander.Header>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,0">
+                        <ui:ToggleSwitch x:Name ="ForceInstallSwitch"/>
+                        <ui:TextBlock Grid.Column="2" Margin="10,0,0,0" Text="Принудительная установка  "/>
+                    </StackPanel>
+                </ui:CardExpander.Header>
+                <ui:TextBlock Text="Не рекомендуется. Включай, только если уверен что программа не установлена или её нужно переустановить." TextWrapping="Wrap"/>
+            </ui:CardExpander>
         </StackPanel>
         <ui:Image 
-                Grid.Column="2"
+                Grid.Column="1"
             VerticalAlignment="Top"
                 CornerRadius="20"
                 Source="{Binding PreviewPath}">
