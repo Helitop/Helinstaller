@@ -1,4 +1,5 @@
 ﻿using Helinstaller.ViewModels.Windows;
+using System.Diagnostics;
 using System.Net.Http;
 using System.Security.Authentication;
 using System.Security.Policy;
@@ -34,6 +35,59 @@ namespace Helinstaller.Views.Windows
 
         }
 
+        private bool _socialExpanded = false;
+
+        private void SocialToggleButton_Click(object sender, RoutedEventArgs e)
+        {
+            double targetWidth = _socialExpanded ? 0 : 600;
+            double targetOpacity = _socialExpanded ? 0 : 1;
+
+            var widthAnim = new DoubleAnimation
+            {
+                To = targetWidth,
+                Duration = TimeSpan.FromMilliseconds(400),
+                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
+            };
+
+            var opacityAnim = new DoubleAnimation
+            {
+                To = targetOpacity,
+                Duration = TimeSpan.FromMilliseconds(350)
+            };
+
+            SocialPanelContainer.BeginAnimation(FrameworkElement.WidthProperty, widthAnim);
+            SocialPanel.BeginAnimation(UIElement.OpacityProperty, opacityAnim);
+
+            _socialExpanded = !_socialExpanded;
+        }
+
+        // ---------- Исправленный обработчик ----------
+        private void SocialLink_Click(object sender, RoutedEventArgs e)
+        {
+            // приведение к Button — у него точно есть CommandParameter
+            if (sender is Wpf.Ui.Controls.Button btn)
+            {
+                string? url = null;
+
+                // сначала берем CommandParameter (если указан), иначе пробуем Tag
+                if (btn.CommandParameter is string cp && !string.IsNullOrWhiteSpace(cp))
+                    url = cp;
+                else if (btn.Tag is string tag && !string.IsNullOrWhiteSpace(tag))
+                    url = tag;
+
+                if (!string.IsNullOrWhiteSpace(url))
+                {
+                    try
+                    {
+                        Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+                    }
+                    catch
+                    {
+                        // тихо игнорируем ошибки открытия
+                    }
+                }
+            }
+        }
         #region INavigationWindow methods
 
         public INavigationView GetNavigation() => RootNavigation;

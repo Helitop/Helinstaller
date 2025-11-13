@@ -13,7 +13,7 @@
     Foreground="{DynamicResource TextFillColorPrimaryBrush}"
     WindowBackdropType="Mica"
     WindowCornerPreference="Round"
-    WindowStartupLocation="CenterScreen">
+    WindowStartupLocation="CenterScreen" Topmost="True">
 
     <Grid>
         <Grid.RowDefinitions>

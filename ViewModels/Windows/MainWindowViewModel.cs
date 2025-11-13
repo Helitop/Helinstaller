@@ -47,6 +47,13 @@ namespace Helinstaller.ViewModels.Windows
             },
             new NavigationViewItem()
             {
+                Content = "Установка Windows",
+                Icon = new SymbolIcon { Symbol = SymbolRegular.ArrowDownload48 },
+                TargetPageType = typeof(Views.Pages.Ventoy)
+
+            },
+            new NavigationViewItem()
+            {
                 Content = "Пожертвование",
                 Visibility = Visibility.Collapsed,
                 TargetPageType = typeof(Views.Pages.Donate)

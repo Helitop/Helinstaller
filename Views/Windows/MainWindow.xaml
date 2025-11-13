@@ -62,46 +62,75 @@
                     <ui:ImageIcon Source="/Assets/H.png" />
                 </ui:TitleBar.Icon>
             </ui:TitleBar>
-            <StackPanel VerticalAlignment="Bottom" Orientation="Horizontal" FlowDirection="RightToLeft" Grid.Row="1" HorizontalAlignment="Stretch" Background="#4C000000">
+            <StackPanel
+    VerticalAlignment="Bottom"
+    Orientation="Horizontal"
+    FlowDirection="RightToLeft"
+    Grid.Row="1"
+    HorizontalAlignment="Stretch"
+    Margin="0,0,10,0">
 
-                <ui:HyperlinkButton Height="30" FlowDirection="LeftToRight" HorizontalAlignment="Right" VerticalAlignment="Bottom" Grid.Row="1" Foreground="White" NavigateUri="https://t.me/hltp325" OverridesDefaultStyle="True">
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                        <ui:TextBlock Text="HLTP"/>
-                        <ui:Image HorizontalAlignment="Right" VerticalAlignment="Center" Margin="5,0,0,0" HorizontalContentAlignment="Right" Width="20" Source="/Assets/tg.png"/>
+                <!-- Главная кнопка открытия -->
+                <ui:Button x:Name="SocialToggleButton"
+               Width="40" Height="40"
+               Margin="0,0,0,10"
+               VerticalAlignment="Center"
+               ToolTip="Ссылки"
+               Appearance="Transparent"
+               Click="SocialToggleButton_Click">
+                    <ui:SymbolIcon Symbol="Share48"/>
+                </ui:Button>
+
+                <!-- Контейнер с соц. кнопками -->
+                <Border x:Name="SocialPanelContainer"
+            Width="0"
+            HorizontalAlignment="Right"
+            Background="Transparent"
+            ClipToBounds="True">
+                    <StackPanel x:Name="SocialPanel"
+                    Orientation="Horizontal"
+                    FlowDirection="RightToLeft"
+                    Margin="0,0,0,7"
+                    Opacity="0">
+
+                        <ui:Button Height="30" Foreground="White" Command="{Binding ViewModel.ToDonationCommand}" Margin="5,0,0,0">
+                            <StackPanel Orientation="Horizontal">
+                                <ui:TextBlock Text="Закинуть на сухарики"/>
+                                <ui:Image Source="/Assets/tbank.png" Width="20" Margin="5,0,0,0"/>
+                            </StackPanel>
+                        </ui:Button>
+
+                        <ui:Button Height="30" Foreground="White" CommandParameter="https://www.youtube.com/@HelitopAnimation" Click="SocialLink_Click" Margin="5,0,0,0">
+                            <StackPanel Orientation="Horizontal">
+                                <ui:TextBlock Text="YouTube"/>
+                                <ui:Image Source="/Assets/yt.png" Width="20" Margin="5,0,0,0"/>
+                            </StackPanel>
+                        </ui:Button>
+
+                        <ui:Button Height="30" Foreground="White" CommandParameter="https://www.tiktok.com/@helicopter6622" Click="SocialLink_Click" Margin="5,0,0,0">
+                            <StackPanel Orientation="Horizontal">
+                                <ui:TextBlock Text="TikTok"/>
+                                <ui:Image Source="/Assets/tt.png" Width="20" Margin="5,0,0,0"/>
+                            </StackPanel>
+                        </ui:Button>
+
+                        <ui:Button Height="30" Foreground="White" CommandParameter="https://github.com/Helitop" Click="SocialLink_Click" Margin="5,0,0,0">
+                            <StackPanel Orientation="Horizontal">
+                                <ui:TextBlock Text="GitHub"/>
+                                <ui:Image Source="/Assets/github.png" Width="20" Margin="5,0,0,0"/>
+                            </StackPanel>
+                        </ui:Button>
+
+                        <ui:Button Height="30" Foreground="White" CommandParameter="https://t.me/hltp325" Click="SocialLink_Click" Margin="5,0,0,0">
+                            <StackPanel Orientation="Horizontal">
+                                <ui:TextBlock Text="Telegram"/>
+                                <ui:Image Source="/Assets/tg.png" Width="20" Margin="5,0,0,0"/>
+                            </StackPanel>
+                        </ui:Button>
                     </StackPanel>
-                </ui:HyperlinkButton>
-                <ui:HyperlinkButton Height="30" FlowDirection="LeftToRight" HorizontalAlignment="Right" VerticalAlignment="Bottom" Grid.Row="1" Foreground="White" NavigateUri="https://github.com/Helitop">
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                        <ui:TextBlock Text="Helitop"/>
-                        <ui:Image HorizontalAlignment="Right" VerticalAlignment="Center" Margin="5,0,0,0" HorizontalContentAlignment="Right" Width="20" Source="/Assets/github.png"/>
-                    </StackPanel>
-                </ui:HyperlinkButton>
-                <ui:HyperlinkButton Height="30" FlowDirection="LeftToRight" HorizontalAlignment="Right" VerticalAlignment="Bottom" Grid.Row="1" Foreground="White" NavigateUri="https://www.tiktok.com/@helicopter6622">
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                        <ui:TextBlock Text="@helicopter6622"/>
-                        <ui:Image HorizontalAlignment="Right" VerticalAlignment="Center" Margin="5,0,0,0" HorizontalContentAlignment="Right" Width="20" Source="/Assets/tt.png"/>
-                    </StackPanel>
-                </ui:HyperlinkButton>
-                <ui:HyperlinkButton Height="30" FlowDirection="LeftToRight" HorizontalAlignment="Right" VerticalAlignment="Bottom" Grid.Row="1" Foreground="White" NavigateUri="https://www.youtube.com/@HelitopAnimation">
-                    <StackPanel Orientation="Horizontal">
-                        <ui:TextBlock Text="@HelitopAnimation"/>
-                        <ui:Image Source="/Assets/yt.png" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="5,0,0,0" HorizontalContentAlignment="Right" Width="20" />
-                    </StackPanel>
-                </ui:HyperlinkButton>
-                <ui:HyperlinkButton 
-                    Height="30" 
-                    FlowDirection="LeftToRight" 
-                    HorizontalAlignment="Right" 
-                    VerticalAlignment="Bottom" 
-                    Grid.Row="1" 
-                    Foreground="White" 
-                    Command="{Binding ViewModel.ToDonationCommand}">
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                        <ui:TextBlock Text="Закинуть на сухарики"/>
-                        <ui:Image HorizontalAlignment="Right" VerticalAlignment="Center" Margin="5,0,0,0" HorizontalContentAlignment="Right" Width="20" Source="/Assets/tbank.png" CornerRadius="20"/>
-                    </StackPanel>
-                </ui:HyperlinkButton>
+                </Border>
             </StackPanel>
+
         </Grid>
         <StackPanel x:Name="LoadingPanel" VerticalAlignment="Center">
             <ui:TextBlock x:Name="desc" Text="Подключение..." FontSize="24" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,0,0,20"/>
