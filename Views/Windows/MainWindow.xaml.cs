@@ -133,7 +133,7 @@ namespace Helinstaller.Views.Windows
         {
             while (true) {
             bool success = true;
-            await Task.Delay(1000);
+            await Task.Delay(500);
                 using (var client = new HttpClient())
                 {
                     try
@@ -181,7 +181,7 @@ namespace Helinstaller.Views.Windows
                         // Ловим любые другие неожиданные исключения
                         desc.Text = ($"Неожиданная ошибка: {ex.Message}");
                     }
-                    await Task.Delay(1000);
+                    await Task.Delay(500);
                     if ( success )
                         break;
                 }

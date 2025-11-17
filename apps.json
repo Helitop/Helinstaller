@@ -1,0 +1,97 @@
+[
+  {
+    "name": "WinRAR",
+    "title": "WinRAR",
+    "description": "Файловый архиватор, который позволяет сжимать, архивировать и распаковывать файлы.",
+    "iconPath": "/Assets/winrar.png",
+    "previewPath": "/Assets/winrarprev.png",
+    "downloadUrl": "https://www.rarlab.com/rar/winrar-x64.exe"
+  },
+  {
+    "name": "Discord",
+    "title": "Discord",
+    "description": "А кто не знает? Захотелось в Доту с друзяками - заходишь сюда.",
+    "iconPath": "/Assets/discord.png",
+    "previewPath": "/Assets/discordprev.png",
+    "downloadUrl": "https://discord.com/api/download?platform=win"
+  },
+  {
+    "name": "Steam",
+    "title": "Steam",
+    "description": "Тут игрушки качаешь, увы конечно платно. Если хочется бесплатно, то жмёшь на установку зелёной буковки µ",
+    "iconPath": "/Assets/steam.png",
+    "previewPath": "/Assets/steamprev.png",
+    "downloadUrl": "https://cdn.akamai.steamstatic.com/client/installer/SteamSetup.exe"
+  },
+  {
+    "name": "µTorrent",
+    "title": "µTorrent",
+    "description": "Как раз тот случай когда хочется юзать стим, а денюжки нет.",
+    "iconPath": "/Assets/µtorrent.png",
+    "previewPath": "/Assets/utorrentprev.png",
+    "downloadUrl": "https://download-new.utorrent.com/endpoint/utweb/desktop/windows/versions/latest"
+  },
+  {
+    "name": "Zapret",
+    "title": "Zapret",
+    "description": "Если не работает Дискордик или ютуб - запускай.",
+    "iconPath": "",
+    "previewPath": "/Assets/zapretprev.png",
+    "downloadUrl": "github:https://api.github.com/repos/bol-van/zapret/releases/latest"
+  },
+  {
+    "name": "EP",
+    "title": "ExplorerPatcher",
+    "description": "Набор приколов для проводника. Если неприятна панель задач из 11 Винды - настраивай через эту штуку.",
+    "iconPath": "",
+    "previewPath": "/Assets/epprev.png",
+    "downloadUrl": "github:https://api.github.com/repos/valinet/ExplorerPatcher/releases/latest"
+  },
+  {
+    "name": "PT",
+    "title": "PowerToys",
+    "description": "Много различных инструментов прям в Винде. К примеру пипетка и линейка экрана по пикселям.",
+    "iconPath": "/Assets/powertoys.png",
+    "previewPath": "/Assets/powertoysprev.png",
+    "downloadUrl": "https://github.com/microsoft/PowerToys/releases/latest/download/PowerToysSetup.exe"
+  },
+  {
+    "name": "Meridius",
+    "title": "Meridius",
+    "description": "ПК-Клиент ВК Музыки. Эквалайзер, плавное затухание - всё есть, всё здесь.",
+    "iconPath": "/Assets/meridius.png",
+    "previewPath": "/Assets/meridiusprev.png",
+    "downloadUrl": "github:https://api.github.com/repos/PurpleHorrorRus/Meridius/releases/latest"
+  },
+  {
+    "name": "TB",
+    "title": "TranslucentTB",
+    "description": "Прозрачная панель задач.",
+    "iconPath": "/Assets/translucenttb.png",
+    "previewPath": "/Assets/translucenttbprev.png",
+    "downloadUrl": "https://api.github.com/TranslucentTB/TranslucentTB/releases/latest/download/TranslucentTB-setup.exe"
+  },
+  {
+    "name": "Office",
+    "title": "Office",
+    "description": "Набор офисных приложений: Word, Excel, Powerpoint, Access, Visio - Всё тут.",
+    "iconPath": "/Assets/office.png",
+    "previewPath": "/Assets/officeprev.png"
+  },
+  {
+    "name": "Nvidia",
+    "title": "Nvidia App",
+    "description": "Драйвера, запись экрана, монитор производительности для видеоадаптеров NVIDIA",
+    "iconPath": "/Assets/nvidia.png",
+    "previewPath": "/Assets/nvidiaprev.png",
+    "downloadUrl": "https://us.download.nvidia.com/nvidiaapp/latest/NVIDIA_app_installer.exe"
+  },
+  {
+    "name": "AMD",
+    "title": "AMD Adrenalin",
+    "description": "Драйвера, запись экрана, монитор производительности для видеоадаптеров AMD",
+    "iconPath": "/Assets/amd.png",
+    "previewPath": "/Assets/amdprev.png",
+    "downloadUrl": "https://drivers.amd.com/drivers/installer/amd-software-adrenalin-edition.exe"
+  }
+]

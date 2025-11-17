@@ -436,13 +436,13 @@ exit");
                 return;
             }
 
-            string usbPath = SelectedDrive.ToDriveInfo()?.RootDirectory.FullName ?? null;
+            var usbPath = SelectedDrive.ToDriveInfo()?.RootDirectory.Name ?? null;
             if (usbPath == null)
             {
                 CustomMessageBox.Show("Не удалось определить путь к флешке.", "Ошибка", MessageBoxButton.OK);
                 return;
             }
-            if (!IsVentoyInstalled(usbPath))
+            if (!IsVentoyInstalled(SelectedDrive))
             {
                 CustomMessageBox.Show(
                     "На выбранном накопителе не обнаружен Ventoy.\nПожалуйста, установите Ventoy перед загрузкой или копированием образа.",
@@ -662,7 +662,10 @@ exit");
             IsoBox.IsEnabled = enabled;
             DownloadButton.IsEnabled = enabled;
             Browse.IsEnabled = enabled;
-            LocalFilePathTextBox.IsEnabled = enabled;
+            if (IsoBox.SelectedIndex == 0)
+            {
+                LocalFilePathTextBox.IsEnabled = enabled;
+            }
             DrivesListView.IsEnabled = enabled;
             RefreshButton.IsEnabled = enabled;
             UpdateButton.IsEnabled = enabled;
@@ -670,28 +673,14 @@ exit");
 
             CancelButton.IsEnabled = !enabled; // наоборот: если интерфейс выключен — отмена включена
         }
-        private bool IsVentoyInstalled(string usbRoot)
+        private bool IsVentoyInstalled(UsbDriveItem usbRoot)
         {
             try
             {
-                if (!Directory.Exists(usbRoot))
-                    return false;
-
-                // Проверяем наличие файлов/папок, где встречается "ventoy"
-                var entries = Directory.GetFileSystemEntries(usbRoot);
-                foreach (var entry in entries)
-                {
-                    string name = Path.GetFileName(entry).ToLowerInvariant();
-                    if (name.Contains("ventoy"))
-                        return true;
-                }
-
-                // Иногда Ventoy создаёт скрытую подпапку (например, EFI)
-                var ventoyDir = Path.Combine(usbRoot, "ventoy");
-                if (Directory.Exists(ventoyDir))
+                if (usbRoot.DisplayName.ToLower().Contains("ventoy"))
                     return true;
-
-                return false;
+                else
+                    return false;
             }
             catch
             {
