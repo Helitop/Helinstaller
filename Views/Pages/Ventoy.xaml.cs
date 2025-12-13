@@ -13,9 +13,11 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Threading;
+using Wpf.Ui.Controls;
 
 namespace Helinstaller.Views.Pages
 {
+
     public partial class Ventoy : Page, INotifyPropertyChanged
     {
         public event PropertyChangedEventHandler PropertyChanged;
@@ -26,7 +28,8 @@ namespace Helinstaller.Views.Pages
 
 
         public ObservableCollection<UsbDriveItem> UsbDrives { get; } = new ObservableCollection<UsbDriveItem>();
-
+        // Коллекция для списка найденных ISO/IMG образов
+        public ObservableCollection<IsoImageItem> FoundIsoImages { get; } = new ObservableCollection<IsoImageItem>();
         private UsbDriveItem? _selectedDrive;
         public UsbDriveItem? SelectedDrive
         {
@@ -62,6 +65,14 @@ namespace Helinstaller.Views.Pages
             }
         }
 
+        public class IsoImageItem
+        {
+            public string FileName { get; set; } = string.Empty;
+            public string FullPath { get; set; } = string.Empty;
+
+            public string Size { get; set; } = string.Empty;
+        }
+
         public bool IsRefreshEnabled => !IsRefreshing;
         public bool CanInstallUpdate => SelectedDrive != null && !IsRefreshing;
 
@@ -95,7 +106,7 @@ namespace Helinstaller.Views.Pages
         private void OnPropertyChanged(string name) =>
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 
-        private void UpdateDeviceInfo()
+        private async void UpdateDeviceInfo()
         {
             if (SelectedDrive == null)
             {
@@ -129,6 +140,61 @@ namespace Helinstaller.Views.Pages
             }
 
             OnPropertyChanged(nameof(SelectedDrive));
+            await ScanIsoImagesAsync();
+        }
+
+        private async Task ScanIsoImagesAsync()
+        {
+            // Очищаем список в потоке UI
+            await Dispatcher.InvokeAsync(FoundIsoImages.Clear);
+
+            if (SelectedDrive == null) return;
+            var driveInfo = SelectedDrive.ToDriveInfo();
+            if (driveInfo == null || !driveInfo.IsReady) return;
+
+            // Проверка, что Ventoy установлен, чтобы избежать сканирования случайных флешек
+            if (!IsVentoyInstalled(SelectedDrive)) return;
+
+            try
+            {
+                var images = await Task.Run(() =>
+                {
+                    var rootDir = driveInfo.RootDirectory;
+                    // 🔥 Теперь это List<IsoImageItem>
+                    var foundFiles = new List<IsoImageItem>();
+
+                    var extensions = new[] { "*.iso", "*.img" };
+
+                    foreach (var ext in extensions)
+                    {
+                        // Используем AllDirectories, чтобы найти образы глубже (если нужно)
+                        foreach (var file in rootDir.GetFiles(ext, SearchOption.TopDirectoryOnly))
+                        {
+                            foundFiles.Add(new IsoImageItem
+                            {
+                                FileName = file.Name,
+                                FullPath = file.FullName,
+                                Size = FormatBytes(file.Length)
+                            });
+                        }
+                    }
+                    return foundFiles.OrderBy(f => f.FileName).ToList();
+                });
+
+                // Обновляем коллекцию в потоке UI
+                await Dispatcher.InvokeAsync(() =>
+                {
+                    foreach (var item in images)
+                    {
+                        FoundIsoImages.Add(item);
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                // Обработка ошибок доступа к файлам/папкам
+                Debug.WriteLine($"Ошибка сканирования ISO: {ex.Message}");
+            }
         }
 
         private static string FormatBytes(long bytes)
@@ -199,7 +265,7 @@ namespace Helinstaller.Views.Pages
             }
             catch (Exception ex)
             {
-                CustomMessageBox.Show($"Ошибка при сканировании USB: {ex.Message}", "Ошибка", MessageBoxButton.OK);
+                CustomMessageBox.Show($"Ошибка при сканировании USB: {ex.Message}", "Ошибка", System.Windows.MessageBoxButton.OK);
             }
             finally
             {
@@ -218,11 +284,11 @@ namespace Helinstaller.Views.Pages
         {
             if (SelectedDrive == null)
             {
-                CustomMessageBox.Show("Выберите накопитель для форматирования.", "Внимание", MessageBoxButton.OK);
+                CustomMessageBox.Show("Выберите накопитель для форматирования.", "Внимание", System.Windows.MessageBoxButton.OK);
                 return;
             }
 
-            var res = CustomMessageBox.Show($"Вы действительно хотите форматировать {SelectedDrive.DisplayName}?\nВсе данные на устройстве будут удалены.", "Подтвердите форматирование", MessageBoxButton.YesNo);
+            var res = CustomMessageBox.Show($"Вы действительно хотите форматировать {SelectedDrive.DisplayName}?\nВсе данные на устройстве будут удалены.", "Подтвердите форматирование", System.Windows.MessageBoxButton.YesNo);
             if (res != CustomMessageBox.MessageBoxResult.Yes) return;
 
             try
@@ -269,16 +335,17 @@ exit");
                         throw new Exception($"DiskPart завершился с кодом {exitCode}.");
                 });
 
-                CustomMessageBox.Show("Форматирование завершено.", "Готово", MessageBoxButton.OK);
+                CustomMessageBox.Show("Форматирование завершено.", "Готово", System.Windows.MessageBoxButton.OK);
             }
             catch (Exception ex)
             {
-                CustomMessageBox.Show($"Ошибка форматирования: {ex.Message}", "Ошибка", MessageBoxButton.OK);
+                CustomMessageBox.Show($"Ошибка форматирования: {ex.Message}", "Ошибка", System.Windows.MessageBoxButton.OK);
             }
             finally
             {
                 IsRefreshing = false;
                 await RefreshUsbListAsync();
+                await ScanIsoImagesAsync();
             }
         }
 
@@ -313,7 +380,7 @@ exit");
         {
             if (SelectedDrive == null)
             {
-                CustomMessageBox.Show("Выберите накопитель для операции.", "Внимание", MessageBoxButton.OK);
+                CustomMessageBox.Show("Выберите накопитель для операции.", "Внимание", System.Windows.MessageBoxButton.OK);
                 return;
             }
 
@@ -348,11 +415,11 @@ exit");
                         throw new Exception($"Ventoy завершился с кодом {exitCode}.");
                 });
 
-                CustomMessageBox.Show(install ? "Установка Ventoy завершена." : "Обновление Ventoy завершено.", "Готово", MessageBoxButton.OK);
+                CustomMessageBox.Show(install ? "Установка Ventoy завершена." : "Обновление Ventoy завершено.", "Готово", System.Windows.MessageBoxButton.OK);
             }
             catch (Exception ex)
             {
-                CustomMessageBox.Show($"Ошибка при запуске Ventoy: {ex.Message}", "Ошибка", MessageBoxButton.OK);
+                CustomMessageBox.Show($"Ошибка при запуске Ventoy: {ex.Message}", "Ошибка", System.Windows.MessageBoxButton.OK);
             }
             finally
             {
@@ -421,7 +488,7 @@ exit");
         {
             if (IsoBox.SelectedItem is not ComboBoxItem selectedItem)
             {
-                CustomMessageBox.Show("Выберите образ для загрузки или копирования.", "Ошибка", MessageBoxButton.OK);
+                CustomMessageBox.Show("Выберите образ для загрузки или копирования.", "Ошибка", System.Windows.MessageBoxButton.OK);
                 return;
             }
 
@@ -432,21 +499,21 @@ exit");
 
             if (SelectedDrive == null)
             {
-                CustomMessageBox.Show("Сначала выберите USB-накопитель.", "Ошибка", MessageBoxButton.OK);
+                CustomMessageBox.Show("Сначала выберите USB-накопитель.", "Ошибка", System.Windows.MessageBoxButton.OK);
                 return;
             }
 
             var usbPath = SelectedDrive.ToDriveInfo()?.RootDirectory.Name ?? null;
             if (usbPath == null)
             {
-                CustomMessageBox.Show("Не удалось определить путь к флешке.", "Ошибка", MessageBoxButton.OK);
+                CustomMessageBox.Show("Не удалось определить путь к флешке.", "Ошибка", System.Windows.MessageBoxButton.OK);
                 return;
             }
             if (!IsVentoyInstalled(SelectedDrive))
             {
                 CustomMessageBox.Show(
                     "На выбранном накопителе не обнаружен Ventoy.\nПожалуйста, установите Ventoy перед загрузкой или копированием образа.",
-                    "Ventoy не найден", MessageBoxButton.OK);
+                    "Ventoy не найден", System.Windows.MessageBoxButton.OK);
                 return;
             }
 
@@ -464,7 +531,7 @@ exit");
                     string sourcePath = LocalFilePathTextBox.Text.Trim();
                     if (!File.Exists(sourcePath))
                     {
-                        CustomMessageBox.Show("Укажите корректный путь к .ISO файлу.", "Ошибка", MessageBoxButton.OK);
+                        CustomMessageBox.Show("Укажите корректный путь к .ISO файлу.", "Ошибка", System.Windows.MessageBoxButton.OK);
                         // Выходим, finally-блок всё почистит и разблокирует UI
                         return;
                     }
@@ -488,7 +555,7 @@ exit");
                         Process.Start(new ProcessStartInfo { FileName = tag, UseShellExecute = true });
                         CustomMessageBox.Show(
                             "Невозможно получить прямую ссылку к файлу, пожалуйста загрузите его вручную, а после выберите 'Локальный файл'.",
-                            "Нет прямой ссылки", MessageBoxButton.OK);
+                            "Нет прямой ссылки", System.Windows.MessageBoxButton.OK);
                         // Выходим, finally-блок всё почистит
                         return;
                     }
@@ -520,7 +587,7 @@ exit");
             }
             catch (Exception ex)
             {
-                CustomMessageBox.Show($"Ошибка: {ex.Message}", "Ошибка", MessageBoxButton.OK);
+                CustomMessageBox.Show($"Ошибка: {ex.Message}", "Ошибка", System.Windows.MessageBoxButton.OK);
                 isoText.Text = "Ошибка операции.";
             }
             finally
@@ -529,6 +596,7 @@ exit");
                 SetUiEnabled(true); // 🔥 РАЗБЛОКИРУЕМ интерфейс
                 _transferCts?.Dispose(); // Освобождаем ресурсы
                 _transferCts = null;
+                await ScanIsoImagesAsync();
             }
         }
 
@@ -693,7 +761,23 @@ exit");
             HackMenu.Visibility = Visibility.Visible;
             HackButton.Visibility = Visibility.Hidden;
         }
-}
+
+        private async void Button_Click_1(object sender, RoutedEventArgs e)
+        {
+            if (ImagesList.SelectedItem != null)
+            {
+                var resp = CustomMessageBox.Show("Вы точно хотите удалить образ с выбранного накопителя?", "", System.Windows.MessageBoxButton.YesNo);
+                if (resp == CustomMessageBox.MessageBoxResult.Yes)
+                {
+                    string path = (ImagesList.SelectedItem as IsoImageItem).FullPath;
+                    File.Delete(path);
+                    await ScanIsoImagesAsync();
+                }
+            }
+            else { CustomMessageBox.Show("Сначала выберите файл для удаления", "", System.Windows.MessageBoxButton.OK); }
+            
+        }
+    }
 
 
 

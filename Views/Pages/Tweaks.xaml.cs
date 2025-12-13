@@ -31,23 +31,27 @@ namespace Helinstaller.Views.Pages
             DataContext = this;
 
             InitializeComponent();
-            const string keyPath = @"HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\TaskbarDeveloperSettings";
-            const string valueName = "TaskbarEndTask";
-            int currentValue = (int)Registry.GetValue(keyPath, valueName, 0);
-            EndTaskSwitch.IsChecked = Convert.ToBoolean(currentValue);
-
-            STICKYKEYS sk = new STICKYKEYS();
-            sk.cbSize = (uint)Marshal.SizeOf(sk);
-            SystemParametersInfo(SPI_GETSTICKYKEYS, sk.cbSize, ref sk, 0);
-
-            if ((sk.dwFlags & SKF_STICKYKEYSON) != 0)
+            try
             {
-                StickySwitch.IsChecked = true;
+                const string keyPath = @"HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\TaskbarDeveloperSettings";
+                const string valueName = "TaskbarEndTask";
+                int currentValue = (int)Registry.GetValue(keyPath, valueName, 0);
+                EndTaskSwitch.IsChecked = Convert.ToBoolean(currentValue);
+
+                STICKYKEYS sk = new STICKYKEYS();
+                sk.cbSize = (uint)Marshal.SizeOf(sk);
+                SystemParametersInfo(SPI_GETSTICKYKEYS, sk.cbSize, ref sk, 0);
+
+                if ((sk.dwFlags & SKF_STICKYKEYSON) != 0)
+                {
+                    StickySwitch.IsChecked = true;
+                }
+                else
+                {
+                    StickySwitch.IsChecked = false;
+                }
             }
-            else
-            {
-                StickySwitch.IsChecked = false;
-            }
+            catch (Exception ex) { CustomMessageBox.Show(ex.Message,"", MessageBoxButton.OK); }
         }
 
 

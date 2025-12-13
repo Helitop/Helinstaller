@@ -138,6 +138,55 @@
                 </StackPanel>
 
             </ui:Card>
+                <ui:Card>
+                    <StackPanel>
+                        <ui:TextBlock Text="Установленные образы" FontTypography="Title" HorizontalAlignment="Center"/>
+                        <ui:ListView x:Name="ImagesList" ItemsSource="{Binding FoundIsoImages}" 
+          Height="150"
+          ScrollViewer.VerticalScrollBarVisibility="Auto">
+                            <ListView.Style>
+                                <Style TargetType="ui:ListView" BasedOn="{StaticResource {x:Type ui:ListView}}">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding FoundIsoImages.Count}" Value="0">
+                                            <Setter Property="Template">
+                                                <Setter.Value>
+                                                    <ControlTemplate>
+                                                        <Grid>
+                                                            <TextBlock Text="Образы ISO/IMG не найдены." HorizontalAlignment="Center" VerticalAlignment="Center" 
+                                                   FontStyle="Italic" Foreground="Gray"/>
+                                                        </Grid>
+                                                    </ControlTemplate>
+                                                </Setter.Value>
+                                            </Setter>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </ListView.Style>
+                            <ui:ListView.ItemContainerStyle>
+                                <Style TargetType="ui:ListViewItem" 
+               BasedOn="{StaticResource {x:Type ui:ListViewItem}}">
+                                    <Setter Property="Margin" Value="0,2"/>
+                                </Style>
+                            </ui:ListView.ItemContainerStyle>
+
+                            <ui:ListView.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid>
+                                        <ui:TextBlock Text="{Binding FileName}"
+                                        ToolTip="{Binding FullPath}"
+                                        Margin="5,0"/>
+                                        <ui:TextBlock HorizontalAlignment="Right" Text="NaN"/>
+                                    </Grid>
+                                </DataTemplate>
+                            </ui:ListView.ItemTemplate>
+                        </ui:ListView>
+                        <Grid>
+                            <ui:Button HorizontalAlignment="Right" Click="Button_Click_1">
+                                <ui:SymbolIcon Symbol="Delete48"/>
+                            </ui:Button>
+                        </Grid>
+                    </StackPanel>
+                </ui:Card>
         </StackPanel>
     </Grid>
         <ui:Card Margin="0,100,0,0" Width="1000" Height="800" Grid.Row="1">

@@ -6,11 +6,15 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:viewmodels="clr-namespace:Helinstaller.ViewModels.Pages"
+    xmlns:local="clr-namespace:Helinstaller.Helpers"
     mc:Ignorable="d"
     d:DataContext="{d:DesignInstance viewmodels:AppPageViewmodel, IsDesignTimeCreatable=True}"
     ui:Design.Background="{DynamicResource ApplicationBackgroundBrush}"
     ui:Design.Foreground="{DynamicResource TextFillColorPrimaryBrush}"
     Foreground="{DynamicResource TextFillColorPrimaryBrush}" Cursor="" Margin="0,15,0,0" Loaded="Page_Loaded">
+    <Page.Resources>
+        <local:StringToVisibilityConverter x:Key="PathToVisibilityConverter"/>
+    </Page.Resources>
     <Grid>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="Auto"/>
@@ -23,13 +27,16 @@
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
-                <ui:Card>
+                <ui:Card
+                    Visibility="{Binding IconPath, Converter={StaticResource PathToVisibilityConverter}}">
                     <ui:Image
-                Grid.Column="0"
-                Width="120"
-                Height="120"
-                Source="{Binding IconPath}"
-                Margin="0,0,0,0" />
+                    Grid.Column="0"
+                    Width="120"
+                    Height="120"
+                    Source="{Binding IconPath}"
+                    Margin="0,0,0,0">       
+                    </ui:Image>
+
                 </ui:Card>
 
 

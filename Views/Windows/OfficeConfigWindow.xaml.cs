@@ -32,5 +32,10 @@ namespace Helinstaller.Views.Windows
             this.DialogResult = true; // Возвращаем true, что означает "Начать установку"
             this.Close();
         }
+
+        private void CloseButton_click(object sender, RoutedEventArgs e)
+        {
+            this.DialogResult = false;
+        }
     }
 }

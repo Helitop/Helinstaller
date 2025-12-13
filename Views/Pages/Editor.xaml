@@ -1,0 +1,129 @@
+﻿<Page
+    x:Class="Helinstaller.Views.Pages.Editor"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    ui:Design.Background="{DynamicResource ApplicationBackgroundBrush}"
+    ui:Design.Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+    Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+    Cursor="" Margin="0,15,0,0">
+
+    <Grid Margin="15,0,15,0">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="400"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <StackPanel Grid.Column="0" Orientation="Vertical">
+
+            <TextBlock
+                x:Name="PageTitle"
+                FontSize="28"
+                FontWeight="SemiBold"
+                Text="Добавить новое приложение"
+                Margin="0,0,0,25"/>
+
+            <ui:TextBlock Text="Имя приложения (уникальный тег):" FontWeight="SemiBold" Margin="0,0,0,5"/>
+            <ui:TextBox 
+                x:Name="AppNameTextBox" 
+                PlaceholderText="например, 'visual-studio-code'" 
+                IsReadOnly="{Binding IsEditing}"
+                Margin="0,0,0,15"/>
+
+            <ui:TextBlock Text="Заголовок (отображается в плитке):" FontWeight="SemiBold" Margin="0,0,0,5"/>
+            <ui:TextBox 
+                x:Name="AppTitleTextBox" 
+                PlaceholderText="например, 'Visual Studio Code'" 
+                Margin="0,0,0,15"/>
+
+            <ui:TextBlock Text="Описание:" FontWeight="SemiBold" Margin="0,0,0,5"/>
+            <ui:TextBox 
+                x:Name="AppDescriptionTextBox" 
+                PlaceholderText="Краткое описание приложения." 
+                TextWrapping="Wrap"
+                AcceptsReturn="True"
+                MinLines="3"
+                MaxHeight="100"
+                Margin="0,0,0,15"/>
+
+            <ui:TextBlock Text="Путь к иконке (IconPath):" FontWeight="SemiBold" Margin="0,0,0,5"/>
+            <Grid Margin="0,0,0,15">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <ui:TextBox 
+                    x:Name="AppIconPathTextBox" 
+                    Grid.Column="0"
+                    PlaceholderText="Путь к файлу иконки (например, 'assets/icons/vscode.png')"/>
+                <ui:Button 
+                    Grid.Column="1"
+                    Content="Обзор" 
+                    Appearance="Secondary"
+                    Margin="10,0,0,0"
+                    Click="BrowseIconPath_Click"/>
+            </Grid>
+
+            <ui:TextBlock Text="URL для скачивания (DownloadUrl):" FontWeight="SemiBold" Margin="0,0,0,5"/>
+            <ui:TextBox 
+                x:Name="AppDownloadUrlTextBox" 
+                PlaceholderText="Полный URL для скачивания установщика" 
+                Margin="0,0,0,15"/>
+
+            <StackPanel Orientation="Horizontal" Margin="0,15,0,0">
+                <ui:Button
+                    x:Name="SaveButton"
+                    Width="180"
+                    Height="40"
+                    Content="Сохранить приложение"
+                    Appearance="Primary"
+                    HorizontalAlignment="Left"
+                    Margin="0,0,20,0" 
+                    Click="SaveButton_Click"/>
+
+                <ui:Button
+                    x:Name="BackButton"
+                    Width="180"
+                    Height="40"
+                    Content="Отмена"
+                    Appearance="Secondary"
+                    HorizontalAlignment="Left"
+                    Click="BackButton_Click"/>
+            </StackPanel>
+
+        </StackPanel>
+
+        <StackPanel Grid.Column="1" Margin="25,0,0,0" VerticalAlignment="Top">
+            <ui:TextBlock Text="Путь к изображению-превью (PreviewPath):" FontWeight="SemiBold" Margin="0,0,0,5"/>
+            <Grid Margin="0,0,0,15">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <ui:TextBox 
+                    x:Name="AppPreviewPathTextBox" 
+                    Grid.Column="0"
+                    PlaceholderText="Путь к файлу превью (например, 'assets/previews/vscode_preview.png')"
+                    TextChanged="AppPreviewPathTextBox_TextChanged"/>
+                <ui:Button 
+                    Grid.Column="1"
+                    Content="Обзор" 
+                    Appearance="Secondary"
+                    Margin="10,0,0,0"
+                    Click="BrowsePreviewPath_Click"/>
+            </Grid>
+
+            <ui:TextBlock Text="Превью:" FontWeight="SemiBold" Margin="0,0,0,5"/>
+            <ui:Image
+                x:Name="PreviewImage"
+                VerticalAlignment="Top"
+                CornerRadius="10"
+                MaxHeight="400"
+                HorizontalAlignment="Left"
+                Source="{Binding Text, ElementName=AppPreviewPathTextBox, Mode=OneWay}"/>
+        </StackPanel>
+    </Grid>
+</Page>

@@ -26,10 +26,20 @@
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
+            <ui:Badge Appearance="Secondary" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,5,0,0" Padding="5">
+                <StackPanel Orientation="Horizontal" IsHitTestVisible="False">
+                    <StackPanel x:Name="Welcome" Orientation="Vertical" VerticalAlignment="Bottom" Focusable="False">
+                        <ui:TextBlock x:Name="User" Text="User" FontSize="20" Foreground="{Binding Foreground}"/>
+                        <ui:TextBlock x:Name="Message" Text="Message" Appearance="Tertiary" FontSize="10"/>
+                    </StackPanel>
+                    <ui:Image CornerRadius="30" x:Name="Picture" Height="{Binding ElementName=Welcome, Path=ActualHeight}" Margin="10,0,0,0"/>
+                </StackPanel>
+            </ui:Badge>
+
             <ui:NavigationView
             x:Name="RootNavigation"
             Grid.Row="1"
-            Padding="42,0,42,0"
+            Padding="10,0,10,0"
             BreadcrumbBar="{Binding ElementName=BreadcrumbBar}"
             FooterMenuItemsSource="{Binding ViewModel.FooterMenuItems, Mode=OneWay}"
             FrameMargin="0"
@@ -38,6 +48,7 @@
             MenuItemsSource="{Binding ViewModel.MenuItems, Mode=OneWay}"
             PaneDisplayMode="Top" TransitionDuration="500">
                 <ui:NavigationView.Header>
+                    
                     <ui:BreadcrumbBar x:Name="BreadcrumbBar" Margin="42,32,42,20" Visibility="Collapsed"/>
                 </ui:NavigationView.Header>
                 <ui:NavigationView.ContentOverlay>
@@ -62,6 +73,7 @@
                     <ui:ImageIcon Source="/Assets/H.png" />
                 </ui:TitleBar.Icon>
             </ui:TitleBar>
+
             <StackPanel
     VerticalAlignment="Bottom"
     Orientation="Horizontal"
@@ -69,15 +81,15 @@
     Grid.Row="1"
     HorizontalAlignment="Stretch"
     Margin="0,0,10,0">
-
+                    
                 <!-- Главная кнопка открытия -->
                 <ui:Button x:Name="SocialToggleButton"
-               Width="40" Height="40"
-               Margin="0,0,0,10"
-               VerticalAlignment="Center"
-               ToolTip="Ссылки"
-               Appearance="Transparent"
-               Click="SocialToggleButton_Click">
+           Width="40" Height="40"
+           Margin="0,0,0,10"
+           VerticalAlignment="Center"
+           ToolTip="Ссылки"
+           Appearance="Primary"
+           Click="SocialToggleButton_Click">
                     <ui:SymbolIcon Symbol="Share48"/>
                 </ui:Button>
 

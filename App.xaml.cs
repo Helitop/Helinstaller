@@ -57,6 +57,7 @@ namespace Helinstaller
                 services.AddSingleton<DonateViewmodel>();
                 services.AddSingleton<Advices>();
                 services.AddSingleton<Ventoy>();
+                services.AddSingleton<Editor>();
             }).Build();
 
         /// <summary>

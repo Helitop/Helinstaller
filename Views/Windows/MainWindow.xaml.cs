@@ -1,15 +1,21 @@
 ﻿using Helinstaller.ViewModels.Windows;
 using System.Diagnostics;
+using System.IO;
 using System.Net.Http;
 using System.Security.Authentication;
 using System.Security.Policy;
 using System.Threading;
 using System.Windows.Controls;
+using System.Windows.Media;
 using System.Windows.Media.Animation;
+using System.Windows.Media.Effects;
+using System.Windows.Media.Imaging;
+using Windows.System.UserProfile;
 using Wpf.Ui;
 using Wpf.Ui.Abstractions;
 using Wpf.Ui.Appearance;
 using Wpf.Ui.Controls;
+
 
 
 namespace Helinstaller.Views.Windows
@@ -17,6 +23,8 @@ namespace Helinstaller.Views.Windows
     public partial class MainWindow : INavigationWindow
     {
         public MainWindowViewModel ViewModel { get; }
+        private Storyboard _glowStoryboard; // Переменная для хранения Storyboard
+        private bool _hasBeenClicked = false; // Флаг, чтобы свечение не появлялось повторно
         public MainWindow(
             MainWindowViewModel viewModel,
             INavigationViewPageProvider navigationViewPageProvider,
@@ -30,7 +38,6 @@ namespace Helinstaller.Views.Windows
 
             InitializeComponent();
             SetPageService(navigationViewPageProvider);
-
             navigationService.SetNavigationControl(RootNavigation);
 
         }
@@ -39,6 +46,8 @@ namespace Helinstaller.Views.Windows
 
         private void SocialToggleButton_Click(object sender, RoutedEventArgs e)
         {
+            SocialToggleButton.Appearance = ControlAppearance.Secondary;
+
             double targetWidth = _socialExpanded ? 0 : 600;
             double targetOpacity = _socialExpanded ? 0 : 1;
 
@@ -64,6 +73,7 @@ namespace Helinstaller.Views.Windows
         // ---------- Исправленный обработчик ----------
         private void SocialLink_Click(object sender, RoutedEventArgs e)
         {
+
             // приведение к Button — у него точно есть CommandParameter
             if (sender is Wpf.Ui.Controls.Button btn)
             {
@@ -124,11 +134,82 @@ namespace Helinstaller.Views.Windows
             throw new NotImplementedException();
         }
 
+
+
         private async void FluentWindow_Initialized(object sender, EventArgs e)
         {
             await ConnectionCheck();
+            // В коде C# (например, в конструкторе окна или в обработчике события Loaded)
+            string userName = Environment.UserName; // Получаем имя пользователя
+            string greeting = "";
+            int hour = DateTime.Now.Hour; // Получаем текущий час (от 0 до 23)
+
+            if (hour >= 5 && hour < 12)
+            {
+                greeting = "Доброе утро";
+            }
+            else if (hour >= 12 && hour < 17)
+            {
+                greeting = "Добрый день";
+            }
+            else if (hour >= 17 && hour < 23)
+            {
+                greeting = "Добрый вечер";
+            }
+            else // 23:00 - 04:59
+            {
+                greeting = "Доброй ночи";
+            }
+
+            // Формируем итоговое сообщение
+            string fullMessage = $"{greeting}, {userName}!";
+
+            Picture.Source = GetUserAvatar();
+
+            Message.Text = fullMessage;
+            User.Text = userName;
         }
 
+        public static BitmapImage? GetUserAvatar()
+        {
+            // Папка, где Windows хранит аватарки
+            string dir = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "Microsoft", "Windows", "AccountPicture");
+
+            if (!Directory.Exists(dir))
+                return null;
+
+            // Ищем самую крупную аватарку
+            var files = Directory.GetFiles(dir, "user*.png")
+                                 .Concat(Directory.GetFiles(dir, "user*.jpg"))
+                                 .Concat(Directory.GetFiles(dir, "user*.bmp"))
+                                 .OrderByDescending(f => new FileInfo(f).Length)
+                                 .ToList();
+
+            if (!files.Any())
+                return null;
+
+            string path = files.First();
+
+            try
+            {
+                using (var stream = new FileStream(path, FileMode.Open, FileAccess.Read))
+                {
+                    var bmp = new BitmapImage();
+                    bmp.BeginInit();
+                    bmp.CacheOption = BitmapCacheOption.OnLoad;
+                    bmp.StreamSource = stream;
+                    bmp.EndInit();
+                    bmp.Freeze();
+                    return bmp;
+                }
+            }
+            catch
+            {
+                return null;
+            }
+        }
         private async Task ConnectionCheck()
         {
             while (true) {
@@ -205,5 +286,7 @@ namespace Helinstaller.Views.Windows
                     LoadingPanel.Visibility = Visibility.Collapsed;
                     
                 }
-        }
+    }
+
+
     }
