@@ -23,7 +23,7 @@ namespace Helinstaller.ViewModels.Windows
             new NavigationViewItem()
             {
                 Content = "Приложения",
-                Icon = new SymbolIcon { Symbol = SymbolRegular.Home24 },
+                Icon = new SymbolIcon { Symbol = SymbolRegular.Apps48 },
                 TargetPageType = typeof(Views.Pages.DashboardPage),
             },
             new NavigationViewItem()

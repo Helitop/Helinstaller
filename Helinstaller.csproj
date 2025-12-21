@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net9.0-windows10.0.26100.0</TargetFramework>
+    <TargetFramework>net10.0-windows10.0.26100.0</TargetFramework>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>wpfui-icon.ico</ApplicationIcon>
     <UseWPF>true</UseWPF>
@@ -13,67 +13,43 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Remove="Assets\amd.png" />
-    <None Remove="Assets\amdprev.png" />
-    <None Remove="Assets\discord.png" />
-    <None Remove="Assets\discordprev.png" />
+    <None Remove="Assets\bocchi.gif" />
+    <None Remove="Assets\cyberpunk.otf" />
+    <None Remove="Assets\Cyberpunk.ttf" />
+    <None Remove="Assets\cyberpunkjohnny.jpg" />
+    <None Remove="Assets\cyberpunkV.png" />
     <None Remove="Assets\donation.png" />
-    <None Remove="Assets\epprev.png" />
     <None Remove="Assets\github.png" />
+    <None Remove="Assets\glitch.png" />
     <None Remove="Assets\H.png" />
-    <None Remove="Assets\meridius.png" />
-    <None Remove="Assets\meridiusprev.png" />
-    <None Remove="Assets\nvidia.png" />
-    <None Remove="Assets\nvidiaprev.png" />
-    <None Remove="Assets\office.png" />
-    <None Remove="Assets\officeprev.png" />
-    <None Remove="Assets\powertoys.png" />
-    <None Remove="Assets\powertoysprev.png" />
-    <None Remove="Assets\steam.png" />
-    <None Remove="Assets\steamprev.png" />
+    <None Remove="Assets\lucy.gif" />
+    <None Remove="Assets\noise.png" />
     <None Remove="Assets\tbank.png" />
     <None Remove="Assets\tg.png" />
-    <None Remove="Assets\translucenttb.png" />
-    <None Remove="Assets\translucenttbprev.png" />
     <None Remove="Assets\tt.png" />
-    <None Remove="Assets\utorrentprev.png" />
-    <None Remove="Assets\winrar.png" />
-    <None Remove="Assets\winrarprev.png" />
+    <None Remove="Assets\voyage-fantastique-4.ttf" />
     <None Remove="Assets\wpfui-icon-1024.png" />
     <None Remove="Assets\wpfui-icon-256.png" />
     <None Remove="Assets\yt.png" />
-    <None Remove="Assets\zapretprev.png" />
-    <None Remove="Assets\µtorrent.png" />
-    <None Remove="Assets\µtorrentprev.png" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="HtmlAgilityPack" Version="1.12.4" />
-    <PackageReference Include="System.Management" Version="10.0.0" />
+    <PackageReference Include="Microsoft.Xaml.Behaviors.Wpf" Version="1.1.135" />
+    <PackageReference Include="NAudio" Version="2.2.1" />
+    <PackageReference Include="NAudio.Core" Version="2.2.1" />
+    <PackageReference Include="System.Management" Version="10.0.1" />
     <PackageReference Include="System.Private.Uri" Version="4.3.2" />
-    <PackageReference Include="WPF-UI" Version="4.0.3" />
-    <PackageReference Include="WPF-UI.DependencyInjection" Version="4.0.3" />
-    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.0" />
+    <PackageReference Include="WPF-UI" Version="4.1.0" />
+    <PackageReference Include="WPF-UI.DependencyInjection" Version="4.1.0" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.1" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0 " />
+    <PackageReference Include="WpfAnimatedGif" Version="2.0.2" />
   </ItemGroup>
 
   <ItemGroup>
-    <Resource Include="Assets\amd.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Resource>
-    <Resource Include="Assets\amdprev.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Resource>
-    <Resource Include="Assets\discord.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Resource>
-    <Resource Include="Assets\discordprev.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Resource>
+    <Resource Include="Assets\bocchi.gif" />
     <Resource Include="Assets\donation.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Resource>
-    <Resource Include="Assets\epprev.png">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Resource>
     <Resource Include="Assets\github.png">
@@ -82,60 +58,18 @@
     <Resource Include="Assets\H.png">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Resource>
-    <Resource Include="Assets\meridius.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Resource>
-    <Resource Include="Assets\meridiusprev.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Resource>
-    <Resource Include="Assets\nvidia.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Resource>
-    <Resource Include="Assets\nvidiaprev.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Resource>
-    <Resource Include="Assets\office.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Resource>
-    <Resource Include="Assets\officeprev.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Resource>
-    <Resource Include="Assets\powertoys.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Resource>
-    <Resource Include="Assets\powertoysprev.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Resource>
-    <Resource Include="Assets\steam.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Resource>
-    <Resource Include="Assets\steamprev.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Resource>
+    <Resource Include="Assets\lucy.gif" />
+    <Resource Include="Assets\noise.png" />
     <Resource Include="Assets\tbank.png">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Resource>
     <Resource Include="Assets\tg.png">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Resource>
-    <Resource Include="Assets\translucenttb.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Resource>
-    <Resource Include="Assets\translucenttbprev.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Resource>
     <Resource Include="Assets\tt.png">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Resource>
-    <Resource Include="Assets\utorrentprev.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Resource>
-    <Resource Include="Assets\winrar.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Resource>
-    <Resource Include="Assets\winrarprev.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Resource>
+    <Resource Include="Assets\voyage-fantastique-4.ttf" />
     <Resource Include="Assets\wpfui-icon-1024.png">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Resource>
@@ -145,19 +79,82 @@
     <Resource Include="Assets\yt.png">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Resource>
-    <Resource Include="Assets\zapretprev.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Resource>
-    <Resource Include="Assets\µtorrent.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Resource>
-    <Resource Include="Assets\µtorrentprev.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Resource>
   </ItemGroup>
 
   <ItemGroup>
     <None Update="apps.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Assets\amd.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Assets\amdprev.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Assets\discord.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Assets\discordprev.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Assets\epprev.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Assets\meridius.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Assets\meridiusprev.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Assets\nvidia.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Assets\nvidiaprev.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Assets\office.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Assets\officeprev.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Assets\powertoys.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Assets\powertoysprev.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Assets\steam.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Assets\steamprev.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Assets\translucenttb.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Assets\translucenttbprev.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Assets\utorrent.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Assets\utorrentprev.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Assets\winrar.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Assets\winrarprev.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Assets\zapretprev.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Assets\µtorrent.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Assets\µtorrentprev.png">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Update="Office\Configuration.xml">

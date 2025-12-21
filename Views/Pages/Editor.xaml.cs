@@ -59,7 +59,19 @@ namespace Helinstaller.Views.Pages
             AppDescriptionTextBox.Text = app.Description;
             AppIconPathTextBox.Text = app.IconPath;
             AppPreviewPathTextBox.Text = app.PreviewPath;
-            AppDownloadUrlTextBox.Text = app.DownloadUrl;
+
+            // Проверяем, есть ли уже префикс github:
+            if (app.DownloadUrl != null && app.DownloadUrl.StartsWith("github:"))
+            {
+                GithubSourceToggle.IsChecked = true;
+                AppDownloadUrlTextBox.Text = app.DownloadUrl.Replace("github:", "");
+            }
+            else
+            {
+                GithubSourceToggle.IsChecked = false;
+                AppDownloadUrlTextBox.Text = app.DownloadUrl;
+            }
+
             SaveButton.Content = "Сохранить изменения";
         }
 
@@ -131,7 +143,14 @@ namespace Helinstaller.Views.Pages
 
         private void SaveButton_Click(object sender, RoutedEventArgs e)
         {
-            // 1. Считываем все данные из полей
+            // Получаем чистый URL
+            string rawUrl = AppDownloadUrlTextBox.Text.Trim();
+
+            // Формируем финальную строку с учетом переключателя
+            string finalUrl = (GithubSourceToggle.IsChecked == true && !rawUrl.StartsWith("github:"))
+                ? $"github:{rawUrl}"
+                : rawUrl;
+
             var newApp = new AppInfo
             {
                 Name = AppNameTextBox.Text.Trim(),
@@ -139,7 +158,7 @@ namespace Helinstaller.Views.Pages
                 Description = AppDescriptionTextBox.Text.Trim(),
                 IconPath = AppIconPathTextBox.Text.Trim(),
                 PreviewPath = AppPreviewPathTextBox.Text.Trim(),
-                DownloadUrl = AppDownloadUrlTextBox.Text.Trim()
+                DownloadUrl = finalUrl // Используем обработанный URL
             };
 
             // 2. Базовая валидация
@@ -177,8 +196,13 @@ namespace Helinstaller.Views.Pages
                     }
                 }
 
-                // 4. Сохраняем обновленный список обратно в файл
-                var options = new JsonSerializerOptions { WriteIndented = true };
+                var options = new JsonSerializerOptions
+                {
+                    WriteIndented = true,
+                    // Эта строчка разрешает кириллицу в JSON
+                    Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+                };
+
                 string updatedJson = JsonSerializer.Serialize(appList, options);
                 File.WriteAllText(JsonPath, updatedJson);
 

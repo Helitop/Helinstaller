@@ -192,7 +192,7 @@ $results | Select-Object -Unique;
                     if (realInstallerUrl == null)
                     {
                         new CustomMessageBox(
-                            "Не удалось найти установочный файл (exe, msi, zip, rar) в релизах GitHub",
+                            "Не удалось найти установочный файл в релизах GitHub",
                             "Ошибка",
                             System.Windows.MessageBoxButton.OK
                         ).ShowDialog();
@@ -305,7 +305,7 @@ $results | Select-Object -Unique;
         private async Task<string?> GetGithubInstallerDownloadUrlAsync(string apiUrl)
         {
             // Установка приоритета поиска расширений
-            var priorityExtensions = new[] { ".exe", ".msi", ".zip", ".rar" };
+            var priorityExtensions = new[] { ".appinstaller",".exe", ".msi", ".zip", ".rar" };
 
             try
             {
@@ -342,80 +342,99 @@ $results | Select-Object -Unique;
 
         private async Task InstallOffice()
         {
-            // 1. Показать окно конфигурации и получить выбор пользователя
-            var configWindow = new OfficeConfigWindow(); // Вы должны создать этот класс Window
+            // 1. Показать окно конфигурации
+            var configWindow = new OfficeConfigWindow();
+
+            // Если пользователь нажал "Отмена" или закрыл окно -> выходим
             if (configWindow.ShowDialog() != true)
             {
-                // Пользователь отменил установку
                 return;
             }
 
-            // Получаем выбранную конфигурацию из окна
+            // Получаем настроенный объект конфигурации из окна
             OfficeConfiguration config = configWindow.Configuration;
 
+            // Настраиваем пути. Важно: все должно быть в папке Office для работы ODT
             string folderPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Office");
             string xmlFilePath = Path.Combine(folderPath, "Configuration.xml");
+            string setupExePath = Path.Combine(folderPath, "setup.exe");
 
             try
             {
-                // 2. Генерация и сохранение Configuration.xml
+                // Проверяем, существует ли папка Office
                 if (!Directory.Exists(folderPath))
                 {
                     Directory.CreateDirectory(folderPath);
                 }
 
-                string xmlContent = ConfigurationGenerator.GenerateXml(config);
+                // Проверяем наличие самого установщика setup.exe
+                if (!File.Exists(setupExePath))
+                {
+                    new CustomMessageBox(
+                        $"Файл 'setup.exe' не найден в папке:\n{folderPath}\n\nПожалуйста, скачайте ODT (Office Deployment Tool) и положите 'setup.exe' в эту папку.",
+                        "Ошибка: нет установщика",
+                        System.Windows.MessageBoxButton.OK).ShowDialog();
+                    return;
+                }
+
+                // 2. Генерация и сохранение XML
+                // ИСПРАВЛЕНИЕ: Вызываем метод у экземпляра config
+                string xmlContent = config.GenerateXml();
+
+                // Асинхронно пишем файл в папку Office
                 await File.WriteAllTextAsync(xmlFilePath, xmlContent, Encoding.UTF8);
 
                 // 3. Запуск команды установки
-                // Ваша ОБЯЗАТЕЛЬНАЯ команда: reg add ... && setup.exe /configure Configuration.xml
+                // Добавляем твик реестра для обхода окна выбора "Microsoft 365" и сразу запускаем конфигурацию
                 string command =
-                     "reg add \"HKCU\\Software\\Microsoft\\Office\\16.0\\Common\\ExperimentConfigs\\Ecs\" /v \"CountryCode\" /t REG_SZ /d \"std::wstring|US\" /f && setup.exe /configure Configuration.xml";
+                    "reg add \"HKCU\\Software\\Microsoft\\Office\\16.0\\Common\\ExperimentConfigs\\Ecs\" /v \"CountryCode\" /t REG_SZ /d \"std::wstring|US\" /f && setup.exe /configure Configuration.xml";
 
                 ProcessStartInfo startInfo = new ProcessStartInfo
                 {
-                    // WorkingDirectory - путь, где находится setup.exe и Configuration.xml
-                    WorkingDirectory = folderPath,
+                    WorkingDirectory = folderPath, // ОЧЕНЬ ВАЖНО: установщик ищет конфиг рядом с собой
                     FileName = "cmd.exe",
                     Arguments = "/C " + command,
-                    // Для установки Office через ODT /configure лучше запускать с
-                    // UseShellExecute = true, Verb = "runas", чтобы получить права администратора
-                    // Однако, если ваше приложение уже запущено с правами администратора,
-                    // можно использовать ваш текущий подход:
+
+                    // Настройки для скрытого запуска и перехвата логов
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
                     UseShellExecute = false,
                     CreateNoWindow = true
                 };
 
+                // Запускаем процесс
                 using (Process process = Process.Start(startInfo))
                 {
-                    // Чтение вывода асинхронно
+                    if (process == null) return;
+
+                    // Читаем вывод (чтобы не блокировать поток, делаем это асинхронно)
                     string output = await process.StandardOutput.ReadToEndAsync();
                     string error = await process.StandardError.ReadToEndAsync();
 
                     await process.WaitForExitAsync();
 
+                    // 4. Обработка результатов
                     if (process.ExitCode != 0)
                     {
-                        // Ошибка установки или выполнения команды reg add
+                        // Если код выхода не 0 — это явная ошибка
                         new CustomMessageBox(
-                            $"Установка завершилась с ошибкой (Код {process.ExitCode}).\nВывод ошибки:\n{error}\nВывод консоли:\n{output}",
-                            "Ошибка установки Office",
+                            $"Установка завершилась с кодом ошибки {process.ExitCode}.\n\nТекст ошибки:\n{error}\n\nЛог:\n{output}",
+                            "Ошибка установки",
                             System.Windows.MessageBoxButton.OK).ShowDialog();
                     }
-                    else if (!string.IsNullOrWhiteSpace(error))
+                    // setup.exe иногда пишет в поток ошибок информационные сообщения. 
+                    // Проверяем, есть ли там реальное слово "Error", чтобы не пугать пользователя зря.
+                    else if (!string.IsNullOrWhiteSpace(error) && error.Contains("Error", StringComparison.OrdinalIgnoreCase))
                     {
-                        // Иногда ошибки могут быть в StandardError даже при ExitCode 0
                         new CustomMessageBox(
-                            $"Команда выполнена, но обнаружены предупреждения/ошибки:\n{error}",
-                            "Предупреждение установки Office",
+                            $"Команда выполнена, но обнаружены ошибки:\n{error}",
+                            "Внимание",
                             System.Windows.MessageBoxButton.OK).ShowDialog();
                     }
                     else
                     {
                         new CustomMessageBox(
-                           "Установка Office запущена успешно (или завершена, если она была скрытой).",
+                           "Установка Office завершена успешно!",
                            "Успех",
                            System.Windows.MessageBoxButton.OK).ShowDialog();
                     }
@@ -424,8 +443,8 @@ $results | Select-Object -Unique;
             catch (Exception ex)
             {
                 new CustomMessageBox(
-                    $"Произошла критическая ошибка: {ex.Message}",
-                    "Ошибка установки Office",
+                    $"Критическая системная ошибка: {ex.Message}",
+                    "Исключение",
                     System.Windows.MessageBoxButton.OK).ShowDialog();
             }
         }

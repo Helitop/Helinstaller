@@ -10,11 +10,12 @@ using System.Windows.Documents; // Нужно для Adorner
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using System.Windows.Media.Imaging;
+using System.Windows.Shapes;
 using System.Windows.Threading; // DispatcherTimer больше не нужен для LongPress, но может пригодиться для UI
 using Wpf.Ui;
 using Wpf.Ui.Abstractions.Controls;
 using Wpf.Ui.Controls;
-using System.Windows.Shapes;
 
 namespace Helinstaller.Views.Pages
 {
@@ -46,13 +47,6 @@ namespace Helinstaller.Views.Pages
             _navigationService = navigationService;
             DataContext = this;
             InitializeComponent();
-
-            // УДАЛЕНО: Инициализация таймера больше не нужна
-            /*
-            _longPressTimer = new DispatcherTimer();
-            _longPressTimer.Interval = TimeSpan.FromMilliseconds(800);
-            _longPressTimer.Tick += LongPressTimer_Tick;
-            */
         }
 
         private void Page_Loaded(object sender, RoutedEventArgs e)
@@ -175,12 +169,25 @@ namespace Helinstaller.Views.Pages
             grid.RowDefinitions.Add(new RowDefinition());
             grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            string fullPath = AppDomain.CurrentDomain.BaseDirectory + app.IconPath;
+            var Bitmap = new BitmapImage();
+            // 2. Проверяем существование файла. Это важно для предотвращения ошибок.
+            if (File.Exists(fullPath))
+            {
+                // 3. Создаем URI. Используем UriKind.Absolute, так как fullPath - это полный путь.
+                Uri fileUri = new Uri(fullPath, UriKind.Absolute);
 
+                // 4. Загружаем изображение
+                Bitmap.BeginInit();
+                Bitmap.UriSource = fileUri;
+                Bitmap.CacheOption = BitmapCacheOption.OnLoad; // Рекомендовано для файлов, чтобы избежать блокировки
+                Bitmap.EndInit();
+            }
             if (!string.IsNullOrEmpty(app.IconPath))
             {
                 var img = new Wpf.Ui.Controls.Image
                 {
-                    Source = new System.Windows.Media.Imaging.BitmapImage(new Uri(app.IconPath, UriKind.Relative)),
+                    Source = Bitmap,
                     MaxWidth = 80,
                     MaxHeight = 80
                 };
@@ -446,25 +453,55 @@ namespace Helinstaller.Views.Pages
                 var selectedApp = _loadedApps?.FirstOrDefault(a => a.Name == tag);
                 if (selectedApp == null) return;
 
-                ViewModel.OnNavigateToApp(tag);
+                // --- ПЛАВНОЕ ПОЯВЛЕНИЕ ---
+                LoadingOverlay.Visibility = Visibility.Visible;
+                var fadeIn = (Storyboard)this.Resources["FadeInLoading"];
+                var fadeOut = (Storyboard)this.Resources["FadeOutLoading"];
+                fadeOut.Begin();
+                fadeIn.Begin();
 
-                var vm = new AppPageViewmodel
+
+                try
                 {
-                    Title = selectedApp.Title,
-                    Description = selectedApp.Description,
-                    IconPath = selectedApp.IconPath,
-                    PreviewPath = selectedApp.PreviewPath,
-                    DownloadUrl = selectedApp.DownloadUrl,
-                    IsInstalling = ViewModel.IsInstalling,
-                    ProgressValue = ViewModel.ProgressValue,
-                    IsChecking = ViewModel.IsChecking,
-                    IsInstalled = ViewModel.IsInstalled,
-                };
+                    ViewModel.OnNavigateToApp(tag);
 
-                if (vm.CheckCommand is IAsyncRelayCommand asyncCommand)
-                    await asyncCommand.ExecuteAsync(null);
+                    var vm = new AppPageViewmodel
+                    {
+                        Title = selectedApp.Title,
+                        Description = selectedApp.Description,
+                        IconPath = AppDomain.CurrentDomain.BaseDirectory + selectedApp.IconPath,
+                        PreviewPath = AppDomain.CurrentDomain.BaseDirectory + selectedApp.PreviewPath,
+                        DownloadUrl = selectedApp.DownloadUrl,
+                        IsInstalling = ViewModel.IsInstalling,
+                        ProgressValue = ViewModel.ProgressValue,
+                        IsChecking = ViewModel.IsChecking,
+                        IsInstalled = ViewModel.IsInstalled,
+                    };
 
-                _navigationService.Navigate(typeof(AppPage), vm);
+                    if (vm.CheckCommand is IAsyncRelayCommand asyncCommand)
+                    {
+                        // Пока выполняется этот await, пользователь видит плавную загрузку
+                        await asyncCommand.ExecuteAsync(null);
+                    }
+                    fadeIn.Stop();
+                    fadeOut.Stop();
+                    _navigationService.Navigate(typeof(AppPage), vm);
+                    LoadingOverlay.Visibility = Visibility.Collapsed;
+                    LoadingOverlay.Opacity = 0;
+                    AppsGrid.Opacity = 1;
+
+                }
+                catch (Exception ex)
+                {
+                    fadeIn.Stop();
+                    fadeOut.Stop();
+                    // Возврат в исходное состояние при ошибке
+                    LoadingOverlay.Visibility = Visibility.Collapsed;
+                    LoadingOverlay.Opacity = 0;
+                    AppsGrid.Opacity = 1;
+
+                    CustomMessageBox.Show($"Ошибка: {ex.Message}");
+                }
             }
         }
     }

@@ -6,6 +6,7 @@
     xmlns:local="clr-namespace:Helinstaller.Views.Windows"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+
     Title="{Binding ViewModel.ApplicationTitle, Mode=OneWay}"
     Width="1100"
     Height="650"
@@ -19,6 +20,8 @@
     WindowBackdropType="Mica"
     WindowCornerPreference="Round"
     WindowStartupLocation="CenterScreen"
+    
+    
     mc:Ignorable="d" ResizeMode="NoResize" MaxHeight="650" MaxWidth="1100" ExtendsContentIntoTitleBar="True" Initialized="FluentWindow_Initialized">
     <Grid>
         <Grid x:Name="MainGrid" Visibility="Hidden" Opacity="0">
@@ -26,15 +29,105 @@
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
-            <ui:Badge Appearance="Secondary" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,5,0,0" Padding="5">
-                <StackPanel Orientation="Horizontal" IsHitTestVisible="False">
-                    <StackPanel x:Name="Welcome" Orientation="Vertical" VerticalAlignment="Bottom" Focusable="False">
-                        <ui:TextBlock x:Name="User" Text="User" FontSize="20" Foreground="{Binding Foreground}"/>
-                        <ui:TextBlock x:Name="Message" Text="Message" Appearance="Tertiary" FontSize="10"/>
+            <ui:Card x:Name="HubCard" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,10,0,0" Padding="5">
+
+                <ui:Card.Effect>
+                    <DropShadowEffect 
+                           Color="Black"
+                          BlurRadius="15" 
+                          ShadowDepth="0" 
+                          Opacity="1"/>
+                </ui:Card.Effect>
+                <Grid>
+                    <Border x:Name="HubBorder" Opacity="0.3" CornerRadius="2.5" IsHitTestVisible="False">
+                        <Border.Effect>
+                            <BlurEffect Radius="3" KernelType="Gaussian"/>
+                        </Border.Effect>
+                    </Border>
+
+
+                    <StackPanel x:Name="Hub" Orientation="Horizontal">
+
+                        <ui:Badge x:Name="welcomeBadge" Appearance="Secondary" Margin="0,0,5,0" Padding="5">
+
+                            <StackPanel Orientation="Horizontal" IsHitTestVisible="False">
+                                <StackPanel x:Name="Welcome" Orientation="Vertical" VerticalAlignment="Center" Focusable="False">
+                                    <ui:TextBlock x:Name="User" Text="User" VerticalAlignment="Center" FontSize="20" Foreground="{Binding Foreground}"/>
+                                    <ui:TextBlock x:Name="Message" Text="Message" VerticalAlignment="Center" Appearance="Tertiary" FontSize="10"/>
+                                </StackPanel>
+                                <ui:Image CornerRadius="30" x:Name="Picture" Height="{Binding ElementName=Welcome, Path=ActualHeight}" Margin="10,0,0,0"/>
+                            </StackPanel>
+                        </ui:Badge>
+
+                        <ui:Badge x:Name="playerBadge" Appearance="Secondary" Margin="0,0,0,0">
+                            <Grid>
+                                <StackPanel Grid.Row="1" VerticalAlignment="Top" HorizontalAlignment="Center" Margin="0,5,0,0" Panel.ZIndex="10">
+                                    <StackPanel Orientation="Vertical">
+
+                                        <ui:TextBlock x:Name="SongTitle" Text="Чилл-музяка" FontSize="12" Foreground="{Binding Foreground}" FontWeight="SemiBold" HorizontalAlignment="Center">
+                                            <ui:TextBlock.Effect>
+                                                <DropShadowEffect 
+                                                ShadowDepth="0" 
+                                                Color="Black" 
+                                                BlurRadius="2" 
+                                                Opacity="1" />
+                                            </ui:TextBlock.Effect>
+                                        </ui:TextBlock>
+
+                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,5,0,5">
+                                            <ui:Button x:Name="PrevButton" Width="30" Height="30" Margin="5,0" Appearance="Secondary" Click="PrevButton_Click" Padding="0">
+                                                <ui:SymbolIcon x:Name="PrevIcon" Symbol="Previous48" Filled="True"/>
+                                            </ui:Button>
+                                            <ui:Button x:Name="PlayPauseButton" Width="30" Height="30" Margin="5,0" Appearance="Secondary" Click="PlayPauseButton_Click" Padding="0">
+                                                <ui:SymbolIcon x:Name="PlayIcon" Symbol="Play48" Filled="True"/>
+                                            </ui:Button>
+                                            <ui:Button x:Name="NextButton" Width="30" Height="30" Margin="5,0" Appearance="Secondary" Click="NextButton_Click" Padding="0">
+                                                <ui:SymbolIcon x:Name="NextIcon" Symbol="Next48" Filled="True"/>
+                                            </ui:Button>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </StackPanel>
+                                <ProgressBar x:Name="songProgress" VerticalAlignment="Bottom" Margin="0,0,0,-5"/>
+                            </Grid>
+                        </ui:Badge>
                     </StackPanel>
-                    <ui:Image CornerRadius="30" x:Name="Picture" Height="{Binding ElementName=Welcome, Path=ActualHeight}" Margin="10,0,0,0"/>
-                </StackPanel>
-            </ui:Badge>
+                </Grid>
+            </ui:Card>
+            <Canvas x:Name="VisualizerCanvas"
+        Grid.Row="0"
+        Margin="0,0,0,0"
+        Height="100"
+        HorizontalAlignment="Stretch"
+        VerticalAlignment="Top"
+        Panel.ZIndex="-10"
+        IsHitTestVisible="False"
+        Background="Transparent"
+        ClipToBounds="True" RenderTransformOrigin="0.5,0.5">
+                <Canvas.OpacityMask>
+                    <LinearGradientBrush>
+                        <GradientStop Color="#00000000"/>
+                        <GradientStop/>
+                        <GradientStop Color="#00545454" Offset="1"/>
+                        <GradientStop Color="#00878787"/>
+                        <GradientStop Color="#FF797979" Offset="0.25"/>
+                        <GradientStop Color="#FF656565" Offset="0.75"/>
+                        <GradientStop Color="#26737373"/>
+                        <GradientStop Color="#266D6D6D"/>
+                        <GradientStop Color="#42737373"/>
+                    </LinearGradientBrush>
+                </Canvas.OpacityMask>
+                <Canvas.RenderTransform>
+                    <TransformGroup>
+                        <ScaleTransform/>
+                        <SkewTransform/>
+                        <RotateTransform Angle="180"/>
+                        <TranslateTransform/>
+                    </TransformGroup>
+                </Canvas.RenderTransform>
+                <Canvas.Effect>
+                    <BlurEffect Radius="75" KernelType="Gaussian"/>
+                </Canvas.Effect>
+            </Canvas>
 
             <ui:NavigationView
             x:Name="RootNavigation"
@@ -42,27 +135,29 @@
             Padding="10,0,10,0"
             BreadcrumbBar="{Binding ElementName=BreadcrumbBar}"
             FooterMenuItemsSource="{Binding ViewModel.FooterMenuItems, Mode=OneWay}"
-            FrameMargin="0"
-            IsBackButtonVisible="Visible"
+            FrameMargin="5"
+            IsBackButtonVisible="Collapsed"
             IsPaneToggleVisible="True"
+            IsPaneOpen="False"
             MenuItemsSource="{Binding ViewModel.MenuItems, Mode=OneWay}"
-            PaneDisplayMode="Top" TransitionDuration="500">
+            PaneDisplayMode="Left" TransitionDuration="500" Transition="FadeIn" OpenPaneLength="200">
                 <ui:NavigationView.Header>
-                    
+
                     <ui:BreadcrumbBar x:Name="BreadcrumbBar" Margin="42,32,42,20" Visibility="Collapsed"/>
                 </ui:NavigationView.Header>
                 <ui:NavigationView.ContentOverlay>
                     <Grid x:Name="ContentGrid">
-                        <ui:SnackbarPresenter x:Name="SnackbarPresenter" />
+                        <ui:SnackbarPresenter x:Name="SnackbarPresenter"/>
                     </Grid>
                 </ui:NavigationView.ContentOverlay>
 
             </ui:NavigationView>
 
+
             <ContentPresenter
             x:Name="RootContentDialog"
             Grid.Row="0"
-            Grid.RowSpan="2" />
+            Grid.RowSpan="2"/>
 
             <ui:TitleBar
             x:Name="TitleBar"
@@ -81,7 +176,7 @@
     Grid.Row="1"
     HorizontalAlignment="Stretch"
     Margin="0,0,10,0">
-                    
+
                 <!-- Главная кнопка открытия -->
                 <ui:Button x:Name="SocialToggleButton"
            Width="40" Height="40"
@@ -145,10 +240,11 @@
 
         </Grid>
         <StackPanel x:Name="LoadingPanel" VerticalAlignment="Center">
-            <ui:TextBlock x:Name="desc" Text="Подключение..." FontSize="24" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,0,0,20"/>
+            <ui:TextBlock x:Name="desc" TextWrapping="Wrap" Text="Подключение..." FontSize="24" HorizontalAlignment="Center" TextAlignment="Center" VerticalAlignment="Center" Margin="0,0,0,20"/>
             <ui:SymbolIcon x:Name="stat" MaxHeight="60" MaxWidth="60" Visibility="Collapsed" Symbol="CloudCheckmark48" VerticalAlignment="Center" Foreground="{DynamicResource {x:Static SystemColors.AccentColorBrushKey}}" FontSize="64"/>
             <ui:ProgressRing x:Name="ring" MaxHeight="60" MaxWidth="60" IsIndeterminate="True" VerticalAlignment="Center"/>
         </StackPanel>
+        <ui:TextBox Opacity="0.3" x:Name="info" Margin="0,10,0,0" TextChanged="info_TextChanged" Visibility="Hidden" HorizontalContentAlignment="Center" PlaceholderEnabled="False" ClearButtonEnabled="False" SelectionOpacity="2" IsReadOnly="True" VerticalAlignment="Bottom" HorizontalAlignment="Center" TextWrapping="WrapWithOverflow" IsTextSelectionEnabled="True" AcceptsReturn="True"/>
     </Grid>
 
 </ui:FluentWindow>

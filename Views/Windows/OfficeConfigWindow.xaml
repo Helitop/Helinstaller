@@ -6,7 +6,7 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
     mc:Ignorable="d"
-    Height="475" Width="400"
+    Height="500" Width="400"
     Title="Установка Office"
     ResizeMode="NoResize"
     ExtendsContentIntoTitleBar="True"
@@ -14,36 +14,36 @@
     WindowBackdropType="Mica"
     WindowCornerPreference="Round"
     WindowStartupLocation="CenterScreen" Topmost="True">
+
     <ui:DynamicScrollViewer>
         <StackPanel Margin="20" CanVerticallyScroll="True">
-        <ui:TextBlock FontWeight="Bold" Margin="0,0,0,10" Text="Выберите компоненты для установки (только ru-ru 64-бит)"/>
+            <ui:TextBlock FontWeight="Bold" Margin="0,0,0,10" Text="Базовый продукт (ru-ru 64-бит)"/>
 
-        <ui:ToggleSwitch Content="Office LTSC Professional Plus 2024 (Обязательно)" IsChecked="{Binding Configuration.InstallProPlus}" IsEnabled="False" FontWeight="Bold"/>
+            <ui:ToggleSwitch Content="Office LTSC Professional Plus 2024" IsChecked="{Binding Configuration.InstallProPlus}" IsEnabled="False" FontWeight="Bold"/>
 
-        <Separator Margin="0,5"/>
+            <Separator Margin="0,5"/>
 
-        <ui:TextBlock FontWeight="Bold" Margin="0,10,0,5" Text="Дополнительные продукты:"/>
-        <ui:ToggleSwitch Content="Visio Pro LTSC 2024" IsChecked="{Binding Configuration.InstallVisio}" Margin="0,5,0,0"/>
+            <ui:TextBlock FontWeight="Bold" Margin="0,10,0,5" Text="Включить приложения в установку:"/>
+            <ui:ToggleSwitch Content="Word" IsChecked="{Binding Configuration.IncludeWord}" Margin="0,5,0,0"/>
+            <ui:ToggleSwitch Content="Excel" IsChecked="{Binding Configuration.IncludeExcel}" Margin="0,5,0,0"/>
+            <ui:ToggleSwitch Content="PowerPoint" IsChecked="{Binding Configuration.IncludePowerPoint}" Margin="0,5,0,0"/>
+            <ui:ToggleSwitch Content="Outlook" IsChecked="{Binding Configuration.IncludeOutlook}" Margin="0,5,0,0"/>
+            <ui:ToggleSwitch Content="Access (создание/редактирование баз данных)" IsChecked="{Binding Configuration.IncludeAccess}" Margin="0,5,0,0"/>
+
+            <Separator Margin="0,5"/>
+
+            <ui:TextBlock FontWeight="Bold" Margin="0,10,0,5" Text="Дополнительные продукты:"/>
+            <ui:ToggleSwitch Content="Visio Pro LTSC 2024 (создание векторных схем)" IsChecked="{Binding Configuration.InstallVisio}" Margin="0,5,0,0"/>
             <ui:ToggleSwitch Content="Project Pro LTSC 2024" IsChecked="{Binding Configuration.InstallProject}" Margin="0,5,0,0"/>
 
-        <Separator Margin="0,5"/>
-
-        <TextBlock FontWeight="Bold" Margin="0,10,0,5" Text="Исключить из Professional Plus:"/>
-            <ui:ToggleSwitch Content="Access" IsChecked="{Binding Configuration.ExcludeAccess}" Margin="0,5,0,0"/>
-            <ui:ToggleSwitch Content="Excel" IsChecked="{Binding Configuration.ExcludeExcel}" Margin="0,5,0,0"/>
-            <ui:ToggleSwitch Content="Word" IsChecked="{Binding Configuration.ExcludeWord}" Margin="0,5,0,0"/>
-            <ui:ToggleSwitch Content="PowerPoint" IsChecked="{Binding Configuration.ExcludePowerPoint}" Margin="0,5,0,0"/>
-            <ui:ToggleSwitch Content="Outlook (По умолчанию)" IsChecked="{Binding Configuration.ExcludeOutlook}" Margin="0,5,0,0"/>
-
-        <Separator Margin="0,5"/>
-        <ui:TextBlock FontStyle="Italic" Text="Прочие исключения (OneDrive, Lync, OneNote, Publisher) установлены по умолчанию." FontSize="10"/>
-            <Grid>
+            <Separator Margin="0,5"/>
+            <Grid Margin="0,20,0,0">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition/>
                     <ColumnDefinition/>
                 </Grid.ColumnDefinitions>
-                <ui:Button Content="Начать установку" Click="InstallButton_Click" Margin="0,20,0,0" Padding="5"/>
-                <ui:Button Grid.Column="1" HorizontalAlignment="Right" Content="Отмена"  Margin="0,20,0,0" Padding="5" Click="CloseButton_click"/>
+                <ui:Button Content="Начать установку" Click="InstallButton_Click" Padding="5" HorizontalAlignment="Stretch" Margin="0,0,5,0"/>
+                <ui:Button Grid.Column="1" Content="Отмена" Click="CloseButton_click" Padding="5" HorizontalAlignment="Stretch" Margin="5,0,0,0"/>
             </Grid>
         </StackPanel>
     </ui:DynamicScrollViewer>

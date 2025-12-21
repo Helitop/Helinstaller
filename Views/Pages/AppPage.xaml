@@ -27,14 +27,14 @@
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
-                <ui:Card
+                <ui:Card x:Name="iconCard"
                     Visibility="{Binding IconPath, Converter={StaticResource PathToVisibilityConverter}}">
-                    <ui:Image
+                    <ui:Image x:Name="imgIcon"
                     Grid.Column="0"
                     Width="120"
                     Height="120"
                     Source="{Binding IconPath}"
-                    Margin="0,0,0,0">       
+                    Margin="0,0,0,0" Loaded="Image_Loaded">       
                     </ui:Image>
 
                 </ui:Card>

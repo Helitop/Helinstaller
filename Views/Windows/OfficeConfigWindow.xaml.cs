@@ -10,26 +10,33 @@ using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using System.Windows.Shapes;
 using Wpf.Ui.Controls;
+using System;
+using System.IO; // Добавлено для работы с файлами
+using System.Windows;
+using Wpf.Ui.Controls;
+using System.Text;
+
 
 namespace Helinstaller.Views.Windows
 {
     public partial class OfficeConfigWindow : FluentWindow
     {
-
         public OfficeConfiguration Configuration { get; set; }
 
         public OfficeConfigWindow()
         {
             InitializeComponent();
             Configuration = new OfficeConfiguration();
-            this.DataContext = this; // Устанавливаем DataContext для привязки
+            this.DataContext = this;
         }
+
+        // В файле OfficeConfigWindow.xaml.cs
 
         private void InstallButton_Click(object sender, RoutedEventArgs e)
         {
-            this.DialogResult = true; // Возвращаем true, что означает "Начать установку"
+            // Мы просто говорим "ОК", файл создаст основной метод InstallOffice
+            this.DialogResult = true;
             this.Close();
         }
 

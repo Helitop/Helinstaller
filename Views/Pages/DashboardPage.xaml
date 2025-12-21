@@ -94,31 +94,46 @@
                 <DiscreteObjectKeyFrame KeyTime="0:0:0" Value="{x:Static Visibility.Collapsed}"/>
             </ObjectAnimationUsingKeyFrames>
         </Storyboard>
-    </Page.Resources>
+        <Storyboard x:Key="FadeInLoading">
+            <DoubleAnimation
+        Storyboard.TargetName="LoadingOverlay"
+        Storyboard.TargetProperty="Opacity"
+        From="0" To="1" 
+        Duration="0:0:0.05" />
+        </Storyboard>
+        <Storyboard x:Key="FadeOutLoading">
+            <DoubleAnimation
+        Storyboard.TargetName="AppsGrid"
+        Storyboard.TargetProperty="Opacity"
+        From="1" To="0" 
+        Duration="0:0:0.05" />
+        </Storyboard>
 
-    <Grid x:Name="AppsGrid"
+    </Page.Resources>
+    <Grid>
+        <Grid x:Name="AppsGrid"
           Background="Transparent" 
           MouseLeftButtonDown="Grid_MouseLeftButtonDown"
           AllowDrop="True"
           PreviewDragOver="Grid_PreviewDragOver">
-        <ScrollViewer x:Name="AppsScrollViewer"
+            <ScrollViewer x:Name="AppsScrollViewer"
                       Panel.ZIndex="0"
                       HorizontalScrollBarVisibility="Disabled"
                       VerticalScrollBarVisibility="Auto">
 
-            <ScrollViewer.RenderTransform>
-                <TranslateTransform Y="0"/>
-            </ScrollViewer.RenderTransform>
+                <ScrollViewer.RenderTransform>
+                    <TranslateTransform Y="0"/>
+                </ScrollViewer.RenderTransform>
 
-            <WrapPanel
+                <WrapPanel
                 x:Name="AppsWrapPanel"
                 Margin="10"
                 HorizontalAlignment="Center"
                 VerticalAlignment="Stretch"
                 Orientation="Horizontal" />
-        </ScrollViewer>
-
-        <StackPanel x:Name="EditModePanel" 
+            </ScrollViewer>
+            
+            <StackPanel x:Name="EditModePanel" 
                     Panel.ZIndex="1"
                     Orientation="Horizontal" 
                     HorizontalAlignment="Center" 
@@ -126,32 +141,46 @@
                     Margin="0,0,0,0"
                     Visibility="Collapsed" Opacity="0">
 
-            <StackPanel.RenderTransform>
-                <TranslateTransform Y="-80"/>
-            </StackPanel.RenderTransform>
+                <StackPanel.RenderTransform>
+                    <TranslateTransform Y="-80"/>
+                </StackPanel.RenderTransform>
 
-            <ui:Button Content="Завершить редактирование" 
+                <ui:Button Content="Завершить редактирование" 
                        Icon="{ui:SymbolIcon Symbol=Checkmark24}" 
                        Appearance="Primary"
                        Click="ConfirmChanges_Click" 
                        Height="45"
                        FontSize="14">
-                <ui:Button.Effect>
-                    <DropShadowEffect BlurRadius="15" ShadowDepth="5" Opacity="0.3" Direction="270"/>
-                </ui:Button.Effect>
-            </ui:Button>
-        </StackPanel>
-        <StackPanel x:Name="editTip"
+                    <ui:Button.Effect>
+                        <DropShadowEffect BlurRadius="15" ShadowDepth="5" Opacity="0.3" Direction="270"/>
+                    </ui:Button.Effect>
+                </ui:Button>
+            </StackPanel>
+            <StackPanel x:Name="editTip"
                     Orientation="Horizontal"
                     HorizontalAlignment="Center"
                     VerticalAlignment="Bottom"
                     Margin="0,0,0,10"
                     Opacity="0">
-            <StackPanel.RenderTransform>
-                <TranslateTransform Y="5"/>
-            </StackPanel.RenderTransform>
-            <ui:SymbolIcon Symbol="Info24" Margin="0,0,5,0"/>
-            <ui:TextBlock VerticalAlignment="Bottom" HorizontalAlignment="Center" Text="Нажмите правую кнопку мыши для изменения"/>
-        </StackPanel>
+                <StackPanel.RenderTransform>
+                    <TranslateTransform Y="5"/>
+                </StackPanel.RenderTransform>
+                <ui:SymbolIcon Symbol="Info24" Margin="0,0,5,0"/>
+                <ui:TextBlock VerticalAlignment="Bottom" HorizontalAlignment="Center" Text="Нажмите правую кнопку мыши для изменения"/>
+            </StackPanel>
+        </Grid>
+        <Grid x:Name="LoadingOverlay"
+        
+Visibility="Collapsed"
+Panel.ZIndex="100"
+        Opacity="0" >
+            <ui:ProgressRing IsIndeterminate="True" 
+                   Width="60" 
+                   Height="60" 
+                   Margin="0,0,0,0"
+                   HorizontalAlignment="Center"
+                   VerticalAlignment="Center"/>
+
+        </Grid>
     </Grid>
 </Page>

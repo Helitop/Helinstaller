@@ -67,11 +67,16 @@
                     Click="BrowseIconPath_Click"/>
             </Grid>
 
+            <ui:ToggleSwitch 
+    x:Name="GithubSourceToggle"
+    Content="Источник GitHub (добавить префикс github:)"
+    Margin="0,0,0,10"/>
+
             <ui:TextBlock Text="URL для скачивания (DownloadUrl):" FontWeight="SemiBold" Margin="0,0,0,5"/>
             <ui:TextBox 
-                x:Name="AppDownloadUrlTextBox" 
-                PlaceholderText="Полный URL для скачивания установщика" 
-                Margin="0,0,0,15"/>
+    x:Name="AppDownloadUrlTextBox" 
+    PlaceholderText="Полный URL или GitHub репозиторий" 
+    Margin="0,0,0,0"/>
 
             <StackPanel Orientation="Horizontal" Margin="0,15,0,0">
                 <ui:Button

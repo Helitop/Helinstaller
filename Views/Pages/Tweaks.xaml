@@ -1,312 +1,135 @@
-﻿<Page
-    x:Class="Helinstaller.Views.Pages.Tweaks"
-    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
-    xmlns:anim="clr-namespace:Helinstaller.Animations"
-    mc:Ignorable="d" Margin="0,15,0,0" >
+﻿<Page x:Class="Helinstaller.Views.Pages.Tweaks"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+      xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+      xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+      xmlns:gif="clr-namespace:WpfAnimatedGif;assembly=WpfAnimatedGif"
+      mc:Ignorable="d"
+      Title="Tweaks">
 
     <Page.Resources>
-        <Storyboard x:Key="ExpandActivation">
-            <anim:GridLengthAnimation
-                Storyboard.TargetName="DescColumn"
-                Storyboard.TargetProperty="Width"
-                From="0"
-                To="740"
-                Duration="0:0:0.3" />
-            <DoubleAnimation
-                Storyboard.TargetName="DescriptionText"
-                Storyboard.TargetProperty="Opacity"
-                To="1"
-                Duration="0:0:0.3" />
-        </Storyboard>
-
-        <Storyboard x:Key="CollapseActivation">
-            <anim:GridLengthAnimation
-                Storyboard.TargetName="DescColumn"
-                Storyboard.TargetProperty="Width"
-                From="740"
-                To="0"
-                Duration="0:0:0.3" />
-            <DoubleAnimation
-                Storyboard.TargetName="DescriptionText"
-                Storyboard.TargetProperty="Opacity"
-                To="0"
-                Duration="0:0:0.2" />
-        </Storyboard>
-
-        <Storyboard x:Key="ExpandWinRARActivation">
-            <anim:GridLengthAnimation
-                Storyboard.TargetName="DescColumnRar"
-                Storyboard.TargetProperty="Width"
-                From="0"
-                To="740"
-                Duration="0:0:0.3" />
-            <DoubleAnimation
-                Storyboard.TargetName="DescriptionTextRar"
-                Storyboard.TargetProperty="Opacity"
-                To="1"
-                Duration="0:0:0.3" />
-        </Storyboard>
-
-        <Storyboard x:Key="CollapseWinRARActivation">
-            <anim:GridLengthAnimation
-                Storyboard.TargetName="DescColumnRar"
-                Storyboard.TargetProperty="Width"
-                From="740"
-                To="0"
-                Duration="0:0:0.3" />
-            <DoubleAnimation
-                Storyboard.TargetName="DescriptionTextRar"
-                Storyboard.TargetProperty="Opacity"
-                To="0"
-                Duration="0:0:0.2" />
-        </Storyboard>
-
-        <Storyboard x:Key="ExpandEndTask">
-            <anim:GridLengthAnimation
-                Storyboard.TargetName="DescColumn2"
-                Storyboard.TargetProperty="Width"
-                From="0"
-                To="740"
-                Duration="0:0:0.3" />
-            <DoubleAnimation
-                Storyboard.TargetName="DescriptionText2"
-                Storyboard.TargetProperty="Opacity"
-                To="1"
-                Duration="0:0:0.3" />
-        </Storyboard>
-
-        <Storyboard x:Key="CollapseEndTask">
-            <anim:GridLengthAnimation
-                Storyboard.TargetName="DescColumn2"
-                Storyboard.TargetProperty="Width"
-                From="740"
-                To="0"
-                Duration="0:0:0.3" />
-            <DoubleAnimation
-                Storyboard.TargetName="DescriptionText2"
-                Storyboard.TargetProperty="Opacity"
-                To="0"
-                Duration="0:0:0.2" />
-        </Storyboard>
-
-        <Storyboard x:Key="ExpandSticky">
-            <anim:GridLengthAnimation
-                Storyboard.TargetName="DescColumn3"
-                Storyboard.TargetProperty="Width"
-                From="0"
-                To="740"
-                Duration="0:0:0.3" />
-            <DoubleAnimation
-                Storyboard.TargetName="DescriptionText3"
-                Storyboard.TargetProperty="Opacity"
-                To="1"
-                Duration="0:0:0.3" />
-        </Storyboard>
-
-        <Storyboard x:Key="CollapseSticky">
-            <anim:GridLengthAnimation
-                Storyboard.TargetName="DescColumn3"
-                Storyboard.TargetProperty="Width"
-                From="740"
-                To="0"
-                Duration="0:0:0.3" />
-            <DoubleAnimation
-                Storyboard.TargetName="DescriptionText3"
-                Storyboard.TargetProperty="Opacity"
-                To="0"
-                Duration="0:0:0.2" />
-        </Storyboard>
+        <BooleanToVisibilityConverter x:Key="BoolToVis" />
     </Page.Resources>
 
     <Grid>
-        <ScrollViewer
-            HorizontalScrollBarVisibility="Disabled"
-            VerticalScrollBarVisibility="Auto">
-            <StackPanel
-                Margin="20"
-                HorizontalAlignment="Stretch"
-                VerticalAlignment="Stretch"
-                Orientation="Vertical">
+        <Image x:Name="GIF"
+               HorizontalAlignment="Center"
+               VerticalAlignment="Center"
+               gif:ImageBehavior.AnimationSpeedRatio="0.75"
+               Width="350"
+               Height="350"
+               Opacity="0.1"
+               Margin="30"
+               IsHitTestVisible="False"
+               RenderOptions.BitmapScalingMode="HighQuality">
+        </Image>
 
-                <ui:Button
-                    x:Name="Activation"
-                    Margin="0, 5, 0, 5"
-                    Height="80"
-                    Appearance="Transparent"
-                    Tag="Function1" Click="TileButton_Click">
-                    <ui:CardAction Background="Transparent" BorderThickness="0" IsHitTestVisible="False">
-                        <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition x:Name="DescColumn" Width="0"/>
-                        </Grid.ColumnDefinitions>
+        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <ItemsControl ItemsSource="{Binding TweakItems}" Margin="20,0,20,20">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
 
-                        <TextBlock
-                            x:Name="ActivationButtonText"
-                            Grid.Column="1"
-                            Text="Активация Windows/Office"
-                            FontSize="16"
-                            FontWeight="SemiBold"
-                            VerticalAlignment="Center" />
-
-                        <TextBlock
-                            x:Name="DescriptionText"
-                            Grid.Column="2"
-                            Text="Активатор для Windows и Office, работающий через командую строку. Рекомендую использовать первый способ активации."
-                            FontSize="14"
-                            Opacity="0"
-                            Margin="10,0,0,0"
-                            VerticalAlignment="Center"
-                            TextWrapping="Wrap"/>
-                            </Grid>
-                            </ui:CardAction>
-                        <ui:Button.Triggers>
-                        <EventTrigger RoutedEvent="MouseEnter">
-                            <BeginStoryboard Storyboard="{StaticResource ExpandActivation}" />
-                        </EventTrigger>
-                        <EventTrigger RoutedEvent="MouseLeave">
-                            <BeginStoryboard Storyboard="{StaticResource CollapseActivation}" />
-                        </EventTrigger>
-                    </ui:Button.Triggers>
-                </ui:Button>
-
-                <ui:Button
-                    x:Name="WinRARActivation"
-                    Margin="0, 5, 0, 5"
-                    Height="80"
-                    Appearance="Transparent"
-                    Tag="WinRARActivation" Click="TileButton_Click">
-                    <ui:CardAction Background="Transparent" BorderThickness="0" IsHitTestVisible="False">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition x:Name="DescColumnRar" Width="0"/>
-                            </Grid.ColumnDefinitions>
-
-                            <TextBlock
-                            x:Name="WinRARActivationButtonText"
-                            Grid.Column="1"
-                            Text="Активация WinRAR"
-                            FontSize="16"
-                            FontWeight="SemiBold"
-                            VerticalAlignment="Center" />
-
-                            <TextBlock
-                            x:Name="DescriptionTextRar"
-                            Grid.Column="2"
-                            Text="Активатор для WinRAR, чтобы не раздражал всплывающим окном на старте. Разумеется, ставить нужно после установки WinRAR."
-                            FontSize="14"
-                            Opacity="0"
-                            Margin="10,0,0,0"
-                            VerticalAlignment="Center"
-                            TextWrapping="Wrap"/>
-                        </Grid>
-                    </ui:CardAction>
-                    <ui:Button.Triggers>
-                        <EventTrigger RoutedEvent="MouseEnter">
-                            <BeginStoryboard Storyboard="{StaticResource ExpandWinRARActivation}" />
-                        </EventTrigger>
-                        <EventTrigger RoutedEvent="MouseLeave">
-                            <BeginStoryboard Storyboard="{StaticResource CollapseWinRARActivation}" />
-                        </EventTrigger>
-                    </ui:Button.Triggers>
-                </ui:Button>
-
-                <ui:Button x:Name="EndTask"
-           Margin="0,5,0,5"
-           Height="80"
-           Appearance="Transparent"
-           Tag="Function2"
-           Click="TileButton_Click">
+                        <ui:Card Margin="0,6" Padding="0"
+                                 BorderBrush="{DynamicResource CardBorderBrush}"
+                                 BorderThickness="1">
 
 
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition x:Name="DescColumn2" Width="0"/>
-                        </Grid.ColumnDefinitions>
+                            <Button Click="TileButton_Click"
+                                    Tag="{Binding Tag}"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    Padding="15,12"
+                                    Height="50"
+                                    HorizontalAlignment="Stretch"
+                                    HorizontalContentAlignment="Stretch"
+                                    Cursor="Hand">
 
-                        <TextBlock
-            x:Name="EndTaskButtonText"
-            Grid.Column="1"
-            Text="Завершение приложения в панели задач"
-            FontSize="16"
-            FontWeight="SemiBold"
-            VerticalAlignment="Center" />
-            <ui:ToggleSwitch x:Name="EndTaskSwitch" Grid.Column="2" Margin="10,0,0,0"/>
-            <TextBlock
-            x:Name="DescriptionText2"
-            Grid.Column="3"
-            Text="Добавляет кнопку 'Завершить задачу' при ПКМ на приложении в панели задач. Короче не надо открывать диспетчер задач."
-            FontSize="14"
-            Opacity="0"
-            Margin="10,0,0,0"
-            VerticalAlignment="Center"
-            TextWrapping="Wrap"/>
-                    </Grid>
+                                <Button.Style>
+                                    <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                                        <Setter Property="Template">
+                                            <Setter.Value>
+                                                <ControlTemplate TargetType="Button">
+                                                    <ContentPresenter />
+                                                </ControlTemplate>
+                                            </Setter.Value>
+                                        </Setter>
+                                    </Style>
+                                </Button.Style>
 
-                    <ui:Button.Triggers>
-                        <EventTrigger RoutedEvent="MouseEnter">
-                            <BeginStoryboard Storyboard="{StaticResource ExpandEndTask}" />
-                        </EventTrigger>
-                        <EventTrigger RoutedEvent="MouseLeave">
-                            <BeginStoryboard Storyboard="{StaticResource CollapseEndTask}" />
-                        </EventTrigger>
-                    </ui:Button.Triggers>
-                </ui:Button>
+                                <Grid Background="Transparent">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="350"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
 
-                <ui:Button x:Name="StickyButton"
-           Margin="0,5,0,5"
-           Height="80"
-           Appearance="Transparent"
-           Tag="Function3"
-           Click="TileButton_Click">
+                                    <ui:SymbolIcon Grid.Column="0"
+                                                   Symbol="Wrench24"
+                                                   FontSize="20"
+                                                   Margin="15,0,15,0"
+                                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
 
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition x:Name="DescColumn3" Width="0"/>
-                        </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="1"
+                                               Text="{Binding Title}"
+                                               FontSize="15"
+                                               FontWeight="Medium"
+                                               VerticalAlignment="Center"/>
 
-                        <TextBlock
-            x:Name="StickyButtonText"
-            Grid.Column="1"
-            Text="Залипание клавиш"
-            FontSize="16"
-            FontWeight="SemiBold"
-            VerticalAlignment="Center" />
-                        <ui:ToggleSwitch x:Name="StickySwitch" Grid.Column="2" Margin="10,0,0,0"/>
-                        <TextBlock
-            x:Name="DescriptionText3"
-            Grid.Column="3"
-            Text="Если у тебя судороги или играешь в Майнкрафт - отключай. Отвечает за сообщение, которое появляется если много раз нажать клавишу 'Shift'."
-            FontSize="14"
-            Opacity="0"
-            Margin="10,0,0,0"
-            VerticalAlignment="Center"
-            TextWrapping="Wrap"/>
-                    </Grid>
+                                    <TextBlock x:Name="DescriptionText"
+                                               Grid.Column="2"
+                                               Text="{Binding Description}"
+                                               Opacity="0"
+                                               Margin="15,0"
+                                               VerticalAlignment="Center"
+                                               HorizontalAlignment="Left"
+                                               FontSize="13"
+                                               Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                                               TextTrimming="CharacterEllipsis"/>
 
-                    <ui:Button.Triggers>
-                        <EventTrigger RoutedEvent="MouseEnter">
-                            <BeginStoryboard Storyboard="{StaticResource ExpandSticky}" />
-                        </EventTrigger>
-                        <EventTrigger RoutedEvent="MouseLeave">
-                            <BeginStoryboard Storyboard="{StaticResource CollapseSticky}" />
-                        </EventTrigger>
-                    </ui:Button.Triggers>
-                </ui:Button>
-            </StackPanel>
+                                    <ui:ToggleSwitch Grid.Column="3"
+                                                     IsChecked="{Binding IsChecked, Mode=OneWay}"
+                                                     Visibility="{Binding ShowSwitch, Converter={StaticResource BoolToVis}}"
+                                                     IsHitTestVisible="False"
+                                                     Focusable="False"
+                                                     Margin="10,0,15,0"/>
+
+                                    <ui:SymbolIcon Grid.Column="4"
+                                                   Symbol="ChevronRight24"
+                                                   Margin="0,0,15,0"
+                                                   FontSize="16"
+                                                   Foreground="{DynamicResource TextFillColorTertiaryBrush}"/>
+
+                                    <Grid.Triggers>
+                                        <EventTrigger RoutedEvent="MouseEnter">
+                                            <BeginStoryboard>
+                                                <Storyboard>
+                                                    <DoubleAnimation Storyboard.TargetName="DescriptionText"
+                                                                     Storyboard.TargetProperty="Opacity"
+                                                                     To="1" Duration="0:0:0.2"/>
+                                                </Storyboard>
+                                            </BeginStoryboard>
+                                        </EventTrigger>
+                                        <EventTrigger RoutedEvent="MouseLeave">
+                                            <BeginStoryboard>
+                                                <Storyboard>
+                                                    <DoubleAnimation Storyboard.TargetName="DescriptionText"
+                                                                     Storyboard.TargetProperty="Opacity"
+                                                                     To="0" Duration="0:0:0.2"/>
+                                                </Storyboard>
+                                            </BeginStoryboard>
+                                        </EventTrigger>
+                                    </Grid.Triggers>
+
+                                </Grid>
+                            </Button>
+                        </ui:Card>
+
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
         </ScrollViewer>
     </Grid>
 </Page>

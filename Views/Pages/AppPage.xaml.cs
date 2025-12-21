@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using System.Transactions;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media.Imaging;
 using Wpf.Ui.Abstractions.Controls;
 using Wpf.Ui.Controls; // Для доступа к ProgressRing
 
@@ -31,6 +32,13 @@ namespace Helinstaller.Views.Pages
         private void InstallButton_Click(object sender, RoutedEventArgs e)
         {
             ForceInstallSwitch.IsChecked = false;
+        }
+
+        private void Image_Loaded(object sender, RoutedEventArgs e)
+        {
+            if (imgIcon.Source == null) { iconCard.Visibility = Visibility.Collapsed; }
+            else
+            { iconCard.Visibility = Visibility.Visible; }
         }
     }
 }

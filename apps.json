@@ -5,7 +5,7 @@
     "description": "Файловый архиватор, который позволяет сжимать, архивировать и распаковывать файлы.",
     "iconPath": "/Assets/winrar.png",
     "previewPath": "/Assets/winrarprev.png",
-    "downloadUrl": "https://www.rarlab.com/rar/winrar-x64.exe"
+    "downloadUrl": "https://www.win-rar.com/fileadmin/winrar-versions/winrar/winrar-x64-713ru.exe"
   },
   {
     "name": "Discord",
@@ -13,7 +13,7 @@
     "description": "А кто не знает? Захотелось в Доту с друзяками - заходишь сюда.",
     "iconPath": "/Assets/discord.png",
     "previewPath": "/Assets/discordprev.png",
-    "downloadUrl": "https://discord.com/api/download?platform=win"
+    "downloadUrl": "https://stable.dl2.discordapp.net/distro/app/stable/win/x64/1.0.9219/DiscordSetup.exe"
   },
   {
     "name": "Steam",
@@ -27,9 +27,9 @@
     "name": "µTorrent",
     "title": "µTorrent",
     "description": "Как раз тот случай когда хочется юзать стим, а денюжки нет.",
-    "iconPath": "/Assets/µtorrent.png",
+    "iconPath": "/Assets/utorrent.png",
     "previewPath": "/Assets/utorrentprev.png",
-    "downloadUrl": "https://download-new.utorrent.com/endpoint/utweb/desktop/windows/versions/latest"
+    "downloadUrl": "https://v2.utorrent.com/f82ddad9-5ed1-4923-a2ca-f2ae48b21180"
   },
   {
     "name": "Zapret",
@@ -53,7 +53,7 @@
     "description": "Много различных инструментов прям в Винде. К примеру пипетка и линейка экрана по пикселям.",
     "iconPath": "/Assets/powertoys.png",
     "previewPath": "/Assets/powertoysprev.png",
-    "downloadUrl": "https://github.com/microsoft/PowerToys/releases/latest/download/PowerToysSetup.exe"
+    "downloadUrl": "https://api.github.com/repos/microsoft/PowerToys/releases/latest"
   },
   {
     "name": "Meridius",
@@ -69,7 +69,7 @@
     "description": "Прозрачная панель задач.",
     "iconPath": "/Assets/translucenttb.png",
     "previewPath": "/Assets/translucenttbprev.png",
-    "downloadUrl": "https://api.github.com/TranslucentTB/TranslucentTB/releases/latest/download/TranslucentTB-setup.exe"
+    "downloadUrl": "https://github.com/TranslucentTB/TranslucentTB/releases/download/2025.1/TranslucentTB.appinstaller"
   },
   {
     "name": "Office",
@@ -84,7 +84,7 @@
     "description": "Драйвера, запись экрана, монитор производительности для видеоадаптеров NVIDIA",
     "iconPath": "/Assets/nvidia.png",
     "previewPath": "/Assets/nvidiaprev.png",
-    "downloadUrl": "https://us.download.nvidia.com/nvidiaapp/latest/NVIDIA_app_installer.exe"
+    "downloadUrl": "https://uk.download.nvidia.com/nvapp/client/11.0.5.420/NVIDIA_app_v11.0.5.420.exe"
   },
   {
     "name": "AMD",
@@ -92,6 +92,6 @@
     "description": "Драйвера, запись экрана, монитор производительности для видеоадаптеров AMD",
     "iconPath": "/Assets/amd.png",
     "previewPath": "/Assets/amdprev.png",
-    "downloadUrl": "https://drivers.amd.com/drivers/installer/amd-software-adrenalin-edition.exe"
+    "downloadUrl": "https://drivers.amd.com/drivers/installer/25.20/whql/amd-software-adrenalin-edition-25.12.1-minimalsetup-251207_web.exe"
   }
 ]
