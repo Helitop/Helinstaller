@@ -14,6 +14,11 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Threading;
 using Wpf.Ui.Controls;
+using System.IO.Compression; // Для архивов
+using System.Text.Json.Nodes; // Для работы с JSON Ventoy
+using System.Text; // Для кодировок
+using System.Text.Json; // Для сохранения JSON
+using MessageBoxButton = System.Windows.MessageBoxButton;
 
 namespace Helinstaller.Views.Pages
 {
@@ -145,30 +150,39 @@ namespace Helinstaller.Views.Pages
 
         private async Task ScanIsoImagesAsync()
         {
-            // Очищаем список в потоке UI
-            await Dispatcher.InvokeAsync(FoundIsoImages.Clear);
+            // Очищаем список в потоке UI
+            await Dispatcher.InvokeAsync(FoundIsoImages.Clear);
 
             if (SelectedDrive == null) return;
             var driveInfo = SelectedDrive.ToDriveInfo();
             if (driveInfo == null || !driveInfo.IsReady) return;
 
-            // Проверка, что Ventoy установлен, чтобы избежать сканирования случайных флешек
-            if (!IsVentoyInstalled(SelectedDrive)) return;
+            // Проверка, что Ventoy установлен
+            if (!IsVentoyInstalled(SelectedDrive)) return;
 
             try
             {
                 var images = await Task.Run(() =>
                 {
-                    var rootDir = driveInfo.RootDirectory;
-                    // 🔥 Теперь это List<IsoImageItem>
                     var foundFiles = new List<IsoImageItem>();
-
                     var extensions = new[] { "*.iso", "*.img" };
+
+                    // --- ИЗМЕНЕНИЕ: Получаем путь к папке ISO ---
+                    string rootPath = driveInfo.RootDirectory.FullName;
+                    string isoFolderPath = Path.Combine(rootPath, "ISO");
+                    var isoDir = new DirectoryInfo(isoFolderPath);
+
+                    // Если папки ISO нет, просто возвращаем пустой список (или можно искать в корне как запасной вариант)
+                    if (!isoDir.Exists)
+                    {
+                        return foundFiles;
+                    }
 
                     foreach (var ext in extensions)
                     {
-                        // Используем AllDirectories, чтобы найти образы глубже (если нужно)
-                        foreach (var file in rootDir.GetFiles(ext, SearchOption.TopDirectoryOnly))
+                        // Ищем файлы внутри папки G:\ISO\
+                        // SearchOption.TopDirectoryOnly берет файлы только из папки ISO (без вложенных)
+                        foreach (var file in isoDir.GetFiles(ext, SearchOption.TopDirectoryOnly))
                         {
                             foundFiles.Add(new IsoImageItem
                             {
@@ -192,8 +206,7 @@ namespace Helinstaller.Views.Pages
             }
             catch (Exception ex)
             {
-                // Обработка ошибок доступа к файлам/папкам
-                Debug.WriteLine($"Ошибка сканирования ISO: {ex.Message}");
+                Debug.WriteLine($"Ошибка сканирования ISO: {ex.Message}");
             }
         }
 
@@ -486,115 +499,132 @@ exit");
         }
         private async void DownloadButton_Click(object sender, RoutedEventArgs e)
         {
+            // 1. Проверки UI
             if (IsoBox.SelectedItem is not ComboBoxItem selectedItem)
             {
-                CustomMessageBox.Show("Выберите образ для загрузки или копирования.", "Ошибка", System.Windows.MessageBoxButton.OK);
+                CustomMessageBox.Show("Выберите образ для загрузки или копирования.", "Ошибка", MessageBoxButton.OK);
                 return;
             }
-
-            string? tag = selectedItem.Tag?.ToString();
-            string isoName = selectedItem.Content?.ToString() ?? "image.iso";
-            string downloads = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
-            string destIsoPath = Path.Combine(downloads, $"{isoName.Replace(" ", "_")}.iso");
 
             if (SelectedDrive == null)
             {
-                CustomMessageBox.Show("Сначала выберите USB-накопитель.", "Ошибка", System.Windows.MessageBoxButton.OK);
+                CustomMessageBox.Show("Сначала выберите USB-накопитель.", "Ошибка", MessageBoxButton.OK);
                 return;
             }
 
-            var usbPath = SelectedDrive.ToDriveInfo()?.RootDirectory.Name ?? null;
-            if (usbPath == null)
-            {
-                CustomMessageBox.Show("Не удалось определить путь к флешке.", "Ошибка", System.Windows.MessageBoxButton.OK);
-                return;
-            }
             if (!IsVentoyInstalled(SelectedDrive))
             {
-                CustomMessageBox.Show(
-                    "На выбранном накопителе не обнаружен Ventoy.\nПожалуйста, установите Ventoy перед загрузкой или копированием образа.",
-                    "Ventoy не найден", System.Windows.MessageBoxButton.OK);
+                CustomMessageBox.Show("На выбранном накопителе не обнаружен Ventoy.\nСначала установите Ventoy.", "Ventoy не найден", MessageBoxButton.OK);
                 return;
             }
+
+            // 2. Подготовка путей
+            string? tag = selectedItem.Tag?.ToString();
+            string isoName = selectedItem.Content?.ToString() ?? "image.iso";
+
+            // Формируем имя файла (заменяем пробелы)
+            string cleanIsoName = $"{isoName.Replace(" ", "_")}.iso";
+            if (!cleanIsoName.EndsWith(".iso", StringComparison.OrdinalIgnoreCase))
+                cleanIsoName += ".iso";
+
+            string downloads = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
+            string localTempIsoPath = Path.Combine(downloads, cleanIsoName);
+
+            // Получаем путь к корню флешки (например G:\)
+            var usbDriveInfo = SelectedDrive.ToDriveInfo();
+            var usbRootPath = usbDriveInfo?.RootDirectory.FullName;
+
+            if (usbRootPath == null)
+            {
+                CustomMessageBox.Show("Не удалось определить путь к флешке.", "Ошибка", MessageBoxButton.OK);
+                return;
+            }
+
+            // --- НОВОЕ: Создаем папку ISO, если её нет ---
+            string usbIsoFolder = Path.Combine(usbRootPath, "ISO");
+            if (!Directory.Exists(usbIsoFolder))
+            {
+                try { Directory.CreateDirectory(usbIsoFolder); }
+                catch { CustomMessageBox.Show("Не удалось создать папку ISO на флешке.", "Ошибка", MessageBoxButton.OK); return; }
+            }
+
+            // Итоговый путь на флешке: G:\ISO\Windows11.iso
+            string destPathOnUsb = Path.Combine(usbIsoFolder, cleanIsoName);
 
             try
             {
                 _transferCts = new CancellationTokenSource();
                 var token = _transferCts.Token;
                 IsRefreshing = true;
-                SetUiEnabled(false); // 🔥 БЛОКИРУЕМ интерфейс
-                UpdateProgress(0, 0); // Сбрасываем прогресс-бар
+                SetUiEnabled(false);
+                UpdateProgress(0, 0);
 
-                if (IsoBox.SelectedIndex == 0)
+                // --- ЛОГИКА ЗАГРУЗКИ / КОПИРОВАНИЯ ---
+                if (IsoBox.SelectedIndex == 0) // Локальный файл
                 {
-                    // ----- 1. Локальный файл -----
                     string sourcePath = LocalFilePathTextBox.Text.Trim();
                     if (!File.Exists(sourcePath))
                     {
-                        CustomMessageBox.Show("Укажите корректный путь к .ISO файлу.", "Ошибка", System.Windows.MessageBoxButton.OK);
-                        // Выходим, finally-блок всё почистит и разблокирует UI
+                        CustomMessageBox.Show("Укажите корректный путь к .ISO файлу.", "Ошибка", MessageBoxButton.OK);
                         return;
                     }
 
-                    string destPath = Path.Combine(usbPath, Path.GetFileName(sourcePath));
-                    isoText.Text = "Копирование ISO на флешку...";
+                    // Переопределяем имя файла, если копируем локальный (чтобы сохранить оригинальное имя)
+                    string localFileName = Path.GetFileName(sourcePath);
+                    destPathOnUsb = Path.Combine(usbIsoFolder, localFileName);
+                    cleanIsoName = localFileName; // Обновляем имя для JSON
 
-                    // 🔥 ГЛАВНОЕ ИЗМЕНЕНИЕ: Запускаем копирование в фоновом потоке
-                    await Task.Run(async () =>
-                        await CopyFileWithProgressAsync(sourcePath, destPath, token),
-                    token);
-                    SystemSounds.Beep.Play();
-                    isoText.Text = "Копирование завершено.";
+                    isoText.Text = "Копирование ISO в папку /ISO/ ...";
+                    await Task.Run(async () => await CopyFileWithProgressAsync(sourcePath, destPathOnUsb, token), token);
                 }
-                else if (!string.IsNullOrWhiteSpace(tag))
+                else if (!string.IsNullOrWhiteSpace(tag)) // Скачивание из сети
                 {
-                    // ----- 2. Загрузка -----
                     isoText.Text = "Проверка ссылки...";
                     if (!await IsDirectDownloadLinkAsync(tag))
                     {
                         Process.Start(new ProcessStartInfo { FileName = tag, UseShellExecute = true });
-                        CustomMessageBox.Show(
-                            "Невозможно получить прямую ссылку к файлу, пожалуйста загрузите его вручную, а после выберите 'Локальный файл'.",
-                            "Нет прямой ссылки", System.Windows.MessageBoxButton.OK);
-                        // Выходим, finally-блок всё почистит
+                        CustomMessageBox.Show("Нет прямой ссылки. Загрузите вручную.", "Ошибка", MessageBoxButton.OK);
                         return;
                     }
 
-                    // 🔥 ГЛАВНОЕ ИЗМЕНЕНИЕ: Запускаем всю связку (загрузка + копирование) в фоновом потоке
                     await Task.Run(async () =>
                     {
-                        // Обновляем UI из Task.Run через Dispatcher
-                        Dispatcher.BeginInvoke(() => isoText.Text = "Загрузка ISO в папку Downloads...");
+                        Dispatcher.BeginInvoke(() => isoText.Text = "Загрузка ISO...");
+                        // Скачиваем сначала в Загрузки
+                        await DownloadFileWithProgressAsync(tag, localTempIsoPath, token);
 
-                        await DownloadFileWithProgressAsync(tag, destIsoPath, token);
+                        token.ThrowIfCancellationRequested();
 
-                        token.ThrowIfCancellationRequested(); // Проверяем отмену между шагами
-
-                        Dispatcher.BeginInvoke(() => isoText.Text = "Копирование ISO на флешку...");
-
-                        string destPath = Path.Combine(usbPath, Path.GetFileName(destIsoPath));
-                        await CopyFileWithProgressAsync(destIsoPath, destPath, token);
-
+                        Dispatcher.BeginInvoke(() => isoText.Text = "Перенос в папку /ISO/...");
+                        // Копируем из Загрузок на Флешку в папку ISO
+                        await CopyFileWithProgressAsync(localTempIsoPath, destPathOnUsb, token);
                     }, token);
-                    SystemSounds.Beep.Play();
-                    isoText.Text = "Файл загружен и скопирован на флешку.";
                 }
+
+                // --- ВШИВАНИЕ OOBE (С учетом новой папки) ---
+                isoText.Text = "Настройка ventoy.json...";
+
+                // Мы передаем имя файла, чтобы сформировать путь "/ISO/Windows.iso"
+                await InjectOobeAutoAsync(usbRootPath);
+
+                SystemSounds.Beep.Play();
+                isoText.Text = "Готово! Образ в папке ISO, JSON обновлен.";
+                CustomMessageBox.Show("Образ записан в папку ISO.\nКонфигурация Ventoy обновлена!", "Успех", MessageBoxButton.OK);
             }
             catch (OperationCanceledException)
             {
                 isoText.Text = "Операция отменена.";
-                // Удаляем недокачанный/недокопированный файл, если нужно
             }
             catch (Exception ex)
             {
-                CustomMessageBox.Show($"Ошибка: {ex.Message}", "Ошибка", System.Windows.MessageBoxButton.OK);
+                CustomMessageBox.Show($"Ошибка: {ex.Message}", "Ошибка", MessageBoxButton.OK);
                 isoText.Text = "Ошибка операции.";
             }
             finally
             {
                 IsRefreshing = false;
-                SetUiEnabled(true); // 🔥 РАЗБЛОКИРУЕМ интерфейс
-                _transferCts?.Dispose(); // Освобождаем ресурсы
+                SetUiEnabled(true);
+                _transferCts?.Dispose();
                 _transferCts = null;
                 await ScanIsoImagesAsync();
             }
@@ -776,6 +806,99 @@ exit");
             }
             else { CustomMessageBox.Show("Сначала выберите файл для удаления", "", System.Windows.MessageBoxButton.OK); }
             
+        }
+
+        /// <summary>
+        /// Копирует autounattend.xml из локальной папки Assets в корень флешки.
+        /// </summary>
+        private async Task CreateAutounattend(string driveRootPath)
+        {
+            try
+            {
+                // 1. Вычисляем путь к исходному файлу.
+                // AppDomain.CurrentDomain.BaseDirectory — это папка, где лежит запущенный .exe
+                string sourcePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "autounattend.xml");
+
+                // 2. Вычисляем путь назначения (корень флешки)
+                string destPath = Path.Combine(driveRootPath, "autounattend.xml");
+
+                // 3. Проверяем, существует ли файл в папке программы
+                if (!File.Exists(sourcePath))
+                {
+                    CustomMessageBox.Show($"Файл не найден по пути:\n{sourcePath}\n\nУбедитесь, что папка 'Assets' существует рядом с exe и в ней есть файл.",
+                                    "Ошибка конфигурации", MessageBoxButton.OK);
+                    return;
+                }
+
+                // 4. Копируем файл (overwrite: true разрешает замену старого файла)
+                // Используем Task.Run, чтобы операция ввода-вывода не морозила интерфейс
+                await Task.Run(() =>
+                {
+                    File.Copy(sourcePath, destPath, true);
+                });
+
+                // (Опционально) Можно вывести сообщение об успехе или просто молча продолжить
+                // MessageBox.Show("Файл ответов успешно скопирован!", "Успех", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                CustomMessageBox.Show($"Ошибка при копировании autounattend.xml: {ex.Message}",
+                                "Ошибка", MessageBoxButton.OK);
+            }
+        }
+
+        private async Task InjectOobeAutoAsync(string usbRootPath)
+        {
+            string ventoyDir = Path.Combine(usbRootPath, "ventoy");
+            string jsonPath = Path.Combine(ventoyDir, "ventoy.json");
+
+            try
+            {
+                IsRefreshing = true;
+
+                // Настройка JSON (Правильная версия с полной перезаписью)
+                Dispatcher.Invoke(() => isoText.Text = "Настройка Ventoy (JSON)...");
+
+                var ventoyConfig = new
+                {
+                    control = new[]
+    {
+        new { VTOY_MENU_LANGUAGE = "ru_RU" }
+    },
+                    auto_install = new[]
+    {
+        new
+        {
+            parent = "/ISO",      // Папка, к образам в которой применится скрипт
+            template = new[]
+            {
+                "/autounattend.xml" // Путь к скрипту (в корне флешки)
+            }
+        }
+    }
+                };
+
+                var jsonOptions = new JsonSerializerOptions { WriteIndented = true };
+                string jsonString = JsonSerializer.Serialize(ventoyConfig, jsonOptions);
+                File.WriteAllText(jsonPath, jsonString, Encoding.UTF8);
+                await CreateAutounattend(usbRootPath);
+            }
+            catch (Exception ex)
+            {
+
+            }
+            finally
+            {
+                IsRefreshing = false;
+            }
+        }
+
+        private async void InjectOnlyButton_Click(object sender, RoutedEventArgs e)
+        {
+            var root = SelectedDrive.ToDriveInfo()?.RootDirectory.FullName;
+            if (root == null) return;
+            await InjectOobeAutoAsync(root);
+            isoText.Text = "Готово!";
         }
     }
 

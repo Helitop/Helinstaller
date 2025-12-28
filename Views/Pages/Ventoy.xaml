@@ -141,6 +141,7 @@
                 <ui:Card>
                     <StackPanel>
                         <ui:TextBlock Text="Установленные образы" FontTypography="Title" HorizontalAlignment="Center"/>
+                        
                         <ui:ListView x:Name="ImagesList" ItemsSource="{Binding FoundIsoImages}" 
           Height="150"
           ScrollViewer.VerticalScrollBarVisibility="Auto">
@@ -175,12 +176,19 @@
                                         <ui:TextBlock Text="{Binding FileName}"
                                         ToolTip="{Binding FullPath}"
                                         Margin="5,0"/>
-                                        <ui:TextBlock HorizontalAlignment="Right" Text="NaN"/>
+                                        <ui:TextBlock HorizontalAlignment="Right" Text="{Binding Size}"/>
                                     </Grid>
                                 </DataTemplate>
                             </ui:ListView.ItemTemplate>
                         </ui:ListView>
-                        <Grid>
+                        <Grid HorizontalAlignment="Stretch" VerticalAlignment="Bottom">
+                            <ui:Button Content="Сконфигурировать установщик" 
+                                       HorizontalAlignment="Left"
+           Appearance="Primary" 
+           Icon="Wrench24"
+           Margin="0,0,5,0"
+           Click="InjectOnlyButton_Click"
+           ToolTip="Сконфигурировать установщик вручную"/>
                             <ui:Button HorizontalAlignment="Right" Click="Button_Click_1">
                                 <ui:SymbolIcon Symbol="Delete48"/>
                             </ui:Button>

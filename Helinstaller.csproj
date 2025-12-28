@@ -91,6 +91,9 @@
     <None Update="Assets\amdprev.png">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Update="Assets\autounattend.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="Assets\discord.png">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
