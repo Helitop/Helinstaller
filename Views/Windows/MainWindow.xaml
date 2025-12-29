@@ -38,13 +38,13 @@
                           ShadowDepth="0" 
                           Opacity="1"/>
                 </ui:Card.Effect>
+
                 <Grid>
                     <Border x:Name="HubBorder" Opacity="0.3" CornerRadius="2.5" IsHitTestVisible="False">
                         <Border.Effect>
                             <BlurEffect Radius="3" KernelType="Gaussian"/>
                         </Border.Effect>
                     </Border>
-
 
                     <StackPanel x:Name="Hub" Orientation="Horizontal">
 
@@ -59,7 +59,7 @@
                             </StackPanel>
                         </ui:Badge>
 
-                        <ui:Badge x:Name="playerBadge" Appearance="Secondary" Margin="0,0,0,0">
+                        <ui:Badge x:Name="playerBadge" Appearance="Secondary" Margin="0,0,0,0" Visibility="Collapsed">
                             <Grid>
                                 <StackPanel Grid.Row="1" VerticalAlignment="Top" HorizontalAlignment="Center" Margin="0,5,0,0" Panel.ZIndex="10">
                                     <StackPanel Orientation="Vertical">
@@ -243,6 +243,7 @@
             <ui:TextBlock x:Name="desc" TextWrapping="Wrap" Text="Подключение..." FontSize="24" HorizontalAlignment="Center" TextAlignment="Center" VerticalAlignment="Center" Margin="0,0,0,20"/>
             <ui:SymbolIcon x:Name="stat" MaxHeight="60" MaxWidth="60" Visibility="Collapsed" Symbol="CloudCheckmark48" VerticalAlignment="Center" Foreground="{DynamicResource {x:Static SystemColors.AccentColorBrushKey}}" FontSize="64"/>
             <ui:ProgressRing x:Name="ring" MaxHeight="60" MaxWidth="60" IsIndeterminate="True" VerticalAlignment="Center"/>
+            <ProgressBar x:Name="loadingBar" Maximum="3" Width="340" Margin="0,25,0,0"/>
         </StackPanel>
         <ui:TextBox Opacity="0.3" x:Name="info" Margin="0,10,0,0" TextChanged="info_TextChanged" Visibility="Hidden" HorizontalContentAlignment="Center" PlaceholderEnabled="False" ClearButtonEnabled="False" SelectionOpacity="2" IsReadOnly="True" VerticalAlignment="Bottom" HorizontalAlignment="Center" TextWrapping="WrapWithOverflow" IsTextSelectionEnabled="True" AcceptsReturn="True"/>
     </Grid>

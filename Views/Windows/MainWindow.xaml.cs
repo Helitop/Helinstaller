@@ -1,32 +1,24 @@
-﻿using Helinstaller.ViewModels.Pages;
-using Helinstaller.ViewModels.Windows;
-using Helinstaller.Views.Pages;
+﻿using Helinstaller.ViewModels.Windows;
 using Microsoft.Win32;
 using NAudio.Dsp;
 using NAudio.Wave;
-using NAudio.Wave.SampleProviders;
-using System;
-using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations.Schema;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
+using System.IO.Compression;
 using System.Net.Http;
-using System.Numerics;
 using System.Runtime.InteropServices;
-using System.Threading;
-using System.Threading.Tasks;
-using System.Windows;
+using System.Text.Json;
+using System.Text.RegularExpressions;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
-using Windows.Graphics.Imaging;
 using Wpf.Ui;
 using Wpf.Ui.Abstractions;
 using Wpf.Ui.Appearance;
 using Wpf.Ui.Controls;
+using Path = System.IO.Path;
 
 namespace Helinstaller.Views.Windows
 {
@@ -108,6 +100,7 @@ namespace Helinstaller.Views.Windows
                         }
                     }
                 }
+                playerBadge.Visibility = Visibility.Visible;
             }
             catch (Exception ex)
             {
@@ -118,6 +111,7 @@ namespace Helinstaller.Views.Windows
             if (!_playlist.Any())
             {
                 SongTitle.Text = "Плейлист пуст!";
+                playerBadge.Visibility = Visibility.Collapsed;
                 return;
             }
 
@@ -603,6 +597,157 @@ namespace Helinstaller.Views.Windows
                 var res = CustomMessageBox.Show("Рекомендуется использовать тёмную тему.", "", System.Windows.MessageBoxButton.YesNo);
                 if (res == CustomMessageBox.MessageBoxResult.Yes) ThemeChanger.ToggleWindowsTheme();
             }
+            var updateItem = this.RootNavigation.FooterMenuItems
+            .OfType<NavigationViewItem>()
+            .FirstOrDefault(x => x.Content?.ToString() == "Обновления");
+            updateItem.Click += UpdateItem_Click;
+        }
+        private Version GetAssemblyVersion()
+        {
+            return System.Reflection.Assembly
+                .GetExecutingAssembly()
+                .GetName()
+                .Version
+                ?? new Version(0, 0, 0, 0);
+        }
+
+        private async void UpdateItem_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is NavigationViewItem item)
+            {
+                await CheckUpdatesForItem(item);
+            }
+        }
+
+        private async Task CheckUpdatesForItem(NavigationViewItem updateItem)
+        {
+            try
+            {
+                updateItem.IsEnabled = false;
+                updateItem.Content = "Проверка обновлений...";
+
+                Version currentVersion = GetAssemblyVersion();
+
+
+                // 1️⃣ Получаем последний релиз с GitHub
+                using var http = new HttpClient();
+                http.DefaultRequestHeaders.UserAgent.ParseAdd("Helinstaller");
+                string releasesJson = await http.GetStringAsync(
+                    "https://api.github.com/repos/Helitop/Helinstaller/releases/latest");
+
+                using var doc = JsonDocument.Parse(releasesJson);
+                var tagName = doc.RootElement.GetProperty("tag_name").GetString();
+                if (string.IsNullOrWhiteSpace(tagName)) return;
+
+                var match = Regex.Match(tagName, @"\d+(\.\d+)+");
+                if (!match.Success) return;
+
+                Version latestVersion = new Version(match.Value);
+
+                if (latestVersion <= currentVersion)
+                {
+                    updateItem.Content = "Обновлений нет";
+                    return;
+                }
+
+                updateItem.Content = $"Найдено {latestVersion}";
+
+                // 2️⃣ Находим ZIP в релизе
+                var assets = doc.RootElement.GetProperty("assets");
+                string zipUrl = null;
+
+                foreach (var asset in assets.EnumerateArray())
+                {
+                    var name = asset.GetProperty("name").GetString();
+                    if (name != null && name.EndsWith("Helinstaller.zip"))
+                    {
+                        zipUrl = asset.GetProperty("browser_download_url").GetString();
+                        break;
+                    }
+                }
+
+                if (zipUrl == null)
+                {
+                    updateItem.Content = "ZIP не найден";
+                    return;
+                }
+
+                // 3️⃣ Скачиваем ZIP
+                string tempFile = Path.Combine(Path.GetTempPath(), "Helinstaller_update.zip");
+                using (var fs = new FileStream(tempFile, FileMode.Create, FileAccess.Write, FileShare.None))
+                {
+                    var stream = await http.GetStreamAsync(zipUrl);
+                    await stream.CopyToAsync(fs);
+                }
+
+                string tempExtract = Path.Combine(Path.GetTempPath(), "Helinstaller_update");
+                if (Directory.Exists(tempExtract))
+                    Directory.Delete(tempExtract, true);
+                ZipFile.ExtractToDirectory(tempFile, tempExtract);
+
+                // Путь к новой версии
+                string newAppFolder = Path.Combine(tempExtract, "Helinstaller Packed");
+
+                // 4️⃣ Запускаем PowerShell для замены текущей версии и перезапуска
+                string currentExe = Process.GetCurrentProcess().MainModule!.FileName;
+                string currentDir = Path.GetDirectoryName(currentExe);
+
+                // Сценарий PowerShell
+                string psScript = $@"
+            Start-Sleep -Milliseconds 500;
+            Remove-Item -Recurse -Force '{currentDir}\*';
+            Copy-Item -Recurse -Force '{newAppFolder}\*' '{currentDir}';
+            Start-Process '{currentExe}';
+        ";
+
+                string psFile = Path.Combine(Path.GetTempPath(), "update.ps1");
+                await File.WriteAllTextAsync(psFile, psScript);
+
+                // Запуск PowerShell
+                ProcessStartInfo psi = new ProcessStartInfo("powershell", $"-NoProfile -ExecutionPolicy Bypass -File \"{psFile}\"")
+                {
+                    UseShellExecute = true,
+                    WindowStyle = ProcessWindowStyle.Hidden
+                };
+                Process.Start(psi);
+
+                // Заканчиваем текущую программу
+                Application.Current.Shutdown();
+            }
+            catch (Exception ex)
+            {
+                updateItem.Content = $"Ошибка: {ex.Message}";
+                updateItem.IsEnabled = true;
+            }
+        }
+
+
+        public static async Task<(bool IsUpdateAvailable, Version? LatestVersion)>
+        CheckUpdates(string owner, string repo, Version currentVersion)
+        {
+            using var http = new HttpClient();
+            http.DefaultRequestHeaders.UserAgent.ParseAdd("Helinstaller");
+
+            var url = $"https://api.github.com/repos/{owner}/{repo}/tags";
+            var json = await http.GetStringAsync(url);
+
+            using var doc = JsonDocument.Parse(json);
+            if (doc.RootElement.GetArrayLength() == 0)
+                return (false, null);
+
+            var tagName = doc.RootElement[0].GetProperty("name").GetString();
+
+            if (string.IsNullOrWhiteSpace(tagName))
+                return (false, null);
+
+            // выдёргиваем версию из тега (v1.2.3 → 1.2.3)
+            var match = Regex.Match(tagName, @"\d+(\.\d+)+");
+            if (!match.Success)
+                return (false, null);
+
+            var latestVersion = new Version(match.Value);
+
+            return (latestVersion > currentVersion, latestVersion);
         }
 
         // === Вспомогательные классы и методы ===
@@ -662,9 +807,9 @@ namespace Helinstaller.Views.Windows
             // Список целей для проверки: (URL, Отображаемое имя)
             var targets = new[]
             {
-        ("https://google.com", "Интернет"),
-        ("https://github.com", "GitHub"),
-        ("https://massgrave.dev", "API Massgrave")
+        ("https://google.com", "Интернет", 1),
+        ("https://github.com", "GitHub", 2),
+        ("https://massgrave.dev", "API Massgrave", 3)
     };
 
             bool allConnected = true;
@@ -674,7 +819,7 @@ namespace Helinstaller.Views.Windows
             {
                 client.Timeout = TimeSpan.FromSeconds(15); // Таймаут на каждый запрос
 
-                foreach (var (url, name) in targets)
+                foreach (var (url, name, i) in targets)
                 {
                     desc.Text = $"Подключение: {name}";
                     bool targetSuccess = false;
@@ -685,6 +830,7 @@ namespace Helinstaller.Views.Windows
                     {
                         try
                         {
+                            loadingBar.Value = i;
                             // Используем SendAsync с HEAD, чтобы скачивать только заголовки (быстрее), 
                             // или GetAsync, если сервер не поддерживает HEAD.
                             var response = await client.GetAsync(url);
@@ -713,6 +859,12 @@ namespace Helinstaller.Views.Windows
                         stat.Symbol = SymbolRegular.CloudError48;
                         stat.Visibility = Visibility.Visible;
                         ring.Visibility = Visibility.Collapsed;
+                        var updateItem = this.RootNavigation.FooterMenuItems
+                        .OfType<NavigationViewItem>()
+                        .FirstOrDefault(x => (string?)x.Tag == "updates");
+
+                        if (updateItem != null)
+                            await CheckUpdatesForItem(updateItem); // ✅ Task, await можно использовать
 
                         // Прерываем проверку, так как цепочка нарушена
                         // (например, если нет интернета, нет смысла проверять GitHub)
@@ -756,7 +908,7 @@ namespace Helinstaller.Views.Windows
                 fadeOut.Completed += (s, _) => LoadingPanel.Visibility = Visibility.Collapsed;
                 MainGrid.BeginAnimation(Grid.OpacityProperty, fadeIn);
                 LoadingPanel.BeginAnimation(Grid.OpacityProperty, fadeOut);
-                Message.BeginAnimation(Grid.OpacityProperty, fadeOut);
+                info.BeginAnimation(Grid.OpacityProperty, fadeOut);
 
             }
         }

@@ -26,7 +26,7 @@ namespace Helinstaller.ViewModels.Pages
         private void InitializeViewModel()
         {
             CurrentTheme = ApplicationThemeManager.GetAppTheme();
-            AppVersion = $"Helinstaller 1.0 - {GetAssemblyVersion()}";
+            AppVersion = $"Helinstaller - {GetAssemblyVersion()}";
 
             _isInitialized = true;
         }

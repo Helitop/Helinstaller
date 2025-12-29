@@ -68,6 +68,11 @@ namespace Helinstaller.ViewModels.Windows
                 Content = "Параметры",
                 Icon = new SymbolIcon { Symbol = SymbolRegular.Settings24 },
                 TargetPageType = typeof(Views.Pages.SettingsPage)
+            },
+                        new NavigationViewItem()
+            {
+                Content = "Обновления",
+                Icon = new SymbolIcon { Symbol = SymbolRegular.ArrowClockwise48 },
             }
         };
 
@@ -76,6 +81,7 @@ namespace Helinstaller.ViewModels.Windows
         {
             new MenuItem { Header = "Приложения", Tag = "tray_home" }
         };
+
 
         [RelayCommand]
         public void ToDonation()
