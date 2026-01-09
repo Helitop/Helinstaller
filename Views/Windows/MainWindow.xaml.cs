@@ -334,7 +334,7 @@ namespace Helinstaller.Views.Windows
                 style = VisualizerStyle.BlueYellow;
             else if (lowerName.Contains("edgerunners") || lowerName.Contains("rat") || lowerName.Contains("house"))
                 style = VisualizerStyle.Edgerunners;
-            else if (lowerName.Contains("cyber") || lowerName.Contains("sneak") || lowerName.Contains("rebel") || lowerName.Contains("synth") || lowerName.Contains("phantom"))
+            else if (lowerName.Contains("cyber") || lowerName.Contains("sneak") || lowerName.Contains("rebel") || lowerName.Contains("synth") || lowerName.Contains("phantom") || lowerName.Contains("samurai"))
                 style = VisualizerStyle.Cyberpunk;
 
             FontFamily font = this.FontFamily;

@@ -775,10 +775,14 @@ exit");
         {
             try
             {
-                if (usbRoot.DisplayName.ToLower().Contains("ventoy"))
+                if (usbRoot.DisplayName.ToLower().Contains("ventoy") && !usbRoot.DisplayName.ToLower().Contains("efi"))
                     return true;
                 else
+                {
+                    CustomMessageBox.Show("Вероятно, Ventoy не установлен на накопителе, или вы пытаетесь взаимодействовать с EFI разделом Ventoy","");
                     return false;
+                }
+                    
             }
             catch
             {
@@ -851,7 +855,10 @@ exit");
         {
             string ventoyDir = Path.Combine(usbRootPath, "ventoy");
             string jsonPath = Path.Combine(ventoyDir, "ventoy.json");
-
+            if (!Path.Exists(ventoyDir))
+            {
+                Directory.CreateDirectory(ventoyDir);
+            }
             try
             {
                 IsRefreshing = true;
@@ -885,7 +892,7 @@ exit");
             }
             catch (Exception ex)
             {
-
+                CustomMessageBox.Show(ex.Message,"");
             }
             finally
             {
@@ -896,7 +903,7 @@ exit");
         private async void InjectOnlyButton_Click(object sender, RoutedEventArgs e)
         {
             var root = SelectedDrive.ToDriveInfo()?.RootDirectory.FullName;
-            if (root == null) return;
+            if (root == null || !IsVentoyInstalled(SelectedDrive)) return;
             await InjectOobeAutoAsync(root);
             isoText.Text = "Готово!";
         }
