@@ -51,7 +51,21 @@ namespace Helinstaller.Views.Pages
             // Загрузка данных в поля
             LoadApp(app);
         }
+        private async void MagicFill_Click(object sender, RoutedEventArgs e)
+        {
+            string url = AppDownloadUrlTextBox.Text.Trim();
+            if (string.IsNullOrEmpty(url)) return;
 
+            // Показываем визуально, что мы работаем (можно через кнопку)
+            var data = await Helpers.MetadataService.GetMetadataAsync(url);
+
+            if (string.IsNullOrEmpty(AppTitleTextBox.Text)) AppTitleTextBox.Text = data.Title;
+            if (string.IsNullOrEmpty(AppDescriptionTextBox.Text)) AppDescriptionTextBox.Text = data.Description;
+            if (string.IsNullOrEmpty(AppIconPathTextBox.Text)) AppIconPathTextBox.Text = data.IconUrl;
+
+            // Сразу обновляем превью, если оно завязано на текстбокс
+            CustomMessageBox.Show("Данные подтянуты из сети!", "Магия");
+        }
         private void LoadApp(AppInfo app)
         {
             AppNameTextBox.Text = app.Name;
@@ -141,77 +155,78 @@ namespace Helinstaller.Views.Pages
             }
         }
 
-        private void SaveButton_Click(object sender, RoutedEventArgs e)
+        private async void SaveButton_Click(object sender, RoutedEventArgs e)
         {
-            // Получаем чистый URL
             string rawUrl = AppDownloadUrlTextBox.Text.Trim();
-
-            // Формируем финальную строку с учетом переключателя
             string finalUrl = (GithubSourceToggle.IsChecked == true && !rawUrl.StartsWith("github:"))
                 ? $"github:{rawUrl}"
                 : rawUrl;
 
+            string appName = AppNameTextBox.Text.Trim();
+            string iconPath = AppIconPathTextBox.Text.Trim();
+
+            // --- ЛОГИКА СКАЧИВАНИЯ ИКОНКИ ---
+            if (iconPath.StartsWith("http", StringComparison.OrdinalIgnoreCase))
+            {
+                SaveButton.IsEnabled = false;
+                SaveButton.Content = "Скачивание иконки...";
+
+                // Пробуем скачать и сохранить локально (с прозрачностью)
+                var localPath = await Helpers.MetadataService.DownloadIconAsync(iconPath, appName);
+                if (localPath != null) iconPath = localPath;
+
+                SaveButton.IsEnabled = true;
+                SaveButton.Content = "Сохранить изменения";
+            }
+
             var newApp = new AppInfo
             {
-                Name = AppNameTextBox.Text.Trim(),
+                Name = appName,
                 Title = AppTitleTextBox.Text.Trim(),
                 Description = AppDescriptionTextBox.Text.Trim(),
-                IconPath = AppIconPathTextBox.Text.Trim(),
+                IconPath = iconPath,
                 PreviewPath = AppPreviewPathTextBox.Text.Trim(),
-                DownloadUrl = finalUrl // Используем обработанный URL
+                DownloadUrl = finalUrl
             };
 
-            // 2. Базовая валидация
             if (string.IsNullOrWhiteSpace(newApp.Name) || string.IsNullOrWhiteSpace(newApp.Title) || string.IsNullOrWhiteSpace(newApp.DownloadUrl))
             {
-                CustomMessageBox.Show("Поля 'Имя', 'Заголовок' и 'URL для скачивания' обязательны для заполнения.", "Ошибка сохранения");
+                CustomMessageBox.Show("Заполните обязательные поля.", "Ошибка");
                 return;
             }
 
             try
             {
-                // 3. Читаем существующие приложения
-                string json = File.ReadAllText(JsonPath);
-                var appList = JsonSerializer.Deserialize<List<AppInfo>>(json) ?? new List<AppInfo>();
+                List<AppInfo> appList = new();
+                if (File.Exists(JsonPath))
+                {
+                    string json = File.ReadAllText(JsonPath);
+                    appList = JsonSerializer.Deserialize<List<AppInfo>>(json) ?? new();
+                }
 
                 if (_currentAppInfo == null)
                 {
-                    // РЕЖИМ ДОБАВЛЕНИЯ
                     if (appList.Any(a => a.Name.Equals(newApp.Name, StringComparison.OrdinalIgnoreCase)))
                     {
-                        CustomMessageBox.Show($"Приложение с именем '{newApp.Name}' уже существует.", "Ошибка");
+                        CustomMessageBox.Show("Имя уже занято.", "Ошибка");
                         return;
                     }
                     appList.Add(newApp);
-                    CustomMessageBox.Show($"Приложение '{newApp.Title}' успешно добавлено!", "Успех");
                 }
                 else
                 {
-                    // РЕЖИМ РЕДАКТИРОВАНИЯ
                     var index = appList.FindIndex(a => a.Name.Equals(_currentAppInfo.Name, StringComparison.OrdinalIgnoreCase));
-                    if (index != -1)
-                    {
-                        appList[index] = newApp; // Заменяем старую запись новой
-                        CustomMessageBox.Show($"Приложение '{newApp.Title}' успешно обновлено!", "Успех");
-                    }
+                    if (index != -1) appList[index] = newApp;
                 }
 
-                var options = new JsonSerializerOptions
-                {
-                    WriteIndented = true,
-                    // Эта строчка разрешает кириллицу в JSON
-                    Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
-                };
+                var options = new JsonSerializerOptions { WriteIndented = true, Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
+                File.WriteAllText(JsonPath, JsonSerializer.Serialize(appList, options));
 
-                string updatedJson = JsonSerializer.Serialize(appList, options);
-                File.WriteAllText(JsonPath, updatedJson);
-
-                // 5. Возвращаемся на предыдущую страницу (Dashboard)
                 _navigationService.Navigate(typeof(DashboardPage));
             }
             catch (Exception ex)
             {
-                CustomMessageBox.Show($"Критическая ошибка при сохранении JSON: {ex.Message}", "Ошибка");
+                CustomMessageBox.Show($"Ошибка: {ex.Message}", "Ошибка");
             }
         }
 

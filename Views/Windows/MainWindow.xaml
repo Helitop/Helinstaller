@@ -90,8 +90,9 @@
                                 <ProgressBar x:Name="songProgress" VerticalAlignment="Bottom" Margin="0,0,0,-5"/>
                             </Grid>
                         </ui:Badge>
-                    </StackPanel>
-                </Grid>
+            </StackPanel>
+
+        </Grid>
             </ui:Card>
             <Canvas x:Name="VisualizerCanvas"
         Grid.Row="0"
@@ -179,12 +180,12 @@
 
                 <!-- Главная кнопка открытия -->
                 <ui:Button x:Name="SocialToggleButton"
-           Width="40" Height="40"
-           Margin="0,0,0,10"
-           VerticalAlignment="Center"
-           ToolTip="Ссылки"
-           Appearance="Primary"
-           Click="SocialToggleButton_Click">
+                           Width="40" Height="40"
+                           Margin="0,0,0,10"
+                           VerticalAlignment="Center"
+                           ToolTip="Ссылки"
+                           Appearance="Primary"
+                           Click="SocialToggleButton_Click">
                     <ui:SymbolIcon Symbol="Share48"/>
                 </ui:Button>
 

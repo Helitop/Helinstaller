@@ -71,13 +71,23 @@
     x:Name="GithubSourceToggle"
     Content="Источник GitHub (добавить префикс github:)"
     Margin="0,0,0,10"/>
-
             <ui:TextBlock Text="URL для скачивания (DownloadUrl):" FontWeight="SemiBold" Margin="0,0,0,5"/>
-            <ui:TextBox 
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <ui:TextBox 
     x:Name="AppDownloadUrlTextBox" 
     PlaceholderText="Полный URL или GitHub репозиторий" 
     Margin="0,0,0,0"/>
-
+                <ui:Button Grid.Column="1" 
+               ToolTip="Автозаполнение" 
+               Click="MagicFill_Click" 
+               Margin="5,0,0,0">
+                    <ui:SymbolIcon Symbol="Wand24"/>
+                </ui:Button>
+            </Grid>
             <StackPanel Orientation="Horizontal" Margin="0,15,0,0">
                 <ui:Button
                     x:Name="SaveButton"

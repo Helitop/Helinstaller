@@ -24,15 +24,33 @@ namespace Helinstaller.Animations
         public static readonly DependencyProperty ToProperty =
             DependencyProperty.Register("To", typeof(GridLength), typeof(GridLengthAnimation));
 
+        // ДОБАВЛЯЕМ ПОДДЕРЖКУ EASING
+        public IEasingFunction EasingFunction
+        {
+            get => (IEasingFunction)GetValue(EasingFunctionProperty);
+            set => SetValue(EasingFunctionProperty, value);
+        }
+
+        public static readonly DependencyProperty EasingFunctionProperty =
+            DependencyProperty.Register("EasingFunction", typeof(IEasingFunction), typeof(GridLengthAnimation));
+
         public override object GetCurrentValue(object defaultOriginValue, object defaultDestinationValue, AnimationClock animationClock)
         {
             double fromValue = ((GridLength)GetValue(FromProperty)).Value;
             double toValue = ((GridLength)GetValue(ToProperty)).Value;
 
-            if (fromValue > toValue)
-                return new GridLength((1 - animationClock.CurrentProgress.Value) * (fromValue - toValue) + toValue, GridUnitType.Pixel);
+            // Применяем EasingFunction к прогрессу, если она задана
+            double progress = animationClock.CurrentProgress.Value;
+            IEasingFunction easingFunction = EasingFunction;
+            if (easingFunction != null)
+            {
+                progress = easingFunction.Ease(progress);
+            }
 
-            return new GridLength(animationClock.CurrentProgress.Value * (toValue - fromValue) + fromValue, GridUnitType.Pixel);
+            if (fromValue > toValue)
+                return new GridLength((1 - progress) * (fromValue - toValue) + toValue, GridUnitType.Pixel);
+
+            return new GridLength(progress * (toValue - fromValue) + fromValue, GridUnitType.Pixel);
         }
 
         protected override Freezable CreateInstanceCore()

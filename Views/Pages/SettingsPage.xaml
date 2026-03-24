@@ -40,7 +40,26 @@
             Content="Тёмная"
             GroupName="themeSelect"
             IsChecked="{Binding ViewModel.CurrentTheme, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=Dark, Mode=OneWay}" />
-
+        <TextBlock Margin="0,24,0,0" FontSize="20" FontWeight="Medium" Text="Музыка" />
+        <ui:ToggleSwitch 
+    Margin="0,12,0,0" 
+    Content="Авто-воспроизведение при старте" 
+    IsChecked="{Binding ViewModel.IsMusicAutoPlayEnabled, Mode=TwoWay}" />
+        <ui:TextBlock 
+    Margin="40,0,0,0" 
+    Appearance="Tertiary" 
+    FontSize="12" 
+    Text="Если выключено, плеер загрузится, но не начнет играть, пока вы не нажмете Play." />
+        <TextBlock Margin="0,24,0,0" FontSize="20" FontWeight="Medium" Text="Производительность" />
+        <ui:ToggleSwitch 
+    Margin="0,12,0,0" 
+    Content="Аудио-визуализатор" 
+    IsChecked="{Binding ViewModel.IsVisualizerEnabled, Mode=TwoWay}" />
+        <ui:TextBlock 
+    Margin="40,0,0,0"
+    Appearance="Tertiary" 
+    FontSize="12" 
+    Text="Полностью отключает отрисовку и расчет частот для экономии ресурсов CPU." />
         <TextBlock
             Margin="0,24,0,0"
             FontSize="20"

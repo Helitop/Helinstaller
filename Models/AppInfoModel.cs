@@ -9,10 +9,10 @@ public class AppInfo
     public string Title { get; set; }
 
     [JsonPropertyName("description")]
-    public string Description { get; set; }
+    public string? Description { get; set; }
 
     [JsonPropertyName("iconPath")]
-    public string IconPath { get; set; }
+    public string? IconPath { get; set; }
 
     [JsonPropertyName("previewPath")]
     public string PreviewPath { get; set; }

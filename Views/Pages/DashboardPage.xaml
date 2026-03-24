@@ -12,6 +12,22 @@
     Foreground="{DynamicResource TextFillColorPrimaryBrush}">
 
     <Page.Resources>
+        <Storyboard x:Key="FadeInBg">
+            <DoubleAnimation Storyboard.TargetName="DashboardBackground" 
+                             Storyboard.TargetProperty="Opacity" 
+                             To="0.25" Duration="0:0:0.6"/>
+            <DoubleAnimation Storyboard.TargetName="BackgroundDimmer" 
+                             Storyboard.TargetProperty="Opacity" 
+                             To="0.3" Duration="0:0:0.6"/>
+        </Storyboard>
+        <Storyboard x:Key="FadeOutBg">
+            <DoubleAnimation Storyboard.TargetName="DashboardBackground" 
+                             Storyboard.TargetProperty="Opacity" 
+                             To="0" Duration="0:0:0.3"/>
+            <DoubleAnimation Storyboard.TargetName="BackgroundDimmer" 
+                             Storyboard.TargetProperty="Opacity" 
+                             To="0" Duration="0:0:0.3"/>
+        </Storyboard>
         <Storyboard x:Key="ShowEditTip">
             <DoubleAnimation
             Storyboard.TargetName="editTip"
@@ -111,6 +127,17 @@
 
     </Page.Resources>
     <Grid>
+        <Image x:Name="DashboardBackground"
+           Stretch="UniformToFill"
+           Opacity="0"
+           HorizontalAlignment="Center"
+           VerticalAlignment="Center">
+            <Image.Effect>
+                <!-- Размываем фон, чтобы он не мешал читать текст на плитках -->
+                <BlurEffect Radius="40" KernelType="Gaussian"/>
+            </Image.Effect>
+        </Image>
+        <Border x:Name="BackgroundDimmer" Background="Black" Opacity="0" IsHitTestVisible="False"/>
         <Grid x:Name="AppsGrid"
           Background="Transparent" 
           MouseLeftButtonDown="Grid_MouseLeftButtonDown"
@@ -118,6 +145,7 @@
           PreviewDragOver="Grid_PreviewDragOver">
             <ScrollViewer x:Name="AppsScrollViewer"
                       Panel.ZIndex="0"
+                          ClipToBounds="True"
                       HorizontalScrollBarVisibility="Disabled"
                       VerticalScrollBarVisibility="Auto">
 
@@ -130,9 +158,43 @@
                 Margin="10"
                 HorizontalAlignment="Center"
                 VerticalAlignment="Stretch"
+                    ClipToBounds="False"
                 Orientation="Horizontal" />
             </ScrollViewer>
-            
+
+            <Popup x:Name="HoverPopup" AllowsTransparency="True" Placement="Center" PopupAnimation="None" StaysOpen="True">
+                <!-- Grid нужен, чтобы HoverTile выравнивался по центру относительно PlacementTarget -->
+                <Grid Width="300" Height="350" Background="Transparent">
+
+                    <!-- ТВОЙ HoverTile. Обрати внимание на выравнивание по центру! -->
+                    <Border x:Name="HoverTile" HorizontalAlignment="Center" VerticalAlignment="Center" 
+                MouseLeave="HoverTile_MouseLeave" MouseLeftButtonDown="HoverTile_MouseLeftButtonDown"
+                CornerRadius="12" Background="#1E1E1E">
+
+                        <Grid x:Name="HoverInternalGrid">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="110" x:Name="HoverHeaderRow"/>
+                            <RowDefinition Height="0" x:Name="HoverDescRow"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- Верх (Превью) -->
+                        <Border x:Name="HoverBg" CornerRadius="11,11,0,0" ClipToBounds="True">
+                            <Border.Background>
+                                <ImageBrush x:Name="HoverBgBrush" Stretch="UniformToFill" />
+                            </Border.Background>
+                        </Border>
+
+                        <!-- Низ (Инфо) -->
+                        <StackPanel x:Name="HoverInfoStack" Grid.Row="1" Margin="12,8,12,10" Opacity="0">
+                            <TextBlock x:Name="HoverTitle" FontWeight="Bold" Foreground="White" FontSize="14" />
+                            <TextBlock x:Name="HoverDesc" FontSize="11" Foreground="Silver" TextWrapping="Wrap" MaxHeight="45" TextTrimming="CharacterEllipsis" Margin="0,4,0,0"/>
+                            <TextBlock Text="ОТКРЫТЬ" Foreground="SkyBlue" FontWeight="Black" FontSize="10" HorizontalAlignment="Right" Margin="0,8,0,0" />
+                        </StackPanel>
+                    </Grid>
+                </Border>
+                </Grid>
+            </Popup>
+
             <StackPanel x:Name="EditModePanel" 
                     Panel.ZIndex="1"
                     Orientation="Horizontal" 

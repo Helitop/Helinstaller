@@ -1,4 +1,7 @@
-﻿using Helinstaller.ViewModels.Windows;
+﻿using CommunityToolkit.Mvvm.Messaging;
+using Helinstaller.Helpers;
+using Helinstaller.Models;
+using Helinstaller.ViewModels.Windows;
 using Microsoft.Win32;
 using NAudio.Dsp;
 using NAudio.Wave;
@@ -28,6 +31,7 @@ namespace Helinstaller.Views.Windows
         private IWavePlayer? _waveOut;
         private VisualizationProvider? _visProvider;
         private MediaFoundationReader? _mediaReader;
+        private bool _globalVisualizerEnabled = true;
 
         // Плейлист и навигация
         private List<string> _playlist = new List<string>();
@@ -60,6 +64,31 @@ namespace Helinstaller.Views.Windows
             SystemThemeWatcher.Watch(this);
 
             InitializeComponent();
+            WeakReferenceMessenger.Default.Register<VisualizerStatusChangedMessage>(this, (r, m) =>
+            {
+                _globalVisualizerEnabled = m.Value;
+
+                if (!_globalVisualizerEnabled)
+                {
+                    // Полная остановка
+                    UnsubscribeFromRendering();
+                    VisualizerCanvas.Visibility = Visibility.Collapsed;
+                    // Очищаем бары, чтобы они не висели мертвым грузом
+                    if (_barShapes != null)
+                    {
+                        foreach (var rect in _barShapes) rect.Height = 0;
+                    }
+                }
+                else
+                {
+                    // Включаем обратно
+                    VisualizerCanvas.Visibility = Visibility.Visible;
+                    if (_waveOut?.PlaybackState == PlaybackState.Playing)
+                    {
+                        SubscribeToRendering();
+                    }
+                }
+            });
             SetPageService(navigationViewPageProvider);
             navigationService.SetNavigationControl(RootNavigation);
         }
@@ -125,12 +154,19 @@ namespace Helinstaller.Views.Windows
 
             InitializeVisualizerUI();
 
-            // Загружаем первый трек асинхронно
-            await LoadTrackAsync(_currentTrackIndex);
+            // Загружаем первый трек, но передаем флаг из настроек
+            await LoadTrackAsync(_currentTrackIndex, Models.AppSettings.IsMusicAutoPlayEnabled);
+
+            // Также принудительно проверяем визуализатор при старте
+            _globalVisualizerEnabled = Models.AppSettings.IsVisualizerEnabled;
+            if (!_globalVisualizerEnabled)
+            {
+                VisualizerCanvas.Visibility = Visibility.Collapsed;
+            }
         }
 
         // === Метод загрузки трека (АСИНХРОННЫЙ) ===
-        private async Task LoadTrackAsync(int index)
+        private async Task LoadTrackAsync(int index, bool startPlaying = true)
         {
             if (_isClosed) return;
 
@@ -207,16 +243,27 @@ namespace Helinstaller.Views.Windows
                     // ===================
 
                     UpdateVisualizerColor(trackUrl);
-
                     // Обновляем текст
                     string cleanName = System.Net.WebUtility.UrlDecode(System.IO.Path.GetFileNameWithoutExtension(trackUrl));
                     SongTitle.Text = cleanName;
                     songProgress.IsIndeterminate = false;
-                    // Запускаем
-                    _waveOut.Play();
-                    PlayPauseButton.Content = PlayIcon;
-                    PlayIcon.Symbol = SymbolRegular.Pause48;
-                    SubscribeToRendering();
+                    if (startPlaying)
+                    {
+                        _waveOut.Play();
+                        PlayPauseButton.Content = PlayIcon;
+                        PlayIcon.Symbol = SymbolRegular.Pause48;
+                        SubscribeToRendering(); // Включаем рендер только если играем
+                    }
+                    else
+                    {
+                        // Просто ставим значок Play и не запускаем движок
+                        _waveOut.Pause(); // На всякий случай
+                        PlayPauseButton.Content = PlayIcon;
+                        PlayIcon.Symbol = SymbolRegular.Play48;
+                        UnsubscribeFromRendering(); // Рендер не нужен
+                    }
+
+
                 }
             }
             catch (Exception ex)
@@ -465,13 +512,15 @@ namespace Helinstaller.Views.Windows
         // === Логика Визуализатора (Отрисовка) ===
         private void OnRendering(object? sender, EventArgs e)
         {
+            // САМАЯ ВАЖНАЯ ПРОВЕРКА: если выключен кодово — выходим сразу
+            if (!_globalVisualizerEnabled) return;
+
             if (_mediaReader != null && !_isLoading && _waveOut?.PlaybackState == PlaybackState.Playing)
             {
-                // Обновляем значение полоски (текущее время в секундах)
                 songProgress.Value = _mediaReader.CurrentTime.TotalSeconds;
             }
-            // ===================
 
+            // Если провайдера нет или выключено — не считаем FFT
             if (_visProvider == null || _visProvider.FftData == null || _barShapes == null) return;
 
             float[] fft = _visProvider.FftData;
@@ -524,6 +573,9 @@ namespace Helinstaller.Views.Windows
 
         private void SubscribeToRendering()
         {
+            // Если в настройках выключено, даже не подписываемся на событие таймера/рендера
+            if (!_globalVisualizerEnabled) return;
+
             if (!_isRenderingSubscribed)
             {
                 CompositionTarget.Rendering += OnRendering;
@@ -576,6 +628,8 @@ namespace Helinstaller.Views.Windows
 
         private async void FluentWindow_Initialized(object sender, EventArgs e)
         {
+            AppSettings.Load();
+
             var connectionTask = ConnectionCheck();
 
             string userName = Environment.UserName;
@@ -984,6 +1038,7 @@ namespace Helinstaller.Views.Windows
         public int Read(float[] buffer, int offset, int count)
         {
             int samplesRead = _source.Read(buffer, offset, count);
+
             for (int i = 0; i < samplesRead; i += _channels)
             {
                 if (_bufferPos >= _fftLength)

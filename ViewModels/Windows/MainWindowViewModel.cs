@@ -48,10 +48,11 @@ namespace Helinstaller.ViewModels.Windows
             new NavigationViewItem()
             {
                 Content = "Установка Windows",
-                Icon = new SymbolIcon { Symbol = SymbolRegular.ArrowDownload48 },
+                Icon = new SymbolIcon { Symbol = SymbolRegular.WindowSettings20 },
                 TargetPageType = typeof(Views.Pages.Ventoy)
 
             },
+
             new NavigationViewItem()
             {
                 Content = "Пожертвование",
@@ -68,6 +69,13 @@ namespace Helinstaller.ViewModels.Windows
                 Content = "Параметры",
                 Icon = new SymbolIcon { Symbol = SymbolRegular.Settings24 },
                 TargetPageType = typeof(Views.Pages.SettingsPage)
+            },
+                                    new NavigationViewItem()
+            {
+                Content = "Загрузки",
+                Icon = new SymbolIcon { Symbol = SymbolRegular.ArrowDownload48 },
+                TargetPageType = typeof(Views.Pages.DownloadsPage)
+
             },
                         new NavigationViewItem()
             {

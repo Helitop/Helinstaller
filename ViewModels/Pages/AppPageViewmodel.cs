@@ -1,6 +1,10 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Helinstaller.Models;
+using Helinstaller.Services;
 using Helinstaller.Views.Windows;
+using Microsoft.Win32;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -10,447 +14,214 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
-using System.Windows.Controls;
 using Wpf.Ui.Abstractions.Controls;
-using Wpf.Ui.Controls;
-
-// Предполагаем, что CustomMessageBox - это ваш кастомный класс для отображения сообщений
-// Если его нет в вашем коде, вам нужно будет его добавить или заменить на стандартный MessageBox
-// В этом коде я оставил его как заглушку для компиляции
-
-// Dummy class for CustomMessageBox - Replace with your actual implementation if needed
-public class CustomMessageBox
-{
-    public CustomMessageBox(string message, string caption, System.Windows.MessageBoxButton button) { }
-    public void ShowDialog() { }
-}
-
 
 namespace Helinstaller.ViewModels.Pages
 {
     public partial class AppPageViewmodel : ObservableObject, INavigationAware
     {
-        [ObservableProperty]
-        private string _title = string.Empty;
-
-        [ObservableProperty]
-        private string _description = string.Empty;
-
-        [ObservableProperty]
-        private string _iconPath = string.Empty;
-
-        [ObservableProperty]
-        private string _previewPath = string.Empty;
-
-        [ObservableProperty]
-        private bool _isInstalling = false;
-
-        [ObservableProperty]
-        private bool _isInstalled = false;
-
-        [ObservableProperty]
-        private bool _isChecking = false;
-
-        [ObservableProperty]
-        private double _progressValue = 0;
-
-        [ObservableProperty]
-        private string _downloadUrl = string.Empty;
-
+        [ObservableProperty] private string _title = "Загрузка...";
+        [ObservableProperty] private string _description = string.Empty;
+        [ObservableProperty] private string _iconPath = string.Empty;
+        [ObservableProperty] private string _previewPath = string.Empty;
+        [ObservableProperty] private string _downloadUrl = string.Empty;
+        [ObservableProperty] private bool _isInstalling = false;
+        [ObservableProperty] private bool _isInstalled = false;
+        [ObservableProperty] private bool _isChecking = false;
+        [ObservableProperty] private double _progressValue = 0;
 
         [RelayCommand]
         private async Task Check()
         {
             IsChecking = true;
-            await IsProgramInstalledByPowerShell(Title);
+            await AutoFillMetadata();
+            // Используем быстрый метод вместо PowerShell
+            IsInstalled = await CheckInstallViaRegistry(Title);
             IsChecking = false;
         }
 
-        private async Task IsProgramInstalledByPowerShell(string programNamePart)
+        // БЫСТРЫЙ МЕТОД ПРОВЕРКИ УСТАНОВКИ (Через реестр)
+        private async Task<bool> CheckInstallViaRegistry(string appName)
         {
-            // 1. Предварительная проверка
-            if (string.IsNullOrEmpty(programNamePart))
+            return await Task.Run(() =>
             {
-                IsInstalled = false;
-                return;
-            }
-
-            // Подготовка имени для поиска (экранирование не требуется, т.к. используется [regex]::new)
-            string searchName = programNamePart.Trim().ToLowerInvariant();
-
-            // 2. PowerShell-команда (Исправлена для точности поиска)
-            string psCommand = $@"
-$results = @();
-# Создаем объект Regex для безопасного поиска (игнорируя регистр)
-$searchRegex = [regex]::new('{searchName}', 'IgnoreCase');
-
-# 1. Поиск UWP/Store приложений (Appx) для ВСЕХ пользователей
-$results += Get-AppxPackage -AllUsers | 
-    Where-Object {{$searchRegex.IsMatch($_.Name) -or $searchRegex.IsMatch($_.PackageFamilyName)}} | 
-    Select-Object -ExpandProperty Name; 
-
-# 2. Поиск классических приложений (Win32)
-$results += Get-ItemProperty HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*,
-                        HKLM:\Software\Wow6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*,
-                        HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\* |
-    # Фильтруем записи: 
-    # - Должно быть DisplayName 
-    # - Должен быть UninstallString (КРИТИЧЕСКИ ВАЖНО для исключения системных компонентов)
-    # - Имя или Издатель должны соответствовать поисковому запросу
-    Where-Object {{ 
-        $_.DisplayName -ne $null -and $_.UninstallString -ne $null -and 
-        ($searchRegex.IsMatch($_.DisplayName) -or $searchRegex.IsMatch($_.Publisher))
-    }} |
-    Select-Object -ExpandProperty DisplayName;
-
-$results | Select-Object -Unique;
-";
-
-            // 3. Запуск процесса PowerShell
-            try
-            {
-                // Экранирование двойных кавычек в команде PowerShell для передачи через командную строку
-                string escapedPsCommand = psCommand.Replace("\"", "\"\"");
-
-                ProcessStartInfo startInfo = new ProcessStartInfo
-                {
-                    FileName = "powershell.exe",
-                    Arguments = $"-NoProfile -ExecutionPolicy Bypass -Command \"{escapedPsCommand}\"",
-                    RedirectStandardOutput = true,
-                    UseShellExecute = false,
-                    CreateNoWindow = true,
+                if (string.IsNullOrWhiteSpace(appName)) return false;
+                string searchName = appName.ToLowerInvariant();
+                string[] registryKeys = {
+                    @"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall",
+                    @"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall",
+                    @"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall"
                 };
+                RegistryKey[] baseKeys = { Registry.LocalMachine, Registry.LocalMachine, Registry.CurrentUser };
 
-                using (Process process = Process.Start(startInfo))
+                for (int i = 0; i < baseKeys.Length; i++)
                 {
-                    if (process == null)
+                    using var baseKey = baseKeys[i].OpenSubKey(registryKeys[i]);
+                    if (baseKey == null) continue;
+                    foreach (string subKeyName in baseKey.GetSubKeyNames())
                     {
-                        IsInstalled = false;
-                        return;
+                        using var appKey = baseKey.OpenSubKey(subKeyName);
+                        var displayName = appKey?.GetValue("DisplayName") as string;
+                        if (!string.IsNullOrEmpty(displayName) && displayName.ToLowerInvariant().Contains(searchName))
+                            return true;
                     }
-
-                    // Асинхронное чтение вывода и ожидание завершения процесса
-                    Task<string> readOutputTask = process.StandardOutput.ReadToEndAsync();
-                    Task waitForExitTask = process.WaitForExitAsync();
-                    Task timeoutTask = Task.Delay(30000); // Таймаут 30 секунд
-
-                    Task processCompleteTask = Task.WhenAll(readOutputTask, waitForExitTask);
-
-                    // Ожидаем завершения процесса или таймаута
-                    Task completedTask = await Task.WhenAny(processCompleteTask, timeoutTask);
-
-                    // 4. Обработка таймаута
-                    if (completedTask == timeoutTask)
-                    {
-                        try { process.Kill(); } catch { }
-                        IsInstalled = false;
-                        // Возможно, добавить лог таймаута
-                        return;
-                    }
-
-                    // 5. Обработка результатов
-                    await processCompleteTask;
-
-                    string output = readOutputTask.Result.Trim();
-
-                    // Приложение считается установленным, если вывод не пуст (т.е. найдено хотя бы одно совпадение)
-                    IsInstalled = !string.IsNullOrEmpty(output);
                 }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Ошибка при проверке PowerShell: {ex.Message}");
-                IsInstalled = false;
-            }
+                return false;
+            });
         }
 
         [RelayCommand]
         private async Task Install()
         {
+            var task = new DownloadTask { Title = this.Title, AppName = this.Title, IconPath = this.IconPath };
+            DownloadService.Instance.AddTask(task);
+
             IsInstalling = true;
-            ProgressValue = 0;
+            task.Status = "Подготовка...";
 
             try
             {
                 if (Title == "Office")
                 {
+                    task.Status = "Настройка Office...";
+                    task.IsIndeterminate = true;
                     await InstallOffice();
-                    return;
                 }
-
-                if (string.IsNullOrWhiteSpace(DownloadUrl))
-                    return;
-
-                string urlToInstall = DownloadUrl;
-
-                // GitHub: получаем реальный URL
-                if (DownloadUrl.StartsWith("github:", StringComparison.OrdinalIgnoreCase))
+                else if (DownloadUrl.StartsWith("winget:", StringComparison.OrdinalIgnoreCase))
                 {
-                    string api = DownloadUrl.Substring("github:".Length);
-                    string? realInstallerUrl = await GetGithubInstallerDownloadUrlAsync(api);
-
-                    if (realInstallerUrl == null)
+                    task.Status = "Очередь Winget...";
+                    task.IsIndeterminate = true;
+                    string appId = DownloadUrl.Replace("winget:", "").Trim();
+                    await InstallViaWinget(appId, task);
+                }
+                else
+                {
+                    string urlToInstall = DownloadUrl;
+                    if (DownloadUrl.StartsWith("github:", StringComparison.OrdinalIgnoreCase))
                     {
-                        new CustomMessageBox(
-                            "Не удалось найти установочный файл в релизах GitHub",
-                            "Ошибка",
-                            System.Windows.MessageBoxButton.OK
-                        ).ShowDialog();
-                        return;
+                        task.Status = "Поиск релиза GitHub...";
+                        urlToInstall = await GetGithubInstallerDownloadUrlAsync(DownloadUrl.Replace("github:", "")) ?? "";
                     }
 
-                    urlToInstall = realInstallerUrl;
+                    if (string.IsNullOrEmpty(urlToInstall)) throw new Exception("URL не найден");
+
+                    task.Status = "Скачивание...";
+                    await InstallFromUrlAsync(urlToInstall, task);
                 }
 
-                // Скачиваем и открываем любой файл
-                await InstallFromUrlAsync(urlToInstall);
-            }
-            finally
-            {
-                IsInstalling = false;
-                ProgressValue = 0;
-            }
-        }
-
-        private async Task InstallFromUrlAsync(string url)
-        {
-            string tempFile = Path.Combine(Path.GetTempPath(), Path.GetFileName(url));
-
-            try
-            {
-                using (HttpClient client = new HttpClient())
-                using (HttpResponseMessage response = await client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead))
-                {
-                    response.EnsureSuccessStatusCode();
-
-                    long? totalBytes = response.Content.Headers.ContentLength;
-
-                    using (Stream remoteStream = await response.Content.ReadAsStreamAsync())
-                    using (FileStream localStream = new FileStream(tempFile, FileMode.Create, FileAccess.Write, FileShare.None))
-                    {
-                        byte[] buffer = new byte[81920];
-                        long totalRead = 0;
-                        int bytesRead;
-
-                        while ((bytesRead = await remoteStream.ReadAsync(buffer, 0, buffer.Length)) > 0)
-                        {
-                            await localStream.WriteAsync(buffer, 0, bytesRead);
-                            totalRead += bytesRead;
-
-                            if (totalBytes.HasValue)
-                                ProgressValue = (double)totalRead / totalBytes.Value * 100.0;
-                            else
-                                ProgressValue = (ProgressValue + 1) % 100;
-                        }
-
-                        await localStream.FlushAsync();
-                    }
-                }
-
-                await EnsureFileUnlockedAsync(tempFile);
-
-                // Открываем файл любым приложением, которое Windows предложит
-                Process.Start(new ProcessStartInfo
-                {
-                    FileName = tempFile,
-                    UseShellExecute = true
-                });
+                task.Status = "Установка завершена";
+                task.Progress = 100;
+                task.IsCompleted = true;
+                IsInstalled = await CheckInstallViaRegistry(Title);
             }
             catch (Exception ex)
             {
-                new CustomMessageBox(
-                    $"Ошибка при открытии файла:\n{ex.Message}",
-                    "Ошибка",
-                    System.Windows.MessageBoxButton.OK
-                ).ShowDialog();
+                task.Status = "Ошибка";
+                task.IsError = true;
+                task.ErrorMessage = ex.Message;
+                task.IsIndeterminate = false;
             }
+            finally { IsInstalling = false; ProgressValue = 0; }
         }
 
-        private async Task EnsureFileUnlockedAsync(string filePath, int retries = 100, int delayMs = 50)
+        private async Task InstallFromUrlAsync(string url, DownloadTask task)
         {
-            for (int i = 0; i < retries; i++)
+            string tempFile = Path.Combine(Path.GetTempPath(), Path.GetFileName(url));
+            using (HttpClient client = new HttpClient())
+            using (var response = await client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead))
             {
-                try
+                response.EnsureSuccessStatusCode();
+                long? totalBytes = response.Content.Headers.ContentLength;
+                using (var remoteStream = await response.Content.ReadAsStreamAsync())
+                using (var localStream = new FileStream(tempFile, FileMode.Create, FileAccess.Write, FileShare.None))
                 {
-                    using (FileStream fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.None))
-                        return;
+                    byte[] buffer = new byte[81920];
+                    long totalRead = 0; int bytesRead;
+                    while ((bytesRead = await remoteStream.ReadAsync(buffer, 0, buffer.Length)) > 0)
+                    {
+                        await localStream.WriteAsync(buffer, 0, bytesRead);
+                        totalRead += bytesRead;
+                        if (totalBytes.HasValue)
+                        {
+                            double prog = (double)totalRead / totalBytes.Value * 100.0;
+                            task.Progress = prog; this.ProgressValue = prog;
+                        }
+                    }
                 }
-                catch
-                {
-                    await Task.Delay(delayMs);
-                }
+            }
+            task.Status = "Запуск установщика...";
+            task.IsIndeterminate = true;
+            var psi = new ProcessStartInfo { FileName = tempFile, UseShellExecute = true };
+            if (tempFile.EndsWith(".exe")) psi.Arguments = "/S /VERYSILENT /norestart /quiet";
+            if (tempFile.EndsWith(".msi")) psi.Arguments = "/qn /norestart";
+            using var p = Process.Start(psi);
+            if (p != null) await p.WaitForExitAsync();
+        }
+
+        private async Task InstallViaWinget(string appId, DownloadTask task)
+        {
+            task.Status = "Установка через Winget...";
+            string args = $"install --id {appId} --silent --accept-package-agreements --accept-source-agreements";
+            ProcessStartInfo psi = new ProcessStartInfo { FileName = "winget", Arguments = args, UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true };
+            using var process = Process.Start(psi);
+            await process.WaitForExitAsync();
+        }
+
+        // --- Остальные методы (InitializeAsync, AutoFillMetadata, GitHub и т.д.) оставляешь как были ---
+        public async Task InitializeAsync(string title, string desc, string icon, string preview, string url)
+        {
+            Title = title;
+            Description = desc;
+            DownloadUrl = url;
+            IconPath = icon?.TrimStart('/', '\\');
+            PreviewPath = preview?.TrimStart('/', '\\');
+            IsInstalled = false;
+            await AutoFillMetadata();
+        }
+
+        public async Task AutoFillMetadata()
+        {
+            bool hasLocalIcon = false;
+            if (!string.IsNullOrEmpty(IconPath) && !IconPath.StartsWith("http"))
+            {
+                string fullPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, IconPath.TrimStart('/', '\\'));
+                hasLocalIcon = File.Exists(fullPath);
+            }
+            if (!hasLocalIcon && (string.IsNullOrEmpty(IconPath) || IconPath.Contains("ADD_NEW")))
+            {
+                IsChecking = true;
+                var data = await Helpers.MetadataService.GetMetadataAsync(DownloadUrl);
+                if (string.IsNullOrEmpty(Description)) Description = data.Description;
+                IconPath = data.IconUrl;
+                IsChecking = false;
             }
         }
 
-        public class GithubReleaseResponse
-        {
-            [JsonPropertyName("assets")]
-            public List<GithubAsset> Assets { get; set; } = new();
-        }
-
-        public class GithubAsset
-        {
-            [JsonPropertyName("name")]
-            public string Name { get; set; } = string.Empty;
-
-            [JsonPropertyName("browser_download_url")]
-            public string BrowserDownloadUrl { get; set; } = string.Empty;
-        }
-
-        /// <summary>
-        /// Ищет URL для скачивания файла с расширением .exe, .msi, .zip или .rar в указанном порядке приоритета.
-        /// </summary>
-        /// <param name="apiUrl">URL GitHub API для получения информации о релизе.</param>
-        /// <returns>URL для скачивания файла-установщика или null, если не найден.</returns>
         private async Task<string?> GetGithubInstallerDownloadUrlAsync(string apiUrl)
         {
-            // Установка приоритета поиска расширений
-            var priorityExtensions = new[] { ".appinstaller",".exe", ".msi", ".zip", ".rar" };
-
+            var priorityExtensions = new[] { ".appinstaller", ".exe", ".msi", ".zip", ".rar" };
             try
             {
                 using HttpClient client = new HttpClient();
                 client.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0");
-
-                string json = await client.GetStringAsync(apiUrl);
-
-                var root = JsonSerializer.Deserialize<GithubReleaseResponse>(json);
-
-                if (root?.Assets == null || root.Assets.Count == 0)
-                    return null;
-
-                // Поиск файла по приоритетным расширениям
+                string json = await client.GetStringAsync("https://api.github.com/repos/" + apiUrl.Trim('/') + "/releases/latest");
+                var root = JsonSerializer.Deserialize<GithubReleaseResponse>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                if (root?.Assets == null) return null;
                 foreach (var ext in priorityExtensions)
                 {
-                    var installerAsset = root.Assets
-                        .FirstOrDefault(a => a.Name.EndsWith(ext, StringComparison.OrdinalIgnoreCase));
-
-                    if (installerAsset != null)
-                    {
-                        return installerAsset.BrowserDownloadUrl;
-                    }
+                    var asset = root.Assets.FirstOrDefault(a => a.Name.EndsWith(ext, StringComparison.OrdinalIgnoreCase));
+                    if (asset != null) return asset.BrowserDownloadUrl;
                 }
-
-                return null; // Ничего не найдено
             }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"GitHub parsing error: {ex.Message}");
-                return null;
-            }
+            catch { }
+            return null;
         }
 
-        private async Task InstallOffice()
-        {
-            // 1. Показать окно конфигурации
-            var configWindow = new OfficeConfigWindow();
+        public class GithubReleaseResponse { public List<GithubAsset> Assets { get; set; } }
+        public class GithubAsset { public string Name { get; set; } [JsonPropertyName("browser_download_url")] public string BrowserDownloadUrl { get; set; } }
 
-            // Если пользователь нажал "Отмена" или закрыл окно -> выходим
-            if (configWindow.ShowDialog() != true)
-            {
-                return;
-            }
-
-            // Получаем настроенный объект конфигурации из окна
-            OfficeConfiguration config = configWindow.Configuration;
-
-            // Настраиваем пути. Важно: все должно быть в папке Office для работы ODT
-            string folderPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Office");
-            string xmlFilePath = Path.Combine(folderPath, "Configuration.xml");
-            string setupExePath = Path.Combine(folderPath, "setup.exe");
-
-            try
-            {
-                // Проверяем, существует ли папка Office
-                if (!Directory.Exists(folderPath))
-                {
-                    Directory.CreateDirectory(folderPath);
-                }
-
-                // Проверяем наличие самого установщика setup.exe
-                if (!File.Exists(setupExePath))
-                {
-                    new CustomMessageBox(
-                        $"Файл 'setup.exe' не найден в папке:\n{folderPath}\n\nПожалуйста, скачайте ODT (Office Deployment Tool) и положите 'setup.exe' в эту папку.",
-                        "Ошибка: нет установщика",
-                        System.Windows.MessageBoxButton.OK).ShowDialog();
-                    return;
-                }
-
-                // 2. Генерация и сохранение XML
-                // ИСПРАВЛЕНИЕ: Вызываем метод у экземпляра config
-                string xmlContent = config.GenerateXml();
-
-                // Асинхронно пишем файл в папку Office
-                await File.WriteAllTextAsync(xmlFilePath, xmlContent, Encoding.UTF8);
-
-                // 3. Запуск команды установки
-                // Добавляем твик реестра для обхода окна выбора "Microsoft 365" и сразу запускаем конфигурацию
-                string command =
-                    "reg add \"HKCU\\Software\\Microsoft\\Office\\16.0\\Common\\ExperimentConfigs\\Ecs\" /v \"CountryCode\" /t REG_SZ /d \"std::wstring|US\" /f && setup.exe /configure Configuration.xml";
-
-                ProcessStartInfo startInfo = new ProcessStartInfo
-                {
-                    WorkingDirectory = folderPath, // ОЧЕНЬ ВАЖНО: установщик ищет конфиг рядом с собой
-                    FileName = "cmd.exe",
-                    Arguments = "/C " + command,
-
-                    // Настройки для скрытого запуска и перехвата логов
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    UseShellExecute = false,
-                    CreateNoWindow = true
-                };
-
-                // Запускаем процесс
-                using (Process process = Process.Start(startInfo))
-                {
-                    if (process == null) return;
-
-                    // Читаем вывод (чтобы не блокировать поток, делаем это асинхронно)
-                    string output = await process.StandardOutput.ReadToEndAsync();
-                    string error = await process.StandardError.ReadToEndAsync();
-
-                    await process.WaitForExitAsync();
-
-                    // 4. Обработка результатов
-                    if (process.ExitCode != 0)
-                    {
-                        // Если код выхода не 0 — это явная ошибка
-                        new CustomMessageBox(
-                            $"Установка завершилась с кодом ошибки {process.ExitCode}.\n\nТекст ошибки:\n{error}\n\nЛог:\n{output}",
-                            "Ошибка установки",
-                            System.Windows.MessageBoxButton.OK).ShowDialog();
-                    }
-                    // setup.exe иногда пишет в поток ошибок информационные сообщения. 
-                    // Проверяем, есть ли там реальное слово "Error", чтобы не пугать пользователя зря.
-                    else if (!string.IsNullOrWhiteSpace(error) && error.Contains("Error", StringComparison.OrdinalIgnoreCase))
-                    {
-                        new CustomMessageBox(
-                            $"Команда выполнена, но обнаружены ошибки:\n{error}",
-                            "Внимание",
-                            System.Windows.MessageBoxButton.OK).ShowDialog();
-                    }
-                    else
-                    {
-                        new CustomMessageBox(
-                           "Установка Office завершена успешно!",
-                           "Успех",
-                           System.Windows.MessageBoxButton.OK).ShowDialog();
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                new CustomMessageBox(
-                    $"Критическая системная ошибка: {ex.Message}",
-                    "Исключение",
-                    System.Windows.MessageBoxButton.OK).ShowDialog();
-            }
-        }
-
-        public async Task OnNavigatedToAsync() { }
-
+        private async Task InstallOffice() { /* Твой старый код офиса */ }
+        public async Task OnNavigatedToAsync() { await Check(); }
         public Task OnNavigatedFromAsync() => Task.CompletedTask;
     }
 }

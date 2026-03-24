@@ -10,6 +10,7 @@ using System.IO;
 using System.Windows.Threading;
 using Wpf.Ui;
 using Wpf.Ui.DependencyInjection;
+using System.Text;
 
 namespace Helinstaller
 {
@@ -18,11 +19,13 @@ namespace Helinstaller
     /// </summary>
     public partial class App
     {
+
         // The.NET Generic Host provides dependency injection, configuration, logging, and other services.
         // https://docs.microsoft.com/dotnet/core/extensions/generic-host
         // https://docs.microsoft.com/dotnet/core/extensions/dependency-injection
         // https://docs.microsoft.com/dotnet/core/extensions/configuration
         // https://docs.microsoft.com/dotnet/core/extensions/logging
+
         private static readonly IHost _host = Host
             .CreateDefaultBuilder()
             .ConfigureAppConfiguration(c => { c.SetBasePath(Path.GetDirectoryName(AppContext.BaseDirectory)); })
@@ -58,6 +61,8 @@ namespace Helinstaller
                 services.AddSingleton<Advices>();
                 services.AddSingleton<Ventoy>();
                 services.AddSingleton<Editor>();
+                services.AddSingleton<DownloadsPage>();
+                services.AddSingleton<DownloadsViewModel>();
             }).Build();
 
         /// <summary>
@@ -76,6 +81,7 @@ namespace Helinstaller
 
         private async void OnStartup(object sender, StartupEventArgs e)
         {
+            System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
             await _host.StartAsync();
         }
 

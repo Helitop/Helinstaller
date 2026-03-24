@@ -34,11 +34,5 @@ namespace Helinstaller.Views.Pages
             ForceInstallSwitch.IsChecked = false;
         }
 
-        private void Image_Loaded(object sender, RoutedEventArgs e)
-        {
-            if (imgIcon.Source == null) { iconCard.Visibility = Visibility.Collapsed; }
-            else
-            { iconCard.Visibility = Visibility.Visible; }
-        }
     }
 }

@@ -1,4 +1,7 @@
-﻿using Wpf.Ui.Abstractions.Controls;
+﻿using CommunityToolkit.Mvvm.Messaging;
+using Helinstaller.Helpers;
+using Helinstaller.Models;
+using Wpf.Ui.Abstractions.Controls;
 using Wpf.Ui.Appearance;
 
 namespace Helinstaller.ViewModels.Pages
@@ -21,15 +24,42 @@ namespace Helinstaller.ViewModels.Pages
             return Task.CompletedTask;
         }
 
+        [ObservableProperty]
+        private bool _isVisualizerEnabled = Models.AppSettings.IsVisualizerEnabled;
+
+        [ObservableProperty]
+        private bool _isMusicAutoPlayEnabled = Models.AppSettings.IsMusicAutoPlayEnabled;
+
+        partial void OnIsVisualizerEnabledChanged(bool value)
+        {
+            AppSettings.IsVisualizerEnabled = value;
+            CommunityToolkit.Mvvm.Messaging.WeakReferenceMessenger.Default.Send(new VisualizerStatusChangedMessage(value));
+
+            // СОХРАНЯЕМ
+            AppSettings.Save();
+        }
+
+        partial void OnIsMusicAutoPlayEnabledChanged(bool value)
+        {
+            AppSettings.IsMusicAutoPlayEnabled = value;
+
+            // СОХРАНЯЕМ
+            AppSettings.Save();
+        }
+
         public Task OnNavigatedFromAsync() => Task.CompletedTask;
 
         private void InitializeViewModel()
         {
+            // Синхронизируем UI с текущими настройками
+            IsVisualizerEnabled = Models.AppSettings.IsVisualizerEnabled;
+            IsMusicAutoPlayEnabled = Models.AppSettings.IsMusicAutoPlayEnabled;
+
             CurrentTheme = ApplicationThemeManager.GetAppTheme();
             AppVersion = $"Helinstaller - {GetAssemblyVersion()}";
-
             _isInitialized = true;
         }
+
 
         private string GetAssemblyVersion()
         {

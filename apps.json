@@ -2,10 +2,8 @@
   {
     "name": "WinRAR",
     "title": "WinRAR",
-    "description": "Файловый архиватор, который позволяет сжимать, архивировать и распаковывать файлы.",
-    "iconPath": "/Assets/winrar.png",
     "previewPath": "/Assets/winrarprev.png",
-    "downloadUrl": "https://www.win-rar.com/fileadmin/winrar-versions/winrar/winrar-x64-713ru.exe"
+    "downloadUrl": "winget:RARLab.WinRAR"
   },
   {
     "name": "Discord",
@@ -53,7 +51,7 @@
     "description": "Много различных инструментов прям в Винде. К примеру пипетка и линейка экрана по пикселям.",
     "iconPath": "/Assets/powertoys.png",
     "previewPath": "/Assets/powertoysprev.png",
-    "downloadUrl": "https://api.github.com/repos/microsoft/PowerToys/releases/latest"
+    "downloadUrl": "ms-windows-store://pdp/?ProductId=xp89dcgq3k6vld"
   },
   {
     "name": "Meridius",
@@ -69,7 +67,7 @@
     "description": "Прозрачная панель задач.",
     "iconPath": "/Assets/translucenttb.png",
     "previewPath": "/Assets/translucenttbprev.png",
-    "downloadUrl": "https://github.com/TranslucentTB/TranslucentTB/releases/download/2025.1/TranslucentTB.appinstaller"
+    "downloadUrl": "ms-windows-store://pdp/?ProductId=9pf4kz2vn4w9"
   },
   {
     "name": "Office",

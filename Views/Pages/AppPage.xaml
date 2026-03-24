@@ -14,6 +14,7 @@
     Foreground="{DynamicResource TextFillColorPrimaryBrush}" Cursor="" Margin="0,15,0,0" Loaded="Page_Loaded">
     <Page.Resources>
         <local:StringToVisibilityConverter x:Key="PathToVisibilityConverter"/>
+        <local:StringToImageSourceConverter x:Key="ImageSourceConverter"/>
     </Page.Resources>
     <Grid>
         <Grid.ColumnDefinitions>
@@ -27,16 +28,17 @@
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
-                <ui:Card x:Name="iconCard"
-                    Visibility="{Binding IconPath, Converter={StaticResource PathToVisibilityConverter}}">
-                    <ui:Image x:Name="imgIcon"
-                    Grid.Column="0"
-                    Width="120"
-                    Height="120"
-                    Source="{Binding IconPath}"
-                    Margin="0,0,0,0" Loaded="Image_Loaded">       
-                    </ui:Image>
-
+                <ui:Card x:Name="iconCard" 
+         Padding="0" 
+         Background="Transparent" 
+         BorderThickness="0"
+         Visibility="{Binding IconPath, Converter={StaticResource PathToVisibilityConverter}}">
+                    <Image x:Name="imgIcon"
+           Grid.Column="0"
+           Width="100"
+           Height="100"
+           RenderOptions.BitmapScalingMode="HighQuality"
+           Source="{Binding IconPath, Converter={StaticResource ImageSourceConverter}}"/>
                 </ui:Card>
 
 
@@ -124,11 +126,13 @@
                 <ui:TextBlock Text="Не рекомендуется. Включай, только если уверен что программа не установлена или её нужно переустановить." TextWrapping="Wrap"/>
             </ui:CardExpander>
         </StackPanel>
-        <ui:Image 
-                Grid.Column="1"
-            VerticalAlignment="Top"
-                CornerRadius="20"
-                Source="{Binding PreviewPath}">
-        </ui:Image>
+        <Image Grid.Column="1"
+       HorizontalAlignment="Center"
+       VerticalAlignment="Center"
+       RenderOptions.BitmapScalingMode="HighQuality"
+       Stretch="Uniform"
+       StretchDirection="DownOnly" 
+       Source="{Binding PreviewPath, Converter={StaticResource ImageSourceConverter}}"
+       Visibility="{Binding PreviewPath, Converter={StaticResource PathToVisibilityConverter}}"/>
     </Grid>
 </Page>
