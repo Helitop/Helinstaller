@@ -1,0 +1,81 @@
+﻿<ui:FluentWindow x:Class="Helinstaller.Views.Pages.ActivationDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+        Title="Активация Microsoft" Height="520" Width="420"
+        WindowStartupLocation="CenterOwner"
+        ExtendsContentIntoTitleBar="True"
+        WindowCornerPreference="Round"
+       WindowBackdropType="Mica"
+        Background="{DynamicResource ApplicationBackgroundBrush}">
+
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Заголовок -->
+        <StackPanel Grid.Row="0" Margin="0,0,0,20">
+            <ui:TextBlock Text="Microsoft Activation Scripts" FontTypography="Subtitle" Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}"/>
+            <ui:TextBlock x:Name="SubtitleText" Text="Выберите метод активации ниже" Appearance="Tertiary" />
+        </StackPanel>
+
+        <!-- Контент -->
+        <Grid Grid.Row="1">
+            <StackPanel>
+                <StackPanel x:Name="ButtonsContainer">
+                    <ui:Button Content="Активация Windows (HWID)" 
+                               Margin="0,0,0,5"
+                               Tag="/HWID" Icon="{ui:SymbolIcon Symbol=WindowShield24}"
+                               HorizontalAlignment="Stretch" Appearance="Primary" Height="45"
+                               Click="ActivationBtn_Click"/>
+
+                    <ui:Button Content="Активация Office (Ohook)" 
+                               Margin="0,0,0,15"
+                               Tag="/Ohook" Icon="{ui:SymbolIcon Symbol=ArchiveSettings24}"
+                               HorizontalAlignment="Stretch" Appearance="Primary" Height="45"
+                               Click="ActivationBtn_Click"/>
+
+                    <ui:Button Content="Online KMS (Windows/Office)" 
+                               Margin="0,0,0,5"
+                               Tag="/KMS-WinOff" Icon="{ui:SymbolIcon Symbol=CloudCheckmark24}"
+                               HorizontalAlignment="Stretch" Appearance="Secondary" Height="45"
+                               Click="ActivationBtn_Click"/>
+
+                    <ui:Button Content="Проверить статус активации" 
+                               Margin="0,0,0,5"
+                               Tag="/Check" Icon="{ui:SymbolIcon Symbol=Info24}"
+                               HorizontalAlignment="Stretch" Appearance="Secondary" Height="40"
+                               Click="ActivationBtn_Click"/>
+                </StackPanel>
+
+                <ui:TextBlock Text="Лог процесса:" Margin="0,15,0,5" Appearance="Tertiary" FontSize="10"/>
+                <TextBox x:Name="DebugLog" 
+                         Height="150"
+                         IsReadOnly="True" 
+                         Background="#08FFFFFF" 
+                         Foreground="#A0A0A0" 
+                         FontSize="11" 
+                         FontFamily="Consolas"
+                         TextWrapping="Wrap" 
+                         VerticalScrollBarVisibility="Auto"
+                         BorderThickness="0"/>
+
+                <ui:ProgressRing x:Name="LoadingRing" IsIndeterminate="True" Margin="0,10,0,0" Visibility="Collapsed"/>
+            </StackPanel>
+        </Grid>
+
+        <!-- Статус-бар внизу -->
+        <Border Grid.Row="2" Margin="0,15,0,0" Padding="12" Background="#08FFFFFF" CornerRadius="8">
+            <ui:TextBlock x:Name="StatusText" Text="Готов к работе" FontSize="12" Opacity="0.7" TextTrimming="CharacterEllipsis"/>
+        </Border>
+        <ui:Button Content="Завершить"
+                   Grid.Row="3"
+                   Margin="0,15,0,0"
+                               HorizontalAlignment="Stretch" Appearance="Primary" Height="40"
+                               Click="Button_Click"/>
+    </Grid>
+</ui:FluentWindow>

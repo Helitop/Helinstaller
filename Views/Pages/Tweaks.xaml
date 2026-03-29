@@ -13,123 +13,105 @@
     </Page.Resources>
 
     <Grid>
-        <Image x:Name="GIF"
-               HorizontalAlignment="Center"
-               VerticalAlignment="Center"
-               gif:ImageBehavior.AnimationSpeedRatio="0.75"
-               Width="350"
-               Height="350"
-               Opacity="0.1"
-               Margin="30"
-               IsHitTestVisible="False"
-               RenderOptions.BitmapScalingMode="HighQuality">
-        </Image>
+        <!-- Фоновый GIF чуть меньше и прозрачнее для стиля -->
+        <Image x:Name="GIF" gif:ImageBehavior.AnimationSpeedRatio="0.75" Width="400" Height="400" Opacity="0.04" IsHitTestVisible="False"/>
 
         <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-            <ItemsControl ItemsSource="{Binding TweakItems}" Margin="20,0,20,20">
+            <ItemsControl ItemsSource="{Binding TweakItems}" Margin="20">
+                <!-- Сетка 3 колонки -->
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <UniformGrid Columns="3" VerticalAlignment="Top"/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
+                        <ui:Card Margin="6" Padding="0">
+                            <ui:Button Click="TileButton_Click"
+                                   Tag="{Binding Tag}"
+                                   Appearance="Transparent"
+                                   HorizontalAlignment="Stretch"
+                                   VerticalAlignment="Stretch"
+                                   Padding="16"
+                                   MinHeight="150"
+                                   Cursor="Hand">
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="*"/>
+                                    </Grid.RowDefinitions>
 
-                        <ui:Card Margin="0,6" Padding="0"
-                                 BorderBrush="{DynamicResource CardBorderBrush}"
-                                 BorderThickness="1">
+                                    <!-- Верх: Иконка и Переключатель -->
+                                    <DockPanel Grid.Row="0" LastChildFill="False" Margin="0,0,0,12">
+                                        <ui:SymbolIcon Symbol="{Binding Icon}" 
+                                                   FontSize="28" 
+                                                   DockPanel.Dock="Left"
+                                                   Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}"/>
 
-
-                            <Button Click="TileButton_Click"
-                                    Tag="{Binding Tag}"
-                                    Background="Transparent"
-                                    BorderThickness="0"
-                                    Padding="15,12"
-                                    Height="50"
-                                    HorizontalAlignment="Stretch"
-                                    HorizontalContentAlignment="Stretch"
-                                    Cursor="Hand">
-
-                                <Button.Style>
-                                    <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-                                        <Setter Property="Template">
-                                            <Setter.Value>
-                                                <ControlTemplate TargetType="Button">
-                                                    <ContentPresenter />
-                                                </ControlTemplate>
-                                            </Setter.Value>
-                                        </Setter>
-                                    </Style>
-                                </Button.Style>
-
-                                <Grid Background="Transparent">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto"/>
-                                        <ColumnDefinition Width="350"/>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                    </Grid.ColumnDefinitions>
-
-                                    <ui:SymbolIcon Grid.Column="0"
-                                                   Symbol="Wrench24"
-                                                   FontSize="20"
-                                                   Margin="15,0,15,0"
-                                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
-
-                                    <TextBlock Grid.Column="1"
-                                               Text="{Binding Title}"
-                                               FontSize="15"
-                                               FontWeight="Medium"
-                                               VerticalAlignment="Center"/>
-
-                                    <TextBlock x:Name="DescriptionText"
-                                               Grid.Column="2"
-                                               Text="{Binding Description}"
-                                               Opacity="0"
-                                               Margin="15,0"
-                                               VerticalAlignment="Center"
-                                               HorizontalAlignment="Left"
-                                               FontSize="13"
-                                               Foreground="{DynamicResource TextFillColorTertiaryBrush}"
-                                               TextTrimming="CharacterEllipsis"/>
-
-                                    <ui:ToggleSwitch Grid.Column="3"
+                                        <ui:ToggleSwitch DockPanel.Dock="Right"
                                                      IsChecked="{Binding IsChecked, Mode=OneWay}"
                                                      Visibility="{Binding ShowSwitch, Converter={StaticResource BoolToVis}}"
-                                                     IsHitTestVisible="False"
-                                                     Focusable="False"
-                                                     Margin="10,0,15,0"/>
+                                                     IsHitTestVisible="False"/>
+                                    </DockPanel>
 
-                                    <ui:SymbolIcon Grid.Column="4"
-                                                   Symbol="ChevronRight24"
-                                                   Margin="0,0,15,0"
-                                                   FontSize="16"
-                                                   Foreground="{DynamicResource TextFillColorTertiaryBrush}"/>
+                                    <!-- Заголовок -->
+                                    <TextBlock Grid.Row="1"
+                                           Text="{Binding Title}"
+                                           FontSize="14"
+                                           FontWeight="SemiBold"
+                                           TextWrapping="Wrap"
+                                           Margin="0,0,0,6"
+                                           Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
 
-                                    <Grid.Triggers>
-                                        <EventTrigger RoutedEvent="MouseEnter">
-                                            <BeginStoryboard>
-                                                <Storyboard>
-                                                    <DoubleAnimation Storyboard.TargetName="DescriptionText"
-                                                                     Storyboard.TargetProperty="Opacity"
-                                                                     To="1" Duration="0:0:0.2"/>
-                                                </Storyboard>
-                                            </BeginStoryboard>
-                                        </EventTrigger>
-                                        <EventTrigger RoutedEvent="MouseLeave">
-                                            <BeginStoryboard>
-                                                <Storyboard>
-                                                    <DoubleAnimation Storyboard.TargetName="DescriptionText"
-                                                                     Storyboard.TargetProperty="Opacity"
-                                                                     To="0" Duration="0:0:0.2"/>
-                                                </Storyboard>
-                                            </BeginStoryboard>
-                                        </EventTrigger>
-                                    </Grid.Triggers>
+                                    <!-- Описание -->
+                                    <TextBlock x:Name="DescriptionText"
+                                           Grid.Row="2"
+                                           Text="{Binding Description}"
+                                           FontSize="12"
+                                           Opacity="0.6"
+                                           TextWrapping="Wrap"
+                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
 
+                                    <!-- Стрелочка (Шеврон) -->
+                                    <ui:SymbolIcon x:Name="ChevronIcon" 
+                                               Symbol="ChevronRight24" 
+                                               Grid.Row="2"
+                                               VerticalAlignment="Bottom" 
+                                               HorizontalAlignment="Right"
+                                               FontSize="14"
+                                               Opacity="0.5"/>
                                 </Grid>
-                            </Button>
+                            </ui:Button>
                         </ui:Card>
 
+                        <DataTemplate.Triggers>
+                            <!-- ЛОГИКА: Если есть Switch, прячем стрелочку -->
+                            <DataTrigger Binding="{Binding ShowSwitch}" Value="True">
+                                <Setter TargetName="ChevronIcon" Property="Visibility" Value="Collapsed"/>
+                            </DataTrigger>
+
+                            <!-- Анимация при наведении на всю карточку -->
+                            <EventTrigger RoutedEvent="MouseEnter">
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="DescriptionText" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.2"/>
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </EventTrigger>
+                            <EventTrigger RoutedEvent="MouseLeave">
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="DescriptionText" Storyboard.TargetProperty="Opacity" To="0.6" Duration="0:0:0.2"/>
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </EventTrigger>
+                        </DataTemplate.Triggers>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
         </ScrollViewer>
+        
     </Grid>
 </Page>

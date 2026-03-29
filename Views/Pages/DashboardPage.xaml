@@ -12,237 +12,81 @@
     Foreground="{DynamicResource TextFillColorPrimaryBrush}">
 
     <Page.Resources>
+        <!-- Анимации перехода на страницу приложения -->
         <Storyboard x:Key="FadeInBg">
-            <DoubleAnimation Storyboard.TargetName="DashboardBackground" 
-                             Storyboard.TargetProperty="Opacity" 
-                             To="0.25" Duration="0:0:0.6"/>
-            <DoubleAnimation Storyboard.TargetName="BackgroundDimmer" 
-                             Storyboard.TargetProperty="Opacity" 
-                             To="0.3" Duration="0:0:0.6"/>
+            <DoubleAnimation Storyboard.TargetName="DashboardBackground" Storyboard.TargetProperty="Opacity" To="0.15" Duration="0:0:0.6"/>
+            <DoubleAnimation Storyboard.TargetName="BackgroundDimmer" Storyboard.TargetProperty="Opacity" To="0.5" Duration="0:0:0.6"/>
         </Storyboard>
         <Storyboard x:Key="FadeOutBg">
-            <DoubleAnimation Storyboard.TargetName="DashboardBackground" 
-                             Storyboard.TargetProperty="Opacity" 
-                             To="0" Duration="0:0:0.3"/>
-            <DoubleAnimation Storyboard.TargetName="BackgroundDimmer" 
-                             Storyboard.TargetProperty="Opacity" 
-                             To="0" Duration="0:0:0.3"/>
+            <DoubleAnimation Storyboard.TargetName="DashboardBackground" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.3"/>
+            <DoubleAnimation Storyboard.TargetName="BackgroundDimmer" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.3"/>
         </Storyboard>
-        <Storyboard x:Key="ShowEditTip">
-            <DoubleAnimation
-            Storyboard.TargetName="editTip"
-            Storyboard.TargetProperty="Opacity"
-            To="0.3"
-            Duration="0:0:0.2" />
-            <DoubleAnimation
-            Storyboard.TargetName="editTip"
-            Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)"
-            To="0"
-            Duration="0:0:0.2" />
+        <Storyboard x:Key="FadeInLoading">
+            <DoubleAnimation Storyboard.TargetName="LoadingOverlay" Storyboard.TargetProperty="Opacity" From="0" To="1" Duration="0:0:0.1" />
         </Storyboard>
 
-        <Storyboard x:Key="HideEditTip">
-            <DoubleAnimation
-            Storyboard.TargetName="editTip"
-            Storyboard.TargetProperty="Opacity"
-            To="0"
-            Duration="0:0:0.2" />
-            <DoubleAnimation
-            Storyboard.TargetName="editTip"
-            Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)"
-            To="5" 
-            Duration="0:0:0.2" />
-        </Storyboard>
+        <!-- Анимации режима редактирования -->
         <Storyboard x:Key="ShakeAnimation" RepeatBehavior="Forever" AutoReverse="True">
-            <DoubleAnimation
-                Storyboard.TargetProperty="(UIElement.RenderTransform).(RotateTransform.Angle)"
-                From="-2" To="2" Duration="0:0:0.1" />
+            <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(RotateTransform.Angle)" From="-1" To="1" Duration="0:0:0.12" />
         </Storyboard>
 
         <Storyboard x:Key="SlideDownAnimation">
             <ObjectAnimationUsingKeyFrames Storyboard.TargetName="EditModePanel" Storyboard.TargetProperty="Visibility">
                 <DiscreteObjectKeyFrame KeyTime="0:0:0" Value="{x:Static Visibility.Visible}"/>
             </ObjectAnimationUsingKeyFrames>
-
-            <DoubleAnimation Storyboard.TargetName="EditModePanel"
-                             Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)"
-                             From="-40" To="0" Duration="0:0:0.4">
+            <DoubleAnimation Storyboard.TargetName="EditModePanel" Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)" From="-40" To="0" Duration="0:0:0.4">
                 <DoubleAnimation.EasingFunction>
                     <ExponentialEase EasingMode="EaseOut" Exponent="5"/>
                 </DoubleAnimation.EasingFunction>
             </DoubleAnimation>
-
-            <DoubleAnimation Storyboard.TargetName="AppsScrollViewer"
-                             Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)"
-                             From="0" To="40" Duration="0:0:0.4">
-                <DoubleAnimation.EasingFunction>
-                    <ExponentialEase EasingMode="EaseOut" Exponent="5"/>
-                </DoubleAnimation.EasingFunction>
-            </DoubleAnimation>
-
-            <DoubleAnimation Storyboard.TargetName="EditModePanel"
-                             Storyboard.TargetProperty="Opacity"
-                             From="0" To="1" Duration="0:0:0.3"/>
+            <DoubleAnimation Storyboard.TargetName="EditModePanel" Storyboard.TargetProperty="Opacity" From="0" To="1" Duration="0:0:0.3"/>
         </Storyboard>
 
         <Storyboard x:Key="SlideUpAnimation">
-            <DoubleAnimation Storyboard.TargetName="EditModePanel"
-                             Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)"
-                             To="-80" Duration="0:0:0.3">
+            <DoubleAnimation Storyboard.TargetName="EditModePanel" Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)" To="-80" Duration="0:0:0.3">
                 <DoubleAnimation.EasingFunction>
                     <ExponentialEase EasingMode="EaseIn" Exponent="5"/>
                 </DoubleAnimation.EasingFunction>
             </DoubleAnimation>
-
-            <DoubleAnimation Storyboard.TargetName="AppsScrollViewer"
-                             Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)"
-                             To="0" Duration="0:0:0.3">
-                <DoubleAnimation.EasingFunction>
-                    <ExponentialEase EasingMode="EaseIn" Exponent="5"/>
-                </DoubleAnimation.EasingFunction>
-            </DoubleAnimation>
-
-            <DoubleAnimation Storyboard.TargetName="EditModePanel"
-                             Storyboard.TargetProperty="Opacity"
-                             To="0" Duration="0:0:0.2"/>
-
+            <DoubleAnimation Storyboard.TargetName="EditModePanel" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.2"/>
             <ObjectAnimationUsingKeyFrames Storyboard.TargetName="EditModePanel" Storyboard.TargetProperty="Visibility" BeginTime="0:0:0.3">
                 <DiscreteObjectKeyFrame KeyTime="0:0:0" Value="{x:Static Visibility.Collapsed}"/>
             </ObjectAnimationUsingKeyFrames>
         </Storyboard>
-        <Storyboard x:Key="FadeInLoading">
-            <DoubleAnimation
-        Storyboard.TargetName="LoadingOverlay"
-        Storyboard.TargetProperty="Opacity"
-        From="0" To="1" 
-        Duration="0:0:0.05" />
-        </Storyboard>
-        <Storyboard x:Key="FadeOutLoading">
-            <DoubleAnimation
-        Storyboard.TargetName="AppsGrid"
-        Storyboard.TargetProperty="Opacity"
-        From="1" To="0" 
-        Duration="0:0:0.05" />
-        </Storyboard>
-
     </Page.Resources>
+
     <Grid>
-        <Image x:Name="DashboardBackground"
-           Stretch="UniformToFill"
-           Opacity="0"
-           HorizontalAlignment="Center"
-           VerticalAlignment="Center">
+        <!-- Размытый фон (появляется при клике на приложение) -->
+        <Image x:Name="DashboardBackground" Stretch="UniformToFill" Opacity="0" HorizontalAlignment="Center" VerticalAlignment="Center">
             <Image.Effect>
-                <!-- Размываем фон, чтобы он не мешал читать текст на плитках -->
-                <BlurEffect Radius="40" KernelType="Gaussian"/>
+                <BlurEffect Radius="60" KernelType="Gaussian"/>
             </Image.Effect>
         </Image>
         <Border x:Name="BackgroundDimmer" Background="Black" Opacity="0" IsHitTestVisible="False"/>
-        <Grid x:Name="AppsGrid"
-          Background="Transparent" 
-          MouseLeftButtonDown="Grid_MouseLeftButtonDown"
-          AllowDrop="True"
-          PreviewDragOver="Grid_PreviewDragOver">
-            <ScrollViewer x:Name="AppsScrollViewer"
-                      Panel.ZIndex="0"
-                          ClipToBounds="True"
-                      HorizontalScrollBarVisibility="Disabled"
-                      VerticalScrollBarVisibility="Auto">
 
-                <ScrollViewer.RenderTransform>
-                    <TranslateTransform Y="0"/>
-                </ScrollViewer.RenderTransform>
+        <Grid x:Name="AppsGrid" Background="Transparent" MouseLeftButtonDown="Grid_MouseLeftButtonDown" AllowDrop="True" PreviewDragOver="Grid_PreviewDragOver">
 
-                <WrapPanel
-                x:Name="AppsWrapPanel"
-                Margin="10"
-                HorizontalAlignment="Center"
-                VerticalAlignment="Stretch"
-                    ClipToBounds="False"
-                Orientation="Horizontal" />
-            </ScrollViewer>
+            <ui:DynamicScrollViewer x:Name="AppsScrollViewer" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <!-- WrapPanel автоматически переносит плитки. 4 штуки в ряд встанут идеально -->
+                <WrapPanel x:Name="AppsWrapPanel" Margin="0,25,0,0" HorizontalAlignment="Center" VerticalAlignment="Top" Orientation="Horizontal" />
+            </ui:DynamicScrollViewer>
 
-            <Popup x:Name="HoverPopup" AllowsTransparency="True" Placement="Center" PopupAnimation="None" StaysOpen="True">
-                <!-- Grid нужен, чтобы HoverTile выравнивался по центру относительно PlacementTarget -->
-                <Grid Width="300" Height="350" Background="Transparent">
-
-                    <!-- ТВОЙ HoverTile. Обрати внимание на выравнивание по центру! -->
-                    <Border x:Name="HoverTile" HorizontalAlignment="Center" VerticalAlignment="Center" 
-                MouseLeave="HoverTile_MouseLeave" MouseLeftButtonDown="HoverTile_MouseLeftButtonDown"
-                CornerRadius="12" Background="#1E1E1E">
-
-                        <Grid x:Name="HoverInternalGrid">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="110" x:Name="HoverHeaderRow"/>
-                            <RowDefinition Height="0" x:Name="HoverDescRow"/>
-                        </Grid.RowDefinitions>
-
-                        <!-- Верх (Превью) -->
-                        <Border x:Name="HoverBg" CornerRadius="11,11,0,0" ClipToBounds="True">
-                            <Border.Background>
-                                <ImageBrush x:Name="HoverBgBrush" Stretch="UniformToFill" />
-                            </Border.Background>
-                        </Border>
-
-                        <!-- Низ (Инфо) -->
-                        <StackPanel x:Name="HoverInfoStack" Grid.Row="1" Margin="12,8,12,10" Opacity="0">
-                            <TextBlock x:Name="HoverTitle" FontWeight="Bold" Foreground="White" FontSize="14" />
-                            <TextBlock x:Name="HoverDesc" FontSize="11" Foreground="Silver" TextWrapping="Wrap" MaxHeight="45" TextTrimming="CharacterEllipsis" Margin="0,4,0,0"/>
-                            <TextBlock Text="ОТКРЫТЬ" Foreground="SkyBlue" FontWeight="Black" FontSize="10" HorizontalAlignment="Right" Margin="0,8,0,0" />
-                        </StackPanel>
-                    </Grid>
-                </Border>
-                </Grid>
-            </Popup>
-
-            <StackPanel x:Name="EditModePanel" 
-                    Panel.ZIndex="1"
-                    Orientation="Horizontal" 
-                    HorizontalAlignment="Center" 
-                    VerticalAlignment="Top"
-                    Margin="0,0,0,0"
-                    Visibility="Collapsed" Opacity="0">
-
+            <!-- Панель управления порядком (появляется при DND) -->
+            <StackPanel x:Name="EditModePanel" Panel.ZIndex="1" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,15,0,0" Visibility="Collapsed" Opacity="0">
                 <StackPanel.RenderTransform>
                     <TranslateTransform Y="-80"/>
                 </StackPanel.RenderTransform>
-
-                <ui:Button Content="Завершить редактирование" 
-                       Icon="{ui:SymbolIcon Symbol=Checkmark24}" 
-                       Appearance="Primary"
-                       Click="ConfirmChanges_Click" 
-                       Height="45"
-                       FontSize="14">
+                <ui:Button Content="Сохранить порядок" Icon="{ui:SymbolIcon Symbol=Checkmark24}" Appearance="Primary" Click="ConfirmChanges_Click" Height="45" Padding="20,0">
                     <ui:Button.Effect>
-                        <DropShadowEffect BlurRadius="15" ShadowDepth="5" Opacity="0.3" Direction="270"/>
+                        <DropShadowEffect BlurRadius="15" Opacity="0.4"/>
                     </ui:Button.Effect>
                 </ui:Button>
             </StackPanel>
-            <StackPanel x:Name="editTip"
-                    Orientation="Horizontal"
-                    HorizontalAlignment="Center"
-                    VerticalAlignment="Bottom"
-                    Margin="0,0,0,10"
-                    Opacity="0">
-                <StackPanel.RenderTransform>
-                    <TranslateTransform Y="5"/>
-                </StackPanel.RenderTransform>
-                <ui:SymbolIcon Symbol="Info24" Margin="0,0,5,0"/>
-                <ui:TextBlock VerticalAlignment="Bottom" HorizontalAlignment="Center" Text="Нажмите правую кнопку мыши для изменения"/>
-            </StackPanel>
         </Grid>
-        <Grid x:Name="LoadingOverlay"
-        
-Visibility="Collapsed"
-Panel.ZIndex="100"
-        Opacity="0" >
-            <ui:ProgressRing IsIndeterminate="True" 
-                   Width="60" 
-                   Height="60" 
-                   Margin="0,0,0,0"
-                   HorizontalAlignment="Center"
-                   VerticalAlignment="Center"/>
 
+        <!-- Оверлей загрузки -->
+        <Grid x:Name="LoadingOverlay" Visibility="Collapsed" Panel.ZIndex="100" Opacity="0" Background="#80000000">
+            <ui:ProgressRing IsIndeterminate="True" Width="60" Height="60" HorizontalAlignment="Center" VerticalAlignment="Center"/>
         </Grid>
     </Grid>
 </Page>

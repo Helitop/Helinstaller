@@ -1,21 +1,22 @@
 ﻿using Helinstaller.ViewModels.Pages;
 using Microsoft.Win32;
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Net.Http;
-using System.Reflection.Metadata;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using System.Windows;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media.Imaging;
-using Windows.ApplicationModel.Store;
 using Wpf.Ui.Abstractions.Controls;
 using Wpf.Ui.Appearance;
+using Wpf.Ui.Controls;
 using WpfAnimatedGif;
 
 namespace Helinstaller.Views.Pages;
@@ -26,6 +27,7 @@ public class TweakItem : INotifyPropertyChanged
     public required string Description { get; set; }
     public required string Tag { get; set; }
     public bool ShowSwitch { get; set; }
+    public Wpf.Ui.Controls.SymbolRegular Icon { get; set; }
 
     private bool _isChecked;
     public bool IsChecked
@@ -62,18 +64,17 @@ public partial class Tweaks : INavigableView<TweaksViewModel>
         SystemParametersInfo(SPI_GETSTICKYKEYS, sk.cbSize, ref sk, 0);
         bool isStickyEnabled = (sk.dwFlags & SKF_STICKYKEYSON) != 0;
 
-        TweakItems.Add(new TweakItem { Title = "Активация Windows/Office", Description = "Активатор через командную строку (IRM).", Tag = "Function1" });
-        TweakItems.Add(new TweakItem { Title = "Активация WinRAR", Description = "Убирает назойливое окно 'Купи меня'.", Tag = "WinRARActivation" });
-        TweakItems.Add(new TweakItem { Title = "Завершение в панели задач", Description = "Добавляет кнопку 'Завершить задачу' в панели задач.", Tag = "Function2", ShowSwitch = true, IsChecked = isTaskEndEnabled });
-        TweakItems.Add(new TweakItem { Title = "Залипание клавиш", Description = "Отключает сообщение при нажатии Shift.", Tag = "Function3", ShowSwitch = true, IsChecked = isStickyEnabled });
-        TweakItems.Add(new TweakItem { Title = "Частичный обход блокировок", Description = "Заменяет hosts для доступа к ИИ чат-ботам.", Tag = "Function4" });
-        TweakItems.Add(new TweakItem { Title = "Тёмная тема", Description = "Включает тёмную тему Windows для системы и приложений.", Tag = "Function5", ShowSwitch = true, IsChecked = ThemeChanger.IsSystemInDarkMode() });
+        TweakItems.Add(new TweakItem { Title = "Активация Windows/Office", Description = "Цифровая лицензия через MAS. Безопасно и навсегда.", Tag = "Function1", Icon = SymbolRegular.WindowShield24 });
+        TweakItems.Add(new TweakItem { Title = "Активация WinRAR", Description = "Убирает назойливое окно 'Купи меня' навсегда.", Tag = "WinRARActivation", Icon = SymbolRegular.Archive24 });
+        TweakItems.Add(new TweakItem { Title = "Завершение в панели задач", Description = "Кнопка 'Завершить задачу' при нажатии ПКМ по иконке в панели.", Tag = "Function2", ShowSwitch = true, IsChecked = isTaskEndEnabled, Icon = SymbolRegular.Desktop24 });
+        TweakItems.Add(new TweakItem { Title = "Залипание клавиш", Description = "Отключает писк и окно при многократном нажатии Shift.", Tag = "Function3", ShowSwitch = true, IsChecked = isStickyEnabled, Icon = SymbolRegular.Keyboard24 });
+        TweakItems.Add(new TweakItem { Title = "Обход блокировок ИИ", Description = "Доступ к ChatGPT, Claude и Gemini без VPN через системный hosts.", Tag = "Function4", Icon = SymbolRegular.ShieldGlobe24 });
+        TweakItems.Add(new TweakItem { Title = "Тёмная тема", Description = "Принудительный переход системы и приложений на тёмную сторону.", Tag = "Function5", ShowSwitch = true, IsChecked = ThemeChanger.IsSystemInDarkMode(), Icon = SymbolRegular.WeatherMoon24 });
     }
 
     private async void TileButton_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is not Button btn || btn.Tag is not string tag) return;
-
+        if (sender is not System.Windows.Controls.Button btn || btn.Tag is not string tag) return;
         var item = TweakItems.FirstOrDefault(x => x.Tag == tag);
 
         try
@@ -81,13 +82,15 @@ public partial class Tweaks : INavigableView<TweaksViewModel>
             switch (tag)
             {
                 case "Function1":
-                    await RunPowershellCommand("irm https://get.activated.win | iex");
+                    var activationDlg = new ActivationDialog();
+                    activationDlg.Owner = Window.GetWindow(this);
+                    activationDlg.ShowDialog();
                     break;
                 case "Function2":
-                    if (item != null) ToggleTaskbarEndTask(item);
+                    if (item != null) await ToggleTaskbarEndTask(item);
                     break;
                 case "Function3":
-                    if (item != null) ToggleStickyKeys(item);
+                    if (item != null) await ToggleStickyKeys(item);
                     break;
                 case "WinRARActivation":
                     await ActivateWinRAR();
@@ -96,40 +99,29 @@ public partial class Tweaks : INavigableView<TweaksViewModel>
                     await ReplaceHostsFileAsync("https://raw.githubusercontent.com/Internet-Helper/GeoHideDNS/refs/heads/main/hosts/hosts");
                     break;
                 case "Function5":
-                    if (item != null) ThemeChanger.ToggleWindowsTheme(item);
+                    if (item != null) await ThemeChanger.ToggleWindowsTheme(item);
                     break;
             }
         }
         catch (Exception ex)
         {
-            CustomMessageBox.Show($"Произошла ошибка: {ex.Message}", "Ошибка", MessageBoxButton.OK);
+            await ShowUiMessageBox("Ошибка", ex.Message);
         }
     }
 
-    // --- Logic Methods ---
-
-    private async Task RunPowershellCommand(string command)
+    // Вспомогательный метод для красивых асинхронных уведомлений
+    private async Task ShowUiMessageBox(string title, string content)
     {
-        try
+        var msg = new Wpf.Ui.Controls.MessageBox
         {
-            var psi = new ProcessStartInfo
-            {
-                FileName = "powershell.exe",
-                Arguments = command,
-                Verb = "runas",
-                UseShellExecute = true,
-                WindowStyle = ProcessWindowStyle.Hidden
-            };
-            using var process = Process.Start(psi);
-            if (process != null) await process.WaitForExitAsync();
-        }
-        catch (Exception ex)
-        {
-            CustomMessageBox.Show($"Не удалось запустить PowerShell: {ex.Message}", "Ошибка", MessageBoxButton.OK);
-        }
+            Title = title,
+            Content = content,
+            CloseButtonText = "ОК"
+        };
+        await msg.ShowDialogAsync();
     }
 
-    private void ToggleTaskbarEndTask(TweakItem item)
+    private async Task ToggleTaskbarEndTask(TweakItem item)
     {
         const string keyPath = @"HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\TaskbarDeveloperSettings";
         try
@@ -140,11 +132,11 @@ public partial class Tweaks : INavigableView<TweaksViewModel>
         }
         catch (Exception ex)
         {
-            CustomMessageBox.Show($"Ошибка реестра: {ex.Message}", "Error", MessageBoxButton.OK);
+            await ShowUiMessageBox("Ошибка реестра", ex.Message);
         }
     }
 
-    private void ToggleStickyKeys(TweakItem item)
+    private async Task ToggleStickyKeys(TweakItem item)
     {
         try
         {
@@ -161,7 +153,7 @@ public partial class Tweaks : INavigableView<TweaksViewModel>
         }
         catch (Exception ex)
         {
-            CustomMessageBox.Show($"Ошибка StickyKeys: {ex.Message}", "Error", MessageBoxButton.OK);
+            await ShowUiMessageBox("Ошибка системы", ex.Message);
         }
     }
 
@@ -171,7 +163,7 @@ public partial class Tweaks : INavigableView<TweaksViewModel>
 
         if (string.IsNullOrEmpty(winRarPath) || !Directory.Exists(winRarPath))
         {
-            CustomMessageBox.Show("WinRAR не найден. Установите его перед активацией.", "Ошибка", MessageBoxButton.OK);
+            await ShowUiMessageBox("Ошибка", "WinRAR не найден в системе. Сначала установите его.");
             return;
         }
 
@@ -179,15 +171,15 @@ public partial class Tweaks : INavigableView<TweaksViewModel>
         {
             string keyContent = "RAR registration data\r\nWinRAR\r\nUnlimited Company License\r\nUID=4b914fb772c8376bf571\r\n6412212250f5711ad072cf351cfa39e2851192daf8a362681bbb1d\r\ncd48da1d14d995f0bbf960fce6cb5ffde62890079861be57638717\r\n7131ced835ed65cc743d9777f2ea71a8e32c7e593cf66794343565\r\nb41bcf56929486b8bcdac33d50ecf773996052598f1f556defffbd\r\n982fbe71e93df6b6346c37a3890f3c7edc65d7f5455470d13d1190\r\n6e6fb824bcf25f155547b5fc41901ad58c0992f570be1cf5608ba9\r\naef69d48c864bcd72d15163897773d314187f6a9af350808719796";
             await File.WriteAllTextAsync(Path.Combine(winRarPath, "rarreg.key"), keyContent);
-            CustomMessageBox.Show("WinRAR успешно активирован!", "Успех", MessageBoxButton.OK);
+            await ShowUiMessageBox("Успех", "WinRAR успешно активирован! Теперь окно о покупке не будет вас беспокоить.");
         }
         catch (UnauthorizedAccessException)
         {
-            CustomMessageBox.Show("Запустите программу от имени Администратора.", "Ошибка доступа", MessageBoxButton.OK);
+            await ShowUiMessageBox("Доступ запрещен", "Недостаточно прав. Запустите Helinstaller от имени администратора.");
         }
         catch (Exception ex)
         {
-            CustomMessageBox.Show($"Ошибка записи файла: {ex.Message}", "Ошибка", MessageBoxButton.OK);
+            await ShowUiMessageBox("Ошибка", ex.Message);
         }
     }
 
@@ -195,16 +187,26 @@ public partial class Tweaks : INavigableView<TweaksViewModel>
     {
         using (var keyLM = Registry.LocalMachine.OpenSubKey(keyPath))
             if (keyLM?.GetValue(null) is string pathLM) return Path.GetDirectoryName(pathLM);
-
         using (var keyCU = Registry.CurrentUser.OpenSubKey(keyPath))
             if (keyCU?.GetValue(null) is string pathCU) return Path.GetDirectoryName(pathCU);
-
         return null;
     }
 
     private async Task<bool> ReplaceHostsFileAsync(string url)
     {
-        if (CustomMessageBox.Show("Заменить файл hosts?", "Внимание", MessageBoxButton.YesNo) != CustomMessageBox.MessageBoxResult.Yes) return false;
+        var msg = new Wpf.Ui.Controls.MessageBox();
+        msg.Title = "Настройка обхода блокировок";
+        msg.Content = "Эта функция пропишет в системный файл 'hosts' адреса для прямого доступа к OpenAI (ChatGPT), Claude и Gemini и не только.\n\n" +
+                      "• Это работает без VPN и не влияет на общую скорость интернета.\n" +
+                      "• Будет создана резервная копия старого файла.\n" +
+                      "• Это не поможет при блокировке сервиса страной/провайдером.\n\n" +
+                      "Применить изменения?";
+        msg.IsPrimaryButtonEnabled = true;
+        msg.PrimaryButtonText = "Применить";
+        msg.CloseButtonText = "Отмена";
+
+        var result = await msg.ShowDialogAsync();
+        if (result != Wpf.Ui.Controls.MessageBoxResult.Primary) return false;
 
         string hostsPath = Path.Combine(Environment.SystemDirectory, @"drivers\etc\hosts");
         try
@@ -222,80 +224,52 @@ public partial class Tweaks : INavigableView<TweaksViewModel>
             }
 
             await File.WriteAllTextAsync(hostsPath, newContent);
-            CustomMessageBox.Show("Hosts успешно обновлен.\nПо пути '%SystemRoot%\\System32\\drivers\\etc' создан бэкап hosts.bak, при необходимости замените обратно.", "Успех", MessageBoxButton.OK);
+            await ShowUiMessageBox("Успех", "Файл hosts обновлен! Бэкап создан рядом (hosts.bak).\n\nТеперь сайты ИИ должны открываться напрямую. Если нет — очистите кэш браузера.");
             return true;
         }
         catch (UnauthorizedAccessException)
         {
-            CustomMessageBox.Show("Запустите программу от имени Администратора.", "Ошибка", MessageBoxButton.OK);
+            await ShowUiMessageBox("Ошибка доступа", "Не удалось отредактировать файл. Запустите программу от имени администратора.");
             return false;
         }
         catch (Exception ex)
         {
-            CustomMessageBox.Show($"Ошибка: {ex.Message}", "Fail", MessageBoxButton.OK);
+            await ShowUiMessageBox("Ошибка загрузки", "Не удалось скачать данные с сервера. Проверьте интернет.\n" + ex.Message);
             return false;
         }
     }
+
     private void SetRandomGif()
     {
-        // 1. Создаем список имен файлов вручную (так как нельзя сканировать ресурсы внутри EXE)
-        var gifFiles = new List<string>
-    {
-        "bocchi.gif",
-        "lucy.gif"
-        // Добавь сюда все свои файлы из папки Assets
-    };
-
+        var gifFiles = new List<string> { "bocchi.gif", "lucy.gif" };
         if (gifFiles.Count > 0)
         {
-            // 2. Выбираем случайное имя
             Random rnd = new Random();
             string randomFileName = gifFiles[rnd.Next(gifFiles.Count)];
-
-            // 3. Создаем URI (путь к ресурсу)
-            // Убедись, что папка называется Assets (с большой буквы, если так в проекте)
             var uri = new Uri($"pack://application:,,,/Assets/{randomFileName}");
-
-            // 4. Загружаем картинку
             BitmapImage bitmap = new BitmapImage();
             bitmap.BeginInit();
             bitmap.UriSource = uri;
             bitmap.EndInit();
-
-            // 5. Устанавливаем через библиотеку WpfAnimatedGif
             ImageBehavior.SetAnimatedSource(GIF, bitmap);
         }
     }
-    // --- Native ---
+
     private const uint SPI_GETSTICKYKEYS = 0x003A;
     private const uint SPI_SETSTICKYKEYS = 0x003B;
     private const uint SKF_STICKYKEYSON = 0x00000001;
 
     [StructLayout(LayoutKind.Sequential, Pack = 4)]
-    private struct STICKYKEYS
-    {
-        public uint cbSize;
-        public uint dwFlags;
-    }
+    private struct STICKYKEYS { public uint cbSize; public uint dwFlags; }
 
     [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool SystemParametersInfo(uint uiAction, uint uiParam, ref STICKYKEYS pvParam, uint fWinIni);
 }
 
-
 public static class ThemeChanger
 {
     private const string PersonalizeKey = @"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize";
-    private const string SystemUsesLightThemeKey = "SystemUsesLightTheme";
-    private const string AppsUseLightThemeKey = "AppsUseLightTheme";
-
-    [DllImport("user32.dll", SetLastError = true)]
-    private static extern int SendMessageTimeout(IntPtr hWnd, uint Msg, IntPtr wParam, string lParam,
-        uint fuFlags, uint uTimeout, out IntPtr lpdwResult);
-
-    private const uint WM_SETTINGCHANGE = 0x001A;
-    private const uint SMTO_ABORTIFHUNG = 0x0002;
 
     public static bool IsSystemInDarkMode()
     {
@@ -303,49 +277,39 @@ public static class ThemeChanger
         {
             using (RegistryKey key = Registry.CurrentUser.OpenSubKey(PersonalizeKey))
             {
-                object value = key?.GetValue(SystemUsesLightThemeKey);
-                return value != null && value is int intValue && intValue == 0;
+                object value = key?.GetValue("SystemUsesLightTheme");
+                return value != null && (int)value == 0;
             }
         }
-        catch
-        {
-            return false; // Если не удалось прочитать, считаем светлой
-        }
+        catch { return false; }
     }
 
-    public static void ToggleWindowsTheme(TweakItem Item)
+    public static async Task ToggleWindowsTheme(TweakItem Item)
     {
         bool isDark = IsSystemInDarkMode();
-        int newSystemValue = isDark ? 1 : 0; // Переключаем систему
-        int newAppsValue = newSystemValue;   // Переключаем приложения в ту же тему
+        int newVal = isDark ? 1 : 0;
 
         try
         {
             using (RegistryKey key = Registry.CurrentUser.CreateSubKey(PersonalizeKey, true))
             {
-                key.SetValue(SystemUsesLightThemeKey, newSystemValue, RegistryValueKind.DWord);
-                key.SetValue(AppsUseLightThemeKey, newAppsValue, RegistryValueKind.DWord);
+                key.SetValue("SystemUsesLightTheme", newVal, RegistryValueKind.DWord);
+                key.SetValue("AppsUseLightTheme", newVal, RegistryValueKind.DWord);
             }
 
-            // Сообщаем системе, чтобы изменения вступили в силу
-            SendMessageTimeout(new IntPtr(0xFFFF), WM_SETTINGCHANGE, IntPtr.Zero, "ImmersiveColorSet",
-                SMTO_ABORTIFHUNG, 100, out _);
+            SendMessageTimeout(new IntPtr(0xFFFF), 0x001A, IntPtr.Zero, "ImmersiveColorSet", 0x0002, 100, out _);
+
             isDark = IsSystemInDarkMode();
             Item.IsChecked = isDark;
-            if (!isDark)
-            {
-                ApplicationThemeManager.Apply(ApplicationTheme.Light);
-
-            }
-            if (isDark)
-            {
-                ApplicationThemeManager.Apply(ApplicationTheme.Dark);
-
-            }
+            ApplicationThemeManager.Apply(isDark ? ApplicationTheme.Dark : ApplicationTheme.Light);
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"Ошибка при переключении темы: {ex.Message}");
+            var msg = new Wpf.Ui.Controls.MessageBox { Title = "Ошибка темы", Content = ex.Message, CloseButtonText = "ОК" };
+            await msg.ShowDialogAsync();
         }
     }
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern int SendMessageTimeout(IntPtr hWnd, uint Msg, IntPtr wParam, string lParam, uint fuFlags, uint uTimeout, out IntPtr lpdwResult);
 }
