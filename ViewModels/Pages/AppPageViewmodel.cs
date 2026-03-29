@@ -87,6 +87,12 @@ namespace Helinstaller.ViewModels.Pages
                     task.IsIndeterminate = true;
                     await InstallOffice();
                 }
+                else if (DownloadUrl.StartsWith("ms-windows-store:", StringComparison.OrdinalIgnoreCase))
+                {
+                    task.Status = "Открытие в Microsoft Store...";
+                    task.IsIndeterminate = true;
+                    await InstallViaStore(DownloadUrl, task);
+                }
                 else if (DownloadUrl.StartsWith("winget:", StringComparison.OrdinalIgnoreCase))
                 {
                     task.Status = "Очередь Winget...";
@@ -152,8 +158,9 @@ namespace Helinstaller.ViewModels.Pages
             task.Status = "Запуск установщика...";
             task.IsIndeterminate = true;
             var psi = new ProcessStartInfo { FileName = tempFile, UseShellExecute = true };
-            if (tempFile.EndsWith(".exe")) psi.Arguments = "/S /VERYSILENT /norestart /quiet";
-            if (tempFile.EndsWith(".msi")) psi.Arguments = "/qn /norestart";
+            if (tempFile.EndsWith(".exe"));
+            if (tempFile.EndsWith(".msi"));
+            
             using var p = Process.Start(psi);
             if (p != null) await p.WaitForExitAsync();
         }
@@ -203,20 +210,55 @@ namespace Helinstaller.ViewModels.Pages
             try
             {
                 using HttpClient client = new HttpClient();
-                client.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0");
-                string json = await client.GetStringAsync("https://api.github.com/repos/" + apiUrl.Trim('/') + "/releases/latest");
+
+                // ВАЖНО: GitHub ОЧЕНЬ не любит общие User-Agent. 
+                // Поставь название своего проекта, так лимиты будут мягче.
+                client.DefaultRequestHeaders.UserAgent.ParseAdd("Helinstaller-App-v1.0");
+
+                var response = await client.GetAsync("https://api.github.com/repos/" + apiUrl.Trim('/') + "/releases/latest");
+
+                // Проверяем на лимит запросов (403)
+                if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)
+                {
+                    Debug.WriteLine("GitHub API: Rate limit exceeded.");
+                    // Вместо ошибки возвращаем "LIMIT", чтобы обработать это в Install()
+                    return "ERROR_LIMIT";
+                }
+
+                response.EnsureSuccessStatusCode();
+                string json = await response.Content.ReadAsStringAsync();
+
                 var root = JsonSerializer.Deserialize<GithubReleaseResponse>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
                 if (root?.Assets == null) return null;
+
                 foreach (var ext in priorityExtensions)
                 {
                     var asset = root.Assets.FirstOrDefault(a => a.Name.EndsWith(ext, StringComparison.OrdinalIgnoreCase));
                     if (asset != null) return asset.BrowserDownloadUrl;
                 }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"GitHub API Error: {ex.Message}");
+            }
             return null;
         }
+        private async Task InstallViaStore(string storeUrl, DownloadTask task)
+        {
+            await Task.Run(() =>
+            {
+                // Просто запускаем ссылку через оболочку Windows, она сама откроет Магазин
+                var psi = new ProcessStartInfo
+                {
+                    FileName = storeUrl,
+                    UseShellExecute = true
+                };
+                Process.Start(psi);
+            });
 
+            // Даем пользователю время понять, что произошло
+            await Task.Delay(2000);
+        }
         public class GithubReleaseResponse { public List<GithubAsset> Assets { get; set; } }
         public class GithubAsset { public string Name { get; set; } [JsonPropertyName("browser_download_url")] public string BrowserDownloadUrl { get; set; } }
 

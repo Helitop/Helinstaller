@@ -54,12 +54,12 @@
     "downloadUrl": "ms-windows-store://pdp/?ProductId=xp89dcgq3k6vld"
   },
   {
-    "name": "Meridius",
-    "title": "Meridius",
-    "description": "ПК-Клиент ВК Музыки. Эквалайзер, плавное затухание - всё есть, всё здесь.",
-    "iconPath": "/Assets/meridius.png",
-    "previewPath": "/Assets/meridiusprev.png",
-    "downloadUrl": "github:https://api.github.com/repos/PurpleHorrorRus/Meridius/releases/latest"
+    "name": "Windhawk",
+    "title": "Windhawk",
+    "description": "Модификация и кастомизация Windows. Схоже с ExplorerPatcher",
+    "iconPath": "/Assets/windhawk.png",
+    "previewPath": "/Assets/windhawkprev.png",
+    "downloadUrl": "https://ramensoftware.com/downloads/windhawk_setup.exe"
   },
   {
     "name": "TB",

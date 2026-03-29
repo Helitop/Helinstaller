@@ -36,7 +36,7 @@
                 <StackPanel Orientation="Horizontal" Margin="0,0,0,24">
 
                     <!-- ИСправленная Иконка (Используем ImageBrush для скругления) -->
-                    <Border Width="110" Height="110" CornerRadius="20" Background="#0AFFFFFF" BorderBrush="#1AFFFFFF" BorderThickness="1" 
+                    <Border Width="110" Height="110" CornerRadius="20" Padding="10" Background="#0AFFFFFF" BorderBrush="#1AFFFFFF" BorderThickness="1" 
                             Visibility="{Binding IconPath, Converter={StaticResource PathToVisibilityConverter}}">
                         <Border.Effect>
                             <DropShadowEffect BlurRadius="15" ShadowDepth="5" Opacity="0.3" Color="Black"/>
@@ -105,8 +105,8 @@
                                             <Setter Property="Content">
                                                 <Setter.Value>
                                                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                                                        <ui:ProgressRing Height="20" Width="20" IsIndeterminate="False" Progress="{Binding ProgressValue}" Margin="0,0,10,0" Foreground="White" />
-                                                        <TextBlock Text="Установка..." VerticalAlignment="Center" FontSize="15"/>
+                                                        <ui:ProgressRing Height="20" Width="20" IsIndeterminate="False" Progress="{Binding ProgressValue}" Margin="0,0,10,0" />
+                                                        <ui:TextBlock Text="Установка..." Foreground="{DynamicResource ApplicationBackgroundBrush}" VerticalAlignment="Center" FontSize="15"/>
                                                     </StackPanel>
                                                 </Setter.Value>
                                             </Setter>
@@ -133,26 +133,36 @@
             </StackPanel>
         </ScrollViewer>
 
-        <!-- ПРАВАЯ ЧАСТЬ: ИСПРАВЛЕННОЕ Превью изображения -->
+        <!-- ПРАВАЯ ЧАСТЬ: Идеальное превью со скруглениями -->
         <Border Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Center" 
                 CornerRadius="16" Background="#05FFFFFF" BorderBrush="#1AFFFFFF" BorderThickness="1" 
                 Visibility="{Binding PreviewPath, Converter={StaticResource PathToVisibilityConverter}}"
                 Margin="0,0,0,20">
+            <!-- Тень рамки -->
             <Border.Effect>
                 <DropShadowEffect BlurRadius="40" ShadowDepth="10" Opacity="0.4" Color="Black" />
             </Border.Effect>
 
-            <Grid>
-                <!-- Невидимая маска для обрезки острых углов картинки -->
-                <Border x:Name="PreviewClipMask" Background="White" CornerRadius="15" />
+            <!-- Сама картинка. Она сама задаст правильные пропорции рамке -->
+            <Image x:Name="AppPreviewImage" 
+                   RenderOptions.BitmapScalingMode="HighQuality" 
+                   Stretch="Uniform" 
+                   Source="{Binding PreviewPath, Converter={StaticResource ImageSourceConverter}}">
 
-                <Image RenderOptions.BitmapScalingMode="HighQuality" Stretch="Uniform" Source="{Binding PreviewPath, Converter={StaticResource ImageSourceConverter}}">
-                    <!-- Заставляем картинку принять форму маски -->
-                    <Image.OpacityMask>
-                        <VisualBrush Visual="{Binding ElementName=PreviewClipMask}" />
-                    </Image.OpacityMask>
-                </Image>
-            </Grid>
+                <!-- МАГИЯ: Отрезаем острые углы у самой картинки -->
+                <Image.OpacityMask>
+                    <VisualBrush>
+                        <VisualBrush.Visual>
+                            <!-- Эта маска невидима, она просто "вырезает" картинку по своим краям.
+                                 Биндинг размеров гарантирует, что скругления (CornerRadius) 
+                                 не исказятся и всегда будут ровными. -->
+                            <Border Background="Black" CornerRadius="15" 
+                                    Width="{Binding ActualWidth, ElementName=AppPreviewImage}" 
+                                    Height="{Binding ActualHeight, ElementName=AppPreviewImage}" />
+                        </VisualBrush.Visual>
+                    </VisualBrush>
+                </Image.OpacityMask>
+            </Image>
         </Border>
 
     </Grid>

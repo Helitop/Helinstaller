@@ -147,6 +147,12 @@
     <None Update="Assets\utorrentprev.png">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Update="Assets\windhawk.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Assets\windhawkprev.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="Assets\winrar.png">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
