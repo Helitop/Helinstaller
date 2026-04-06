@@ -167,14 +167,102 @@ namespace Helinstaller.ViewModels.Pages
 
         private async Task InstallViaWinget(string appId, DownloadTask task)
         {
+            task.Status = "Проверка системы...";
+
+            // Проверяем, есть ли вообще winget в винде
+            if (!IsWingetInstalled())
+            {
+                task.Status = "Winget не найден. Пробую оживить...";
+                bool repaired = await TryRepairWinget();
+
+                if (!repaired)
+                {
+                    throw new Exception("Winget не установлен или устарел. Откройте Microsoft Store и обновите 'Установщик приложений' (App Installer).");
+                }
+            }
+
             task.Status = "Установка через Winget...";
+            task.IsIndeterminate = true;
+
+            // Запускаем установку
+            // --accept-package-agreements и --accept-source-agreements чтобы он не ждал нажатия кнопок скрыто
             string args = $"install --id {appId} --silent --accept-package-agreements --accept-source-agreements";
-            ProcessStartInfo psi = new ProcessStartInfo { FileName = "winget", Arguments = args, UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true };
-            using var process = Process.Start(psi);
-            await process.WaitForExitAsync();
+
+            ProcessStartInfo psi = new ProcessStartInfo
+            {
+                FileName = "winget",
+                Arguments = args,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                RedirectStandardOutput = true
+            };
+
+            using (var process = Process.Start(psi))
+            {
+                if (process != null)
+                {
+                    await process.WaitForExitAsync();
+
+                    // Если winget вернул ошибку (код не 0)
+                    if (process.ExitCode != 0)
+                    {
+                        throw new Exception($"Winget завершился с кодом {process.ExitCode}. Попробуйте установить вручную.");
+                    }
+                }
+            }
         }
 
-        // --- Остальные методы (InitializeAsync, AutoFillMetadata, GitHub и т.д.) оставляешь как были ---
+        // 2. ВСПОМОГАТЕЛЬНАЯ ФУНКЦИЯ: ПРОВЕРКА НАЛИЧИЯ
+        private bool IsWingetInstalled()
+        {
+            try
+            {
+                using var process = new Process
+                {
+                    StartInfo = new ProcessStartInfo
+                    {
+                        FileName = "winget",
+                        Arguments = "--version",
+                        UseShellExecute = false,
+                        CreateNoWindow = true
+                    }
+                };
+                process.Start();
+                process.WaitForExit(2000); // Ждем 2 секунды ответа
+                return process.ExitCode == 0;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        // 3. ВСПОМОГАТЕЛЬНАЯ ФУНКЦИЯ: ПОПЫТКА РЕГИСТРАЦИИ (Для новых систем)
+        private async Task<bool> TryRepairWinget()
+        {
+            try
+            {
+                // Эта команда PowerShell заставляет Windows "увидеть" установленный AppInstaller
+                string psScript = "Add-AppxPackage -RegisterByFamilyName -MainPackage Microsoft.DesktopAppInstaller_8wekyb3d8bbwe";
+
+                ProcessStartInfo psi = new ProcessStartInfo
+                {
+                    FileName = "powershell",
+                    Arguments = $"-Command \"{psScript}\"",
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                };
+
+                using var p = Process.Start(psi);
+                if (p != null) await p.WaitForExitAsync();
+
+                return IsWingetInstalled();
+            }
+            catch
+            {
+                return false;
+            }
+        }
         public async Task InitializeAsync(string title, string desc, string icon, string preview, string url)
         {
             Title = title;
@@ -262,7 +350,55 @@ namespace Helinstaller.ViewModels.Pages
         public class GithubReleaseResponse { public List<GithubAsset> Assets { get; set; } }
         public class GithubAsset { public string Name { get; set; } [JsonPropertyName("browser_download_url")] public string BrowserDownloadUrl { get; set; } }
 
-        private async Task InstallOffice() { /* Твой старый код офиса */ }
+        private async Task InstallOffice()
+        {
+            // 1. Открываем окно настроек
+            var configWindow = new OfficeConfigWindow();
+            if (configWindow.ShowDialog() != true)
+            {
+                throw new Exception("Установка отменена пользователем");
+            }
+
+            // 2. Пути
+            string officeDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Office");
+            string setupPath = Path.Combine(officeDir, "setup.exe");
+            string configPath = Path.Combine(officeDir, "Configuration.xml");
+
+            // 3. Проверки
+            if (!Directory.Exists(officeDir)) Directory.CreateDirectory(officeDir);
+            if (!File.Exists(setupPath))
+            {
+                throw new Exception("Файл Office/setup.exe не найден. Поместите оригинальный установщик (ODT) в папку программы.");
+            }
+
+            // 4. Генерация XML
+            string xmlContent = configWindow.Configuration.GenerateXml();
+            await File.WriteAllTextAsync(configPath, xmlContent, Encoding.UTF8);
+
+            // 5. Запуск установки
+            ProcessStartInfo psi = new ProcessStartInfo
+            {
+                FileName = setupPath,
+                Arguments = $"/configure \"{configPath}\"",
+                WorkingDirectory = officeDir,
+                UseShellExecute = true,
+                Verb = "runas", // Запрос прав администратора
+                WindowStyle = ProcessWindowStyle.Hidden // Скрывает окно самого процесса setup.exe
+            };
+
+            try
+            {
+                using var process = Process.Start(psi);
+                if (process != null)
+                {
+                    await process.WaitForExitAsync();
+                }
+            }
+            catch (System.ComponentModel.Win32Exception)
+            {
+                throw new Exception("Установка требует прав администратора.");
+            }
+        }
         public async Task OnNavigatedToAsync() { await Check(); }
         public Task OnNavigatedFromAsync() => Task.CompletedTask;
     }

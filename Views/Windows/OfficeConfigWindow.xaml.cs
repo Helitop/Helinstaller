@@ -1,48 +1,37 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
+﻿using System.Windows;
 using Wpf.Ui.Controls;
-using System;
-using System.IO; // Добавлено для работы с файлами
-using System.Windows;
-using Wpf.Ui.Controls;
-using System.Text;
-
+using Helinstaller.Models; // Убедитесь, что этот using есть, чтобы видеть класс модели
 
 namespace Helinstaller.Views.Windows
 {
     public partial class OfficeConfigWindow : FluentWindow
     {
+        // ЭТО ТО САМОЕ СВОЙСТВО, КОТОРОГО НЕ ХВАТАЕТ
         public OfficeConfiguration Configuration { get; set; }
 
         public OfficeConfigWindow()
         {
             InitializeComponent();
+
+            // Инициализируем модель настроек
             Configuration = new OfficeConfiguration();
+
+            // Устанавливаем контекст данных, чтобы привязки (Binding) в XAML заработали
             this.DataContext = this;
         }
 
-        // В файле OfficeConfigWindow.xaml.cs
-
         private void InstallButton_Click(object sender, RoutedEventArgs e)
         {
-            // Мы просто говорим "ОК", файл создаст основной метод InstallOffice
+            // Закрываем окно с результатом "True", чтобы начать установку
             this.DialogResult = true;
             this.Close();
         }
 
         private void CloseButton_click(object sender, RoutedEventArgs e)
         {
+            // Закрываем окно с результатом "False"
             this.DialogResult = false;
+            this.Close();
         }
     }
 }

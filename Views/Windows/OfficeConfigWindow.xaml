@@ -2,49 +2,67 @@
     x:Class="Helinstaller.Views.Windows.OfficeConfigWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
-    mc:Ignorable="d"
-    Height="500" Width="400"
-    Title="Установка Office"
+    Title="Настройка Microsoft Office"
+    Height="600" Width="450"
     ResizeMode="NoResize"
+    WindowStartupLocation="CenterScreen"
     ExtendsContentIntoTitleBar="True"
-    Foreground="{DynamicResource TextFillColorPrimaryBrush}"
     WindowBackdropType="Mica"
-    WindowCornerPreference="Round"
-    WindowStartupLocation="CenterScreen" Topmost="True">
+    Topmost="True">
 
-    <ui:DynamicScrollViewer>
-        <StackPanel Margin="20" CanVerticallyScroll="True">
-            <ui:TextBlock FontWeight="Bold" Margin="0,0,0,10" Text="Базовый продукт (ru-ru 64-бит)"/>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
 
-            <ui:ToggleSwitch Content="Office LTSC Professional Plus 2024" IsChecked="{Binding Configuration.InstallProPlus}" IsEnabled="False" FontWeight="Bold"/>
+        <ui:TitleBar Title="Установка Office 2024" Grid.Row="0" />
 
-            <Separator Margin="0,5"/>
+        <ui:DynamicScrollViewer Grid.Row="1">
+            <StackPanel Margin="20,10,20,20">
 
-            <ui:TextBlock FontWeight="Bold" Margin="0,10,0,5" Text="Включить приложения в установку:"/>
-            <ui:ToggleSwitch Content="Word" IsChecked="{Binding Configuration.IncludeWord}" Margin="0,5,0,0"/>
-            <ui:ToggleSwitch Content="Excel" IsChecked="{Binding Configuration.IncludeExcel}" Margin="0,5,0,0"/>
-            <ui:ToggleSwitch Content="PowerPoint" IsChecked="{Binding Configuration.IncludePowerPoint}" Margin="0,5,0,0"/>
-            <ui:ToggleSwitch Content="Outlook" IsChecked="{Binding Configuration.IncludeOutlook}" Margin="0,5,0,0"/>
-            <ui:ToggleSwitch Content="Access (создание/редактирование баз данных)" IsChecked="{Binding Configuration.IncludeAccess}" Margin="0,5,0,0"/>
+                <ui:CardControl Header="Версия продукта" Icon="AppGeneric24">
+                    <ui:TextBlock Text="LTSC Pro Plus 2024 (x64)"/>
+                </ui:CardControl>
 
-            <Separator Margin="0,5"/>
+                <ui:TextBlock Text="Основные приложения" FontTypography="Subtitle" Margin="0,15,0,10"/>
 
-            <ui:TextBlock FontWeight="Bold" Margin="0,10,0,5" Text="Дополнительные продукты:"/>
-            <ui:ToggleSwitch Content="Visio Pro LTSC 2024 (создание векторных схем)" IsChecked="{Binding Configuration.InstallVisio}" Margin="0,5,0,0"/>
-            <ui:ToggleSwitch Content="Project Pro LTSC 2024" IsChecked="{Binding Configuration.InstallProject}" Margin="0,5,0,0"/>
+                <ui:Card Margin="0,2">
+                    <StackPanel>
+                        <ui:ToggleSwitch Content="Word" IsChecked="{Binding Configuration.IncludeWord}" Margin="0,5"/>
+                        <ui:ToggleSwitch Content="Excel" IsChecked="{Binding Configuration.IncludeExcel}" Margin="0,5"/>
+                        <ui:ToggleSwitch Content="PowerPoint" IsChecked="{Binding Configuration.IncludePowerPoint}" Margin="0,5"/>
+                        <ui:ToggleSwitch Content="Outlook" IsChecked="{Binding Configuration.IncludeOutlook}" Margin="0,5"/>
+                        <ui:ToggleSwitch Content="Access" IsChecked="{Binding Configuration.IncludeAccess}" Margin="0,5"/>
+                    </StackPanel>
+                </ui:Card>
 
-            <Separator Margin="0,5"/>
-            <Grid Margin="0,20,0,0">
+                <ui:TextBlock Text="Дополнительно" FontTypography="Subtitle" Margin="0,15,0,10"/>
+
+                <ui:Card Margin="0,2">
+                    <StackPanel>
+                        <ui:ToggleSwitch Content="Visio Professional 2024" IsChecked="{Binding Configuration.InstallVisio}" Margin="0,5"/>
+                        <ui:ToggleSwitch Content="Project Professional 2024" IsChecked="{Binding Configuration.InstallProject}" Margin="0,5"/>
+                    </StackPanel>
+                </ui:Card>
+
+                <ui:InfoBar Title="Внимание" 
+                            Message="Установка требует наличия setup.exe в папке Office." 
+                            Severity="Informational" IsClosable="False" Margin="0,15,0,0" />
+            </StackPanel>
+        </ui:DynamicScrollViewer>
+
+        <Border Grid.Row="2" Padding="20,15">
+            <Grid>
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition/>
-                    <ColumnDefinition/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
-                <ui:Button Content="Начать установку" Click="InstallButton_Click" Padding="5" HorizontalAlignment="Stretch" Margin="0,0,5,0"/>
-                <ui:Button Grid.Column="1" Content="Отмена" Click="CloseButton_click" Padding="5" HorizontalAlignment="Stretch" Margin="5,0,0,0"/>
+                <ui:Button Content="Установить" Appearance="Primary" Click="InstallButton_Click" HorizontalAlignment="Stretch" Margin="0,0,5,0" Icon="Download24"/>
+                <ui:Button Grid.Column="1" Content="Отмена" Click="CloseButton_click" HorizontalAlignment="Stretch" Margin="5,0,0,0"/>
             </Grid>
-        </StackPanel>
-    </ui:DynamicScrollViewer>
+        </Border>
+    </Grid>
 </ui:FluentWindow>

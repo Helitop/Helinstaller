@@ -682,7 +682,6 @@ namespace Helinstaller.Views.Windows
 
                 Version currentVersion = GetAssemblyVersion();
 
-
                 // 1️⃣ Получаем последний релиз с GitHub
                 using var http = new HttpClient();
                 http.DefaultRequestHeaders.UserAgent.ParseAdd("Helinstaller");
@@ -701,10 +700,33 @@ namespace Helinstaller.Views.Windows
                 if (latestVersion <= currentVersion)
                 {
                     updateItem.Content = "Обновлений нет";
+                    updateItem.IsEnabled = true; // Возвращаем активность кнопке
                     return;
                 }
 
-                updateItem.Content = $"Найдено {latestVersion}";
+                // --- НОВЫЙ БЛОК: ПОДТВЕРЖДЕНИЕ ОБНОВЛЕНИЯ ---
+                updateItem.Content = $"Найдена версия {latestVersion}";
+
+                var uiMessageBox = new Wpf.Ui.Controls.MessageBox
+                {
+                    Title = "Доступно обновление",
+                    Content = $"Найдена новая версия: {latestVersion}\nТекущая версия: {currentVersion}\n\nХотите установить обновление сейчас? Приложение будет перезапущено.",
+                    PrimaryButtonText = "Установить",
+                    SecondaryButtonText = "Позже",
+                    CloseButtonText = "Отмена"
+                };
+
+                var result = await uiMessageBox.ShowDialogAsync();
+
+                if (result != Wpf.Ui.Controls.MessageBoxResult.Primary)
+                {
+                    updateItem.Content = "Обновление отложено";
+                    updateItem.IsEnabled = true;
+                    return;
+                }
+                // --------------------------------------------
+
+                updateItem.Content = "Загрузка...";
 
                 // 2️⃣ Находим ZIP в релизе
                 var assets = doc.RootElement.GetProperty("assets");
@@ -723,6 +745,7 @@ namespace Helinstaller.Views.Windows
                 if (zipUrl == null)
                 {
                     updateItem.Content = "ZIP не найден";
+                    updateItem.IsEnabled = true;
                     return;
                 }
 
@@ -734,25 +757,28 @@ namespace Helinstaller.Views.Windows
                     await stream.CopyToAsync(fs);
                 }
 
+                updateItem.Content = "Распаковка...";
                 string tempExtract = Path.Combine(Path.GetTempPath(), "Helinstaller_update");
                 if (Directory.Exists(tempExtract))
                     Directory.Delete(tempExtract, true);
+
                 ZipFile.ExtractToDirectory(tempFile, tempExtract);
 
-                // Путь к новой версии
+                // Путь к новой версии (проверь, что в ZIP именно такая структура папок)
                 string newAppFolder = Path.Combine(tempExtract, "Helinstaller Packed");
 
                 // 4️⃣ Запускаем PowerShell для замены текущей версии и перезапуска
                 string currentExe = Process.GetCurrentProcess().MainModule!.FileName;
                 string currentDir = Path.GetDirectoryName(currentExe);
 
-                // Сценарий PowerShell
+                // Сценарий PowerShell: Ждем закрытия, удаляем всё кроме папки с обновлением, копируем, запускаем
                 string psScript = $@"
-            Start-Sleep -Milliseconds 500;
-            Remove-Item -Recurse -Force '{currentDir}\*';
-            Copy-Item -Recurse -Force '{newAppFolder}\*' '{currentDir}';
-            Start-Process '{currentExe}';
-        ";
+    Start-Sleep -Milliseconds 1000;
+    Get-Process | Where-Object {{ $_.MainModule.FileName -eq '{currentExe}' }} | Stop-Process -Force -ErrorAction SilentlyContinue;
+    Remove-Item -Recurse -Force -Path '{currentDir}\*' -Exclude 'Helinstaller_update*';
+    Copy-Item -RecShort -Force -Path '{newAppFolder}\*' -Destination '{currentDir}';
+    Start-Process '{currentExe}';
+";
 
                 string psFile = Path.Combine(Path.GetTempPath(), "update.ps1");
                 await File.WriteAllTextAsync(psFile, psScript);
@@ -761,8 +787,10 @@ namespace Helinstaller.Views.Windows
                 ProcessStartInfo psi = new ProcessStartInfo("powershell", $"-NoProfile -ExecutionPolicy Bypass -File \"{psFile}\"")
                 {
                     UseShellExecute = true,
-                    WindowStyle = ProcessWindowStyle.Hidden
+                    WindowStyle = ProcessWindowStyle.Hidden,
+                    CreateNoWindow = true
                 };
+
                 Process.Start(psi);
 
                 // Заканчиваем текущую программу
@@ -770,7 +798,15 @@ namespace Helinstaller.Views.Windows
             }
             catch (Exception ex)
             {
-                updateItem.Content = $"Ошибка: {ex.Message}";
+                var errorMsg = new Wpf.Ui.Controls.MessageBox
+                {
+                    Title = "Ошибка обновления",
+                    Content = ex.Message,
+                    CloseButtonText = "Ок"
+                };
+                await errorMsg.ShowDialogAsync();
+
+                updateItem.Content = "Ошибка обновления";
                 updateItem.IsEnabled = true;
             }
         }
