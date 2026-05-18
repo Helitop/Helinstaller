@@ -1,8 +1,12 @@
 ﻿using Helinstaller.ViewModels.Pages;
 using System;
+using Helinstaller.Models;
+using Helinstaller.Services;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Threading.Tasks;
 using System.Windows;
@@ -13,13 +17,14 @@ using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
+using WGetNET;
 using Wpf.Ui;
 using Wpf.Ui.Abstractions.Controls;
 using Wpf.Ui.Controls;
+using static DragAdorner;
 using Image = Wpf.Ui.Controls.Image;
 using MenuItem = Wpf.Ui.Controls.MenuItem;
 using Path = System.IO.Path;
-
 namespace Helinstaller.Views.Pages
 {
     public partial class DashboardPage : INavigableView<DashboardViewModel>
@@ -59,6 +64,132 @@ namespace Helinstaller.Views.Pages
             BackgroundDimmer.Opacity = 0;
             DashboardBackground.Source = null;
             LoadAppsAndGenerateButtons();
+        }
+
+        private readonly WinGetPackageManager _packageManager = new WinGetPackageManager();
+
+        private async Task PerformWinGetSearch()
+        {
+            string query = SearchTextBox.Text.Trim();
+            if (string.IsNullOrEmpty(query)) return;
+
+            SearchTextBox.IsEnabled = false;
+            WinGetSearchProgress.Visibility = Visibility.Visible;
+            WinGetResultsList.ItemsSource = null;
+
+            try
+            {
+                // 1. Ищем пакеты
+                var searchResults = await _packageManager.SearchPackageAsync(query);
+
+                // 2. Получаем список всех установленных программ для сверки
+                var installedPackages = await _packageManager.GetInstalledPackagesAsync();
+
+                // 3. Сопоставляем результаты
+                var viewModels = searchResults.Select(result =>
+                {
+                    var installed = installedPackages.FirstOrDefault(p => p.Id == result.Id);
+                    return new WinGetSearchResultViewModel
+                    {
+                        Package = result,
+                        IsInstalled = installed != null,
+                        // Если установлено и версия отличается — значит есть апдейт
+                        HasUpdate = installed != null && installed.Version != result.Version
+                    };
+                }).ToList();
+
+                WinGetResultsList.ItemsSource = viewModels;
+            }
+            catch (System.Exception ex) { System.Diagnostics.Debug.WriteLine(ex.Message); }
+            finally
+            {
+                WinGetSearchProgress.Visibility = Visibility.Collapsed;
+                SearchTextBox.IsEnabled = true;
+            }
+        }
+
+        private async Task ExecuteWinGetAction(object sender, string actionName, Func<string, Task<bool>> action)
+        {
+            if (sender is FrameworkElement el && el.DataContext is WinGetSearchResultViewModel vm)
+            {
+                // 1. Создаем новую задачу для Журнала загрузок
+                var task = new DownloadTask
+                {
+                    Title = $"{actionName}: {vm.Name}",
+                    AppName = vm.Name,
+                    IconPath = "", // Можно прикрутить иконку, если она есть
+                    IsIndeterminate = true,
+                    Status = $"Подготовка к {actionName.ToLower()}..."
+                };
+
+                // 2. Регистрируем задачу в глобальном сервисе (она появится на стр. загрузок)
+                DownloadService.Instance.AddTask(task);
+
+                // Блокируем локальную карточку
+                vm.IsProcessing = true;
+
+                try
+                {
+                    task.Status = "Выполнение WinGet...";
+
+                    // 3. Запускаем само действие
+                    bool success = await action(vm.Id);
+
+                    if (success)
+                    {
+                        task.Status = "Завершено успешно";
+                        task.Progress = 100;
+                        task.IsCompleted = true;
+                        task.IsIndeterminate = false;
+                    }
+                    else
+                    {
+                        task.Status = "Ошибка WinGet";
+                        task.IsError = true;
+                        task.IsIndeterminate = false;
+                        task.ErrorMessage = "WinGet вернул код ошибки. Возможно, требуется ручное вмешательство.";
+                    }
+                }
+                catch (Exception ex)
+                {
+                    task.Status = "Критическая ошибка";
+                    task.IsError = true;
+                    task.IsIndeterminate = false;
+                    task.ErrorMessage = ex.Message;
+                }
+                finally
+                {
+                    vm.IsProcessing = false;
+                    // Обновляем статусы кнопок на дашборде
+                    await PerformWinGetSearch();
+                }
+            }
+        }
+
+        // Теперь обновляем методы кликов, передавая "Человеческое название" действия
+        private async void InstallApp_Click(object sender, RoutedEventArgs e) =>
+            await ExecuteWinGetAction(sender, "Установка", (id) => _packageManager.InstallPackageAsync(id));
+
+        private async void UninstallApp_Click(object sender, RoutedEventArgs e) =>
+            await ExecuteWinGetAction(sender, "Удаление", (id) => _packageManager.UninstallPackageAsync(id));
+
+        private async void UpdateApp_Click(object sender, RoutedEventArgs e) =>
+            await ExecuteWinGetAction(sender, "Обновление", (id) => _packageManager.UpgradePackageAsync(id));
+
+
+        // Обработчик кнопки "Найти"
+        private async void SearchWinGetButton_Click(object sender, RoutedEventArgs e)
+        {
+            await PerformWinGetSearch();
+        }
+
+        // Обработчик нажатия Enter в поле поиска
+        private async void SearchTextBox_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+        {
+            if (e.Key == System.Windows.Input.Key.Enter)
+            {
+                await PerformWinGetSearch();
+            }
         }
 
         private void LoadAppsAndGenerateButtons()
@@ -519,6 +650,8 @@ namespace Helinstaller.Views.Pages
                 }
             }
         }
+    }
+}
 
         // Класс DragAdorner остался без изменений (он идеален)
         public class DragAdorner : Adorner
@@ -551,6 +684,34 @@ namespace Helinstaller.Views.Pages
                 result.Children.Add(new TranslateTransform(_offsetLeft, _offsetTop));
                 return result;
             }
+    // Обертка для результата поиска с флагами состояния
+    public class WinGetSearchResultViewModel : INotifyPropertyChanged
+    {
+        public WGetNET.WinGetPackage Package { get; set; }
+        public bool IsInstalled { get; set; }
+        public bool HasUpdate { get; set; }
+
+        private bool _isProcessing;
+        public bool IsProcessing
+        {
+            get => _isProcessing;
+            set { _isProcessing = value; OnPropertyChanged(); OnPropertyChanged(nameof(ActionButtonsVis)); OnPropertyChanged(nameof(ProgressVis)); }
         }
+
+        public string Name => Package.Name;
+        public string Id => Package.Id;
+        public string Version => Package.VersionString;
+
+        // Видимость кнопок и прогресса
+        public Visibility ActionButtonsVis => IsProcessing ? Visibility.Collapsed : Visibility.Visible;
+        public Visibility ProgressVis => IsProcessing ? Visibility.Visible : Visibility.Collapsed;
+
+        public Visibility InstallBtnVis => (IsInstalled || IsProcessing) ? Visibility.Collapsed : Visibility.Visible;
+        public Visibility UninstallBtnVis => (!IsInstalled || IsProcessing) ? Visibility.Collapsed : Visibility.Visible;
+        public Visibility UpdateBtnVis => (HasUpdate && !IsProcessing) ? Visibility.Visible : Visibility.Collapsed;
+
+        public event PropertyChangedEventHandler PropertyChanged;
+        protected void OnPropertyChanged([CallerMemberName] string name = null) =>
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
     }
 }

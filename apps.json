@@ -6,6 +6,14 @@
     "downloadUrl": "winget:RARLab.WinRAR"
   },
   {
+    "name": "Google Chrome",
+    "title": "Chrome",
+    "description": "Лучший браузер... после Edge и Firefox",
+    "iconPath": "/Assets/chrome.png",
+    "previewPath": "/Assets/chromeprev.png",
+    "downloadUrl": "winget:Google.Chrome"
+  },
+  {
     "name": "Discord",
     "title": "Discord",
     "description": "А кто не знает? Захотелось в Доту с друзяками - заходишь сюда.",
@@ -77,19 +85,11 @@
     "previewPath": "/Assets/officeprev.png"
   },
   {
-    "name": "Nvidia",
-    "title": "Nvidia App",
-    "description": "Драйвера, запись экрана, монитор производительности для видеоадаптеров NVIDIA",
-    "iconPath": "/Assets/nvidia.png",
-    "previewPath": "/Assets/nvidiaprev.png",
-    "downloadUrl": "https://uk.download.nvidia.com/nvapp/client/11.0.5.420/NVIDIA_app_v11.0.5.420.exe"
-  },
-  {
-    "name": "AMD",
-    "title": "AMD Adrenalin",
-    "description": "Драйвера, запись экрана, монитор производительности для видеоадаптеров AMD",
-    "iconPath": "/Assets/amd.png",
-    "previewPath": "/Assets/amdprev.png",
-    "downloadUrl": "https://drivers.amd.com/drivers/installer/25.20/whql/amd-software-adrenalin-edition-25.12.1-minimalsetup-251207_web.exe"
+    "name": "Radmin VPN",
+    "title": "Radmin VPN",
+    "description": "Утилита для создания виртуальной локальной сети - в Майнкрафт с друганами сыграть самое то",
+    "iconPath": "/Assets/radmin.png",
+    "previewPath": "/Assets/radminprev.png",
+    "downloadUrl": "winget:Famatech.RadminVPN"
   }
 ]

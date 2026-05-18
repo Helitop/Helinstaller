@@ -15,6 +15,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using Wpf.Ui.Abstractions.Controls;
+using Wpf.Ui.Controls;
 
 namespace Helinstaller.ViewModels.Pages
 {
@@ -114,7 +115,7 @@ namespace Helinstaller.ViewModels.Pages
                     task.Status = "Скачивание...";
                     await InstallFromUrlAsync(urlToInstall, task);
                 }
-
+                
                 task.Status = "Установка завершена";
                 task.Progress = 100;
                 task.IsCompleted = true;
@@ -167,25 +168,9 @@ namespace Helinstaller.ViewModels.Pages
 
         private async Task InstallViaWinget(string appId, DownloadTask task)
         {
-            task.Status = "Проверка системы...";
-
-            // Проверяем, есть ли вообще winget в винде
-            if (!IsWingetInstalled())
-            {
-                task.Status = "Winget не найден. Пробую оживить...";
-                bool repaired = await TryRepairWinget();
-
-                if (!repaired)
-                {
-                    throw new Exception("Winget не установлен или устарел. Откройте Microsoft Store и обновите 'Установщик приложений' (App Installer).");
-                }
-            }
-
             task.Status = "Установка через Winget...";
             task.IsIndeterminate = true;
 
-            // Запускаем установку
-            // --accept-package-agreements и --accept-source-agreements чтобы он не ждал нажатия кнопок скрыто
             string args = $"install --id {appId} --silent --accept-package-agreements --accept-source-agreements";
 
             ProcessStartInfo psi = new ProcessStartInfo
@@ -194,19 +179,39 @@ namespace Helinstaller.ViewModels.Pages
                 Arguments = args,
                 UseShellExecute = false,
                 CreateNoWindow = true,
-                RedirectStandardOutput = true
+                RedirectStandardOutput = true, // Магия начинается здесь
+                RedirectStandardError = true,  // И ошибки прихватим, чтоб два раза не бегать
+                StandardOutputEncoding = Encoding.UTF8 // Чтобы кириллица не превратилась в тыкву
             };
 
             using (var process = Process.Start(psi))
             {
                 if (process != null)
                 {
+                    // Читаем весь вывод асинхронно
+                    string output = await process.StandardOutput.ReadToEndAsync();
+                    string error = await process.StandardError.ReadToEndAsync();
+
                     await process.WaitForExitAsync();
 
-                    // Если winget вернул ошибку (код не 0)
+                    string fullLog = string.IsNullOrEmpty(error) ? output : $"Output:\n{output}\n\nErrors:\n{error}";
+
+                    // Выводим всё это безобразие в MessageBox
+                    var msg = new Wpf.Ui.Controls.MessageBox();
+                    msg.Title = $"Результат Winget (Code: {process.ExitCode})";
+                    msg.Content = new System.Windows.Controls.TextBox
+                    {
+                        Text = fullLog,
+                        IsReadOnly = true,
+                        TextWrapping = System.Windows.TextWrapping.Wrap,
+                        MaxHeight = 400,
+                        VerticalScrollBarVisibility = System.Windows.Controls.ScrollBarVisibility.Auto
+                    };
+                    await msg.ShowDialogAsync();
+
                     if (process.ExitCode != 0)
                     {
-                        throw new Exception($"Winget завершился с кодом {process.ExitCode}. Попробуйте установить вручную.");
+                        throw new Exception($"Winget вернул ошибку: {process.ExitCode}");
                     }
                 }
             }

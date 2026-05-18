@@ -56,7 +56,7 @@
     </Page.Resources>
 
     <Grid>
-        <!-- Размытый фон (появляется при клике на приложение) -->
+        <!-- Размытый фон (он должен быть самым нижним слоем) -->
         <Image x:Name="DashboardBackground" Stretch="UniformToFill" Opacity="0" HorizontalAlignment="Center" VerticalAlignment="Center">
             <Image.Effect>
                 <BlurEffect Radius="60" KernelType="Gaussian"/>
@@ -64,12 +64,96 @@
         </Image>
         <Border x:Name="BackgroundDimmer" Background="Black" Opacity="0" IsHitTestVisible="False"/>
 
-        <Grid x:Name="AppsGrid" Background="Transparent" MouseLeftButtonDown="Grid_MouseLeftButtonDown" AllowDrop="True" PreviewDragOver="Grid_PreviewDragOver">
+        <!-- Основная область с контентом -->
+        <Grid x:Name="AppsGrid" Background="Transparent" AllowDrop="True" PreviewDragOver="Grid_PreviewDragOver">
 
-            <ui:DynamicScrollViewer x:Name="AppsScrollViewer" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                <!-- WrapPanel автоматически переносит плитки. 4 штуки в ряд встанут идеально -->
-                <WrapPanel x:Name="AppsWrapPanel" Margin="0,25,0,0" HorizontalAlignment="Center" VerticalAlignment="Top" Orientation="Horizontal" />
-            </ui:DynamicScrollViewer>
+                <StackPanel Margin="0,25,0,25">
+
+
+                    <StackPanel MaxWidth="900" HorizontalAlignment="Stretch" Margin="20,0">
+                        <TextBlock Text="Поиск приложений в WinGet" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,16" />
+
+                        <!-- Строка поиска -->
+                        <Grid Margin="0,0,0,20">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                                
+                            <ui:TextBox x:Name="SearchTextBox" PlaceholderText="Введите название приложения (например, Telegram, Discord...)" 
+                                Icon="{ui:SymbolIcon Symbol=Search24}" 
+                                KeyDown="SearchTextBox_KeyDown"
+                                Height="40" FontSize="14"/>
+
+                            <ui:Button Grid.Column="1" Content="Найти" Appearance="Primary" 
+                               Icon="{ui:SymbolIcon Symbol=Search24}" 
+                               Margin="10,0,0,0" Height="40" Padding="20,0"
+                               Click="SearchWinGetButton_Click"/>
+                        </Grid>
+
+                        <!-- Индикатор загрузки поиска -->
+                        <ui:ProgressRing x:Name="WinGetSearchProgress" IsIndeterminate="True" Visibility="Collapsed" Margin="0,20,0,20"/>
+
+                        <!-- Список результатов -->
+                    <ui:DynamicScrollViewer MaxHeight="275" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Margin="0,0,0,20">
+                        <ItemsControl x:Name="WinGetResultsList">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <ui:Card Margin="0,0,0,10" Padding="15">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+
+                                            <StackPanel VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding Name}" FontSize="16" FontWeight="Bold" />
+                                                <TextBlock Text="{Binding Id}" FontSize="12" Opacity="0.6"/>
+                                                <TextBlock Text="{Binding Version}" FontSize="11" Margin="0,2,0,0"/>
+                                            </StackPanel>
+
+                                            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+
+                                                <!-- Индикатор работы (виден только когда IsProcessing = true) -->
+                                                <StackPanel Orientation="Horizontal" Visibility="{Binding ProgressVis}">
+                                                    <ui:ProgressRing IsIndeterminate="True" Width="20" Height="20" Margin="0,0,10,0"/>
+                                                    <TextBlock Text="Работаю..." VerticalAlignment="Center" Opacity="0.7" FontSize="12"/>
+                                                </StackPanel>
+
+                                                <!-- Группа кнопок (скрывается целиком, когда IsProcessing = true) -->
+                                                <StackPanel Orientation="Horizontal" Visibility="{Binding ActionButtonsVis}">
+                                                    <ui:Button Content="Установить" Appearance="Primary" 
+                   Click="InstallApp_Click" Visibility="{Binding InstallBtnVis}"/>
+
+                                                    <ui:Button Content="Обновить" Appearance="Success" Margin="5,0,0,0"
+                   Click="UpdateApp_Click" Visibility="{Binding UpdateBtnVis}"/>
+
+                                                    <ui:Button Content="Удалить" Appearance="Danger" Margin="5,0,0,0"
+                   Click="UninstallApp_Click" Visibility="{Binding UninstallBtnVis}"/>
+                                                </StackPanel>
+
+                                            </StackPanel>
+                                            <!-- Добавь это внутри StackPanel или Grid карточки поиска -->
+                                            <Grid x:Name="ProgressGrid" Visibility="Collapsed" Margin="0,10,0,0">
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition Height="Auto"/>
+                                                    <RowDefinition Height="Auto"/>
+                                                </Grid.RowDefinitions>
+
+                                                <ui:TextBlock x:Name="StatusLabel" Text="Подготовка..." FontSize="11" Margin="0,0,0,5"/>
+                                                <ProgressBar x:Name="InstallProgressBar" Grid.Row="1" Height="6" Minimum="0" Maximum="100" Value="0"/>
+                                            </Grid>
+                                        </Grid>
+                                    </ui:Card>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ui:DynamicScrollViewer>
+                </StackPanel>
+                <Border Margin="40,0,40,0" Height="1" Background="{DynamicResource ControlStrokeColorDefaultBrush}" Opacity="0.5"/>
+                <WrapPanel x:Name="AppsWrapPanel" MouseLeftButtonDown="Grid_MouseLeftButtonDown" Background="Transparent" HorizontalAlignment="Center" VerticalAlignment="Top" Orientation="Horizontal" />
+            </StackPanel>
+
 
             <!-- Панель управления порядком (появляется при DND) -->
             <StackPanel x:Name="EditModePanel" Panel.ZIndex="1" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,15,0,0" Visibility="Collapsed" Opacity="0">

@@ -67,9 +67,17 @@ public partial class Tweaks : INavigableView<TweaksViewModel>
         TweakItems.Add(new TweakItem { Title = "Активация Windows/Office", Description = "Цифровая лицензия через MAS. Безопасно и навсегда.", Tag = "Function1", Icon = SymbolRegular.WindowShield24 });
         TweakItems.Add(new TweakItem { Title = "Активация WinRAR", Description = "Убирает назойливое окно 'Купи меня' навсегда.", Tag = "WinRARActivation", Icon = SymbolRegular.Archive24 });
         TweakItems.Add(new TweakItem { Title = "Завершение в панели задач", Description = "Кнопка 'Завершить задачу' при нажатии ПКМ по иконке в панели.", Tag = "Function2", ShowSwitch = true, IsChecked = isTaskEndEnabled, Icon = SymbolRegular.Desktop24 });
-        TweakItems.Add(new TweakItem { Title = "Залипание клавиш", Description = "Отключает писк и окно при многократном нажатии Shift.", Tag = "Function3", ShowSwitch = true, IsChecked = isStickyEnabled, Icon = SymbolRegular.Keyboard24 });
+        TweakItems.Add(new TweakItem
+        {
+            Title = "Дезинфекция (Anti-Yandex)",
+            Description = "Вырезает Яндекс.Музыку из Store и блокирует навязывание поиска в Edge/Windows.",
+            Tag = "AntiYandex",
+            Icon = SymbolRegular.Delete24
+        });
         TweakItems.Add(new TweakItem { Title = "Обход блокировок ИИ", Description = "Доступ к ChatGPT, Claude и Gemini без VPN через системный hosts.", Tag = "Function4", Icon = SymbolRegular.ShieldGlobe24 });
         TweakItems.Add(new TweakItem { Title = "Тёмная тема", Description = "Принудительный переход системы и приложений на тёмную сторону.", Tag = "Function5", ShowSwitch = true, IsChecked = ThemeChanger.IsSystemInDarkMode(), Icon = SymbolRegular.WeatherMoon24 });
+        TweakItems.Add(new TweakItem { Title = "Залипание клавиш", Description = "Отключает писк и окно при многократном нажатии Shift.", Tag = "Function3", ShowSwitch = true, IsChecked = isStickyEnabled, Icon = SymbolRegular.Keyboard24 });
+
     }
 
     private async void TileButton_Click(object sender, RoutedEventArgs e)
@@ -101,6 +109,9 @@ public partial class Tweaks : INavigableView<TweaksViewModel>
                 case "Function5":
                     if (item != null) await ThemeChanger.ToggleWindowsTheme(item);
                     break;
+                case "AntiYandex":
+                    await RunYandexAnnihilator();
+                    break;
             }
         }
         catch (Exception ex)
@@ -108,6 +119,65 @@ public partial class Tweaks : INavigableView<TweaksViewModel>
             await ShowUiMessageBox("Ошибка", ex.Message);
         }
     }
+
+    private async Task RunYandexAnnihilator()
+    {
+        var msg = new Wpf.Ui.Controls.MessageBox
+        {
+            Title = "Подтверждение очистки",
+            Content = "Будет удалена Яндекс.Музыка и заблокирована автоматическая установка регионального софта в будущем. Продолжить?",
+            PrimaryButtonText = "Стерилизовать",
+            CloseButtonText = "Отмена"
+        };
+
+        if (await msg.ShowDialogAsync() != Wpf.Ui.Controls.MessageBoxResult.Primary) return;
+
+        try
+        {
+            // 1. Сносим пакеты (и установленные, и заготовки)
+            // Используем -ErrorAction SilentlyContinue, чтобы не вылетали ошибки, если чего-то уже нет
+            string script = "Get-AppxPackage -AllUsers *Yandex* | Remove-AppxPackage -AllUsers; " +
+                            "Get-AppxProvisionedPackage -Online | Where-Object { $_.DisplayName -like '*Yandex*' } | Remove-AppxProvisionedPackage -Online";
+
+            await Task.Run(() => {
+                var ps = new ProcessStartInfo
+                {
+                    FileName = "powershell.exe",
+                    Arguments = $"-NoProfile -ExecutionPolicy Bypass -Command \"{script}\"",
+                    CreateNoWindow = true,
+                    UseShellExecute = false,
+                    Verb = "runas" // На всякий случай просим админа
+                };
+                Process.Start(ps)?.WaitForExit();
+            });
+
+            // 2. Блокируем в реестре навязывание (Content Delivery Manager)
+            string cdmPath = @"Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager";
+            using (var key = Registry.CurrentUser.OpenSubKey(cdmPath, true))
+            {
+                if (key != null)
+                {
+                    key.SetValue("SilentInstalledAppsEnabled", 0, RegistryValueKind.DWord);
+                    key.SetValue("PreInstalledAppsEnabled", 0, RegistryValueKind.DWord);
+                }
+            }
+
+            // 3. Фиксируем Google в Edge (через политики)
+            string edgePolicyPath = @"SOFTWARE\Policies\Microsoft\Edge";
+            using (var key = Registry.LocalMachine.CreateSubKey(edgePolicyPath))
+            {
+                key.SetValue("DefaultSearchProviderEnabled", 1, RegistryValueKind.DWord);
+                key.SetValue("DefaultSearchProviderSearchURL", "https://www.google.com/search?q={searchTerms}", RegistryValueKind.String);
+            }
+
+            await ShowUiMessageBox("Готово", "Яндекс успешно уничтожен. Система стала чище.");
+        }
+        catch (Exception ex)
+        {
+            await ShowUiMessageBox("Ошибка при дезинфекции", ex.Message);
+        }
+    }
+
 
     // Вспомогательный метод для красивых асинхронных уведомлений
     private async Task ShowUiMessageBox(string title, string content)
@@ -241,7 +311,7 @@ public partial class Tweaks : INavigableView<TweaksViewModel>
 
     private void SetRandomGif()
     {
-        var gifFiles = new List<string> { "bocchi.gif", "lucy.gif" };
+        var gifFiles = new List<string> { "bocchi.gif", "lucy.gif","larp.gif" };
         if (gifFiles.Count > 0)
         {
             Random rnd = new Random();

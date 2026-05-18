@@ -23,6 +23,7 @@
     <None Remove="Assets\github.png" />
     <None Remove="Assets\glitch.png" />
     <None Remove="Assets\H.png" />
+    <None Remove="Assets\larp.gif" />
     <None Remove="Assets\lucy.gif" />
     <None Remove="Assets\noise.png" />
     <None Remove="Assets\tbank.png" />
@@ -36,16 +37,17 @@
 
   <ItemGroup>
     <PackageReference Include="HtmlAgilityPack" Version="1.12.4" />
-    <PackageReference Include="Microsoft.Xaml.Behaviors.Wpf" Version="1.1.135" />
-    <PackageReference Include="NAudio" Version="2.2.1" />
-    <PackageReference Include="NAudio.Core" Version="2.2.1" />
-    <PackageReference Include="System.Management" Version="10.0.1" />
+    <PackageReference Include="Microsoft.Xaml.Behaviors.Wpf" Version="1.1.142" />
+    <PackageReference Include="NAudio" Version="2.3.0" />
+    <PackageReference Include="NAudio.Core" Version="2.3.0" />
+    <PackageReference Include="System.Management" Version="10.0.8" />
     <PackageReference Include="System.Private.Uri" Version="4.3.2" />
-    <PackageReference Include="System.Text.Encoding.CodePages" Version="10.0.3" />
-    <PackageReference Include="WPF-UI" Version="4.1.0" />
-    <PackageReference Include="WPF-UI.DependencyInjection" Version="4.1.0" />
-    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.1" />
-    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0 " />
+    <PackageReference Include="System.Text.Encoding.CodePages" Version="10.0.8" />
+    <PackageReference Include="WGet.NET" Version="4.4.1" />
+    <PackageReference Include="WPF-UI" Version="4.3.0" />
+    <PackageReference Include="WPF-UI.DependencyInjection" Version="4.3.0" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.8" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
     <PackageReference Include="WpfAnimatedGif" Version="2.0.2" />
   </ItemGroup>
 
@@ -60,6 +62,7 @@
     <Resource Include="Assets\H.png">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Resource>
+    <Resource Include="Assets\larp.gif" />
     <Resource Include="Assets\lucy.gif" />
     <Resource Include="Assets\noise.png" />
     <Resource Include="Assets\tbank.png">
@@ -96,6 +99,12 @@
     <None Update="Assets\autounattend.xml">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Update="Assets\chrome.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Assets\chromeprev.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="Assets\discord.png">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
@@ -127,6 +136,12 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Update="Assets\powertoysprev.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Assets\radmin.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Assets\radminprev.png">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Update="Assets\steam.png">

@@ -14,7 +14,7 @@
 
     <Grid>
         <!-- Фоновый GIF чуть меньше и прозрачнее для стиля -->
-        <Image x:Name="GIF" gif:ImageBehavior.AnimationSpeedRatio="0.75" Width="400" Height="400" Opacity="0.04" IsHitTestVisible="False"/>
+        <Image x:Name="GIF" gif:ImageBehavior.AnimationSpeedRatio="0.75" Width="400" Height="400" Opacity="0.1" IsHitTestVisible="False"/>
 
         <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
             <ItemsControl ItemsSource="{Binding TweakItems}" Margin="20">
