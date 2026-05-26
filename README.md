@@ -17,12 +17,12 @@
 
 | Главный экран | Твики и настройки |
 | :---: | :---: |
-| ![Uploading main.jpg…]() | ![Uploading tweaks.jpg…]()
-
+| ![Главный экран](main.jpg) | ![Твики и настройки](tweaks.jpg) |
 
 | Активация (No Console!) | Установщик Windows |
 | :---: | :---: |
-| ![Uploading activation.jpg…]() | ![Uploading ventoy.jpg…]()
+| ![Активация](activation.jpg) | ![Установщик Windows](ventoy.jpg) |
+
 
 ## 💻 Технологии
 
