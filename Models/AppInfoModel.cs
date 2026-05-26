@@ -1,22 +1,22 @@
 ﻿using System.Text.Json.Serialization;
 
-public class AppInfo
+namespace Helinstaller.Models
 {
-    [JsonPropertyName("name")]
-    public string Name { get; set; }
+    public class AppInfo
+    {
+        [JsonPropertyName("name")]
+        public string Name { get; set; } = string.Empty;
 
-    [JsonPropertyName("title")]
-    public string Title { get; set; }
+        [JsonPropertyName("title")]
+        public string Title { get; set; } = string.Empty;
 
-    [JsonPropertyName("description")]
-    public string? Description { get; set; }
+        [JsonPropertyName("description")]
+        public string? Description { get; set; }
 
-    [JsonPropertyName("iconPath")]
-    public string? IconPath { get; set; }
+        [JsonPropertyName("iconPath")]
+        public string? IconPath { get; set; }
 
-    [JsonPropertyName("previewPath")]
-    public string PreviewPath { get; set; }
-
-    [JsonPropertyName("downloadUrl")]
-    public string DownloadUrl { get; set; }
+        [JsonPropertyName("downloadUrl")]
+        public string DownloadUrl { get; set; } = string.Empty;
+    }
 }

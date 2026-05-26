@@ -5,81 +5,80 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+    xmlns:helpers="clr-namespace:Helinstaller.Helpers"
     mc:Ignorable="d" Margin="0,0,0,0" Loaded="Page_Loaded" 
     Title="Dashboard"
     ui:Design.Background="{DynamicResource ApplicationBackgroundBrush}"
     ui:Design.Foreground="{DynamicResource TextFillColorPrimaryBrush}"
-    Foreground="{DynamicResource TextFillColorPrimaryBrush}">
+    Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+    ScrollViewer.VerticalScrollBarVisibility="Disabled"
+    ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+    >
 
     <Page.Resources>
+        <helpers:PathToVisibilityConverter x:Key="PathToVisibilityConverter"/>
+        <helpers:StringToImageSourceConverter x:Key="ImageSourceConverter"/>
+
         <!-- Анимации перехода на страницу приложения -->
         <Storyboard x:Key="FadeInBg">
-            <DoubleAnimation Storyboard.TargetName="DashboardBackground" Storyboard.TargetProperty="Opacity" To="0.15" Duration="0:0:0.6"/>
-            <DoubleAnimation Storyboard.TargetName="BackgroundDimmer" Storyboard.TargetProperty="Opacity" To="0.5" Duration="0:0:0.6"/>
+            <DoubleAnimation Storyboard.TargetName="BackgroundDimmer" Storyboard.TargetProperty="Opacity" To="0.25" Duration="0:0:0.6"/>
+            <!-- Плавно размываем приложения на фоне -->
+            <DoubleAnimation Storyboard.TargetName="AppsGridBlur" Storyboard.TargetProperty="Radius" To="25" Duration="0:0:0.4">
+                <DoubleAnimation.EasingFunction>
+                    <CubicEase EasingMode="EaseOut"/>
+                </DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+
+            <!-- БЛОКИРУЕМ КЛИКИ СКВОЗЬ ФОН (делаем его интерактивным при открытии) -->
+            <BooleanAnimationUsingKeyFrames Storyboard.TargetName="BackgroundDimmer" Storyboard.TargetProperty="IsHitTestVisible">
+                <DiscreteBooleanKeyFrame KeyTime="0:0:0" Value="True"/>
+            </BooleanAnimationUsingKeyFrames>
         </Storyboard>
+
         <Storyboard x:Key="FadeOutBg">
-            <DoubleAnimation Storyboard.TargetName="DashboardBackground" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.3"/>
             <DoubleAnimation Storyboard.TargetName="BackgroundDimmer" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.3"/>
+            <!-- Плавно убираем размытие -->
+            <DoubleAnimation Storyboard.TargetName="AppsGridBlur" Storyboard.TargetProperty="Radius" To="0" Duration="0:0:0.3">
+                <DoubleAnimation.EasingFunction>
+                    <CubicEase EasingMode="EaseInOut"/>
+                </DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+
+            <!-- СНОВА РАЗРЕШАЕМ КЛИКАТЬ НА ПРИЛОЖЕНИЯ (отключаем интерактивность диммера при закрытии) -->
+            <BooleanAnimationUsingKeyFrames Storyboard.TargetName="BackgroundDimmer" Storyboard.TargetProperty="IsHitTestVisible">
+                <DiscreteBooleanKeyFrame KeyTime="0:0:0" Value="False"/>
+            </BooleanAnimationUsingKeyFrames>
         </Storyboard>
+
         <Storyboard x:Key="FadeInLoading">
             <DoubleAnimation Storyboard.TargetName="LoadingOverlay" Storyboard.TargetProperty="Opacity" From="0" To="1" Duration="0:0:0.1" />
         </Storyboard>
 
-        <!-- Анимации режима редактирования -->
-        <Storyboard x:Key="ShakeAnimation" RepeatBehavior="Forever" AutoReverse="True">
-            <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(RotateTransform.Angle)" From="-1" To="1" Duration="0:0:0.12" />
-        </Storyboard>
-
-        <Storyboard x:Key="SlideDownAnimation">
-            <ObjectAnimationUsingKeyFrames Storyboard.TargetName="EditModePanel" Storyboard.TargetProperty="Visibility">
-                <DiscreteObjectKeyFrame KeyTime="0:0:0" Value="{x:Static Visibility.Visible}"/>
-            </ObjectAnimationUsingKeyFrames>
-            <DoubleAnimation Storyboard.TargetName="EditModePanel" Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)" From="-40" To="0" Duration="0:0:0.4">
-                <DoubleAnimation.EasingFunction>
-                    <ExponentialEase EasingMode="EaseOut" Exponent="5"/>
-                </DoubleAnimation.EasingFunction>
-            </DoubleAnimation>
-            <DoubleAnimation Storyboard.TargetName="EditModePanel" Storyboard.TargetProperty="Opacity" From="0" To="1" Duration="0:0:0.3"/>
-        </Storyboard>
-
-        <Storyboard x:Key="SlideUpAnimation">
-            <DoubleAnimation Storyboard.TargetName="EditModePanel" Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)" To="-80" Duration="0:0:0.3">
-                <DoubleAnimation.EasingFunction>
-                    <ExponentialEase EasingMode="EaseIn" Exponent="5"/>
-                </DoubleAnimation.EasingFunction>
-            </DoubleAnimation>
-            <DoubleAnimation Storyboard.TargetName="EditModePanel" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.2"/>
-            <ObjectAnimationUsingKeyFrames Storyboard.TargetName="EditModePanel" Storyboard.TargetProperty="Visibility" BeginTime="0:0:0.3">
-                <DiscreteObjectKeyFrame KeyTime="0:0:0" Value="{x:Static Visibility.Collapsed}"/>
-            </ObjectAnimationUsingKeyFrames>
-        </Storyboard>
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
     </Page.Resources>
 
-    <Grid>
-        <!-- Размытый фон (он должен быть самым нижним слоем) -->
-        <Image x:Name="DashboardBackground" Stretch="UniformToFill" Opacity="0" HorizontalAlignment="Center" VerticalAlignment="Center">
-            <Image.Effect>
-                <BlurEffect Radius="60" KernelType="Gaussian"/>
-            </Image.Effect>
-        </Image>
-        <Border x:Name="BackgroundDimmer" Background="Black" Opacity="0" IsHitTestVisible="False"/>
+    <Grid x:Name="RootGrid">
 
-        <!-- Основная область с контентом -->
-        <Grid x:Name="AppsGrid" Background="Transparent" AllowDrop="True" PreviewDragOver="Grid_PreviewDragOver">
+        <!-- Основная область с контентом (перемещена выше диммера) -->
+        <Grid x:Name="AppsGrid" Background="Transparent" AllowDrop="True">
+            <Grid.Effect>
+                <!-- Тот самый блюр, который включается при открытии панели -->
+                <BlurEffect x:Name="AppsGridBlur" Radius="0" KernelType="Gaussian" RenderingBias="Performance"/>
+            </Grid.Effect>
 
-                <StackPanel Margin="0,25,0,25">
-
-
-                    <StackPanel MaxWidth="900" HorizontalAlignment="Stretch" Margin="20,0">
+            <!-- Внутренний скроллер только для контента страницы (поиск и плитки) -->
+            <ui:DynamicScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Margin="0,25,0,0">
+                    <StackPanel MaxWidth="900" HorizontalAlignment="Stretch" Margin="0,0">
                         <TextBlock Text="Поиск приложений в WinGet" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,16" />
 
                         <!-- Строка поиска -->
-                        <Grid Margin="0,0,0,20">
+                        <Grid Margin="0,0,0,0">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
-                                
+
                             <ui:TextBox x:Name="SearchTextBox" PlaceholderText="Введите название приложения (например, Telegram, Discord...)" 
                                 Icon="{ui:SymbolIcon Symbol=Search24}" 
                                 KeyDown="SearchTextBox_KeyDown"
@@ -95,82 +94,199 @@
                         <ui:ProgressRing x:Name="WinGetSearchProgress" IsIndeterminate="True" Visibility="Collapsed" Margin="0,20,0,20"/>
 
                         <!-- Список результатов -->
-                    <ui:DynamicScrollViewer MaxHeight="275" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Margin="0,0,0,20">
-                        <ItemsControl x:Name="WinGetResultsList">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <ui:Card Margin="0,0,0,10" Padding="15">
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="Auto" />
-                                            </Grid.ColumnDefinitions>
+                        <ui:DynamicScrollViewer MaxHeight="275" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Margin="0,0,0,20">
+                            <ItemsControl x:Name="WinGetResultsList">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <ui:Card Margin="0,5,0,0" Padding="15">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
 
-                                            <StackPanel VerticalAlignment="Center">
-                                                <TextBlock Text="{Binding Name}" FontSize="16" FontWeight="Bold" />
-                                                <TextBlock Text="{Binding Id}" FontSize="12" Opacity="0.6"/>
-                                                <TextBlock Text="{Binding Version}" FontSize="11" Margin="0,2,0,0"/>
-                                            </StackPanel>
-
-                                            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-
-                                                <!-- Индикатор работы (виден только когда IsProcessing = true) -->
-                                                <StackPanel Orientation="Horizontal" Visibility="{Binding ProgressVis}">
-                                                    <ui:ProgressRing IsIndeterminate="True" Width="20" Height="20" Margin="0,0,10,0"/>
-                                                    <TextBlock Text="Работаю..." VerticalAlignment="Center" Opacity="0.7" FontSize="12"/>
+                                                <StackPanel VerticalAlignment="Center" Grid.Column="0">
+                                                    <TextBlock Text="{Binding Name}" FontSize="16" FontWeight="Bold" />
+                                                    <TextBlock Text="{Binding Id}" FontSize="12" Opacity="0.6"/>
+                                                    <TextBlock Text="{Binding Version}" FontSize="11" Margin="0,2,0,0"/>
                                                 </StackPanel>
 
-                                                <!-- Группа кнопок (скрывается целиком, когда IsProcessing = true) -->
-                                                <StackPanel Orientation="Horizontal" Visibility="{Binding ActionButtonsVis}">
-                                                    <ui:Button Content="Установить" Appearance="Primary" 
-                   Click="InstallApp_Click" Visibility="{Binding InstallBtnVis}"/>
+                                                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                                                    <StackPanel Orientation="Horizontal" Visibility="{Binding ProgressVis}">
+                                                        <ui:ProgressRing IsIndeterminate="True" Width="20" Height="20" Margin="0,0,10,0"/>
+                                                        <TextBlock Text="Работаю..." VerticalAlignment="Center" Opacity="0.7" FontSize="12"/>
+                                                    </StackPanel>
 
-                                                    <ui:Button Content="Обновить" Appearance="Success" Margin="5,0,0,0"
-                   Click="UpdateApp_Click" Visibility="{Binding UpdateBtnVis}"/>
-
-                                                    <ui:Button Content="Удалить" Appearance="Danger" Margin="5,0,0,0"
-                   Click="UninstallApp_Click" Visibility="{Binding UninstallBtnVis}"/>
+                                                    <StackPanel Orientation="Horizontal" Visibility="{Binding ActionButtonsVis}">
+                                                        <ui:Button Content="Установить" Appearance="Primary" Click="InstallApp_Click" Visibility="{Binding InstallBtnVis}"/>
+                                                        <ui:Button Content="Обновить" Appearance="Success" Margin="5,0,0,0" Click="UpdateApp_Click" Visibility="{Binding UpdateBtnVis}"/>
+                                                        <ui:Button Content="Удалить" Appearance="Danger" Margin="5,0,0,0" Click="UninstallApp_Click" Visibility="{Binding UninstallBtnVis}"/>
+                                                    </StackPanel>
                                                 </StackPanel>
 
-                                            </StackPanel>
-                                            <!-- Добавь это внутри StackPanel или Grid карточки поиска -->
-                                            <Grid x:Name="ProgressGrid" Visibility="Collapsed" Margin="0,10,0,0">
-                                                <Grid.RowDefinitions>
-                                                    <RowDefinition Height="Auto"/>
-                                                    <RowDefinition Height="Auto"/>
-                                                </Grid.RowDefinitions>
-
-                                                <ui:TextBlock x:Name="StatusLabel" Text="Подготовка..." FontSize="11" Margin="0,0,0,5"/>
-                                                <ProgressBar x:Name="InstallProgressBar" Grid.Row="1" Height="6" Minimum="0" Maximum="100" Value="0"/>
+                                                <Grid x:Name="ProgressGrid" Visibility="Collapsed" Margin="0,10,0,0">
+                                                    <Grid.RowDefinitions>
+                                                        <RowDefinition Height="Auto"/>
+                                                        <RowDefinition Height="Auto"/>
+                                                    </Grid.RowDefinitions>
+                                                    <ui:TextBlock x:Name="StatusLabel" Text="Подготовка..." FontSize="11" Margin="0,0,0,5"/>
+                                                    <ProgressBar x:Name="InstallProgressBar" Grid.Row="1" Height="6" Minimum="0" Maximum="100" Value="0"/>
+                                                </Grid>
                                             </Grid>
-                                        </Grid>
-                                    </ui:Card>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </ui:DynamicScrollViewer>
+                                        </ui:Card>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ui:DynamicScrollViewer>
+                    </StackPanel>
+
+                    <Separator Margin="0,0,0,5"/>
+                    <WrapPanel x:Name="AppsWrapPanel" Background="Transparent" HorizontalAlignment="Center" VerticalAlignment="Top" Orientation="Horizontal" />
                 </StackPanel>
-                <Border Margin="40,0,40,0" Height="1" Background="{DynamicResource ControlStrokeColorDefaultBrush}" Opacity="0.5"/>
-                <WrapPanel x:Name="AppsWrapPanel" MouseLeftButtonDown="Grid_MouseLeftButtonDown" Background="Transparent" HorizontalAlignment="Center" VerticalAlignment="Top" Orientation="Horizontal" />
-            </StackPanel>
-
-
-            <!-- Панель управления порядком (появляется при DND) -->
-            <StackPanel x:Name="EditModePanel" Panel.ZIndex="1" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,15,0,0" Visibility="Collapsed" Opacity="0">
-                <StackPanel.RenderTransform>
-                    <TranslateTransform Y="-80"/>
-                </StackPanel.RenderTransform>
-                <ui:Button Content="Сохранить порядок" Icon="{ui:SymbolIcon Symbol=Checkmark24}" Appearance="Primary" Click="ConfirmChanges_Click" Height="45" Padding="20,0">
-                    <ui:Button.Effect>
-                        <DropShadowEffect BlurRadius="15" Opacity="0.4"/>
-                    </ui:Button.Effect>
-                </ui:Button>
-            </StackPanel>
+            </ui:DynamicScrollViewer>
         </Grid>
+
+        <!-- Затемняющий фон теперь находится поверх основного контента, но под оверлеем -->
+        <!-- Добавлено событие MouseLeftButtonDown -->
+        <Border x:Name="BackgroundDimmer" Background="Black" Opacity="0" IsHitTestVisible="False" MouseLeftButtonDown="BackgroundDimmer_MouseDown"/>
 
         <!-- Оверлей загрузки -->
         <Grid x:Name="LoadingOverlay" Visibility="Collapsed" Panel.ZIndex="100" Opacity="0" Background="#80000000">
             <ui:ProgressRing IsIndeterminate="True" Width="60" Height="60" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+        </Grid>
+
+        <!-- ВЫЕЗЖАЮЩАЯ ПАНЕЛЬ ПРИЛОЖЕНИЯ (ОВЕРЛЕЙ) -->
+        <Grid x:Name="AppOverlayPanel" 
+      HorizontalAlignment="Right" 
+      VerticalAlignment="Stretch"
+      Width="480" 
+      Margin="0,0,0,0" 
+      Panel.ZIndex="200" 
+      Visibility="Collapsed"
+      Background="Transparent"
+      MouseLeftButtonDown="AppOverlayPanel_MouseLeftButtonDown">
+
+            <Grid.Effect>
+                <!-- Смягчили тень всей панели для светлой темы -->
+                <DropShadowEffect BlurRadius="30" ShadowDepth="-5" Opacity="0.15" Color="Black"/>
+            </Grid.Effect>
+
+            <Border
+        VerticalAlignment="Stretch"
+        Margin="0,55,20,25" 
+        CornerRadius="20"
+        BorderThickness="1" 
+        BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}">
+                <!-- Динамическая граница вместо #33FFFFFF -->
+
+                <!-- Динамический полупрозрачный фон -->
+                <Border.Background>
+                    <SolidColorBrush Color="{DynamicResource ApplicationBackgroundColor}" Opacity="0.75"/>
+                </Border.Background>
+
+                <Border.Effect>
+                    <!-- Смягчили тень карточки до Opacity="0.25", чтобы в светлой теме она не выглядела "грязной" -->
+                    <DropShadowEffect BlurRadius="40" ShadowDepth="10" Opacity="0.25" Color="Black"/>
+                </Border.Effect>
+
+                <Grid Margin="25" ScrollViewer.CanContentScroll="False">
+                    <!-- Содержимое карточки -->
+                    <StackPanel>
+                        <TextBlock Text="{Binding ViewModel.AppTitle}" HorizontalAlignment="Center" FontSize="26" FontWeight="Bold" TextWrapping="Wrap" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                        <!-- Описание -->
+                        <TextBlock Text="{Binding ViewModel.AppDescription}" HorizontalAlignment="Center" TextWrapping="Wrap" FontSize="14" Opacity="1" FontWeight="Medium" TextAlignment="Center" LineHeight="22" Margin="0,10,0,32" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                        <Border Width="130" Height="130" CornerRadius="16" Padding="8" Background="#0AFFFFFF" BorderBrush="#1AFFFFFF" BorderThickness="1" 
+                        Visibility="{Binding ViewModel.AppIconPath, Converter={StaticResource PathToVisibilityConverter}}">
+                            <Border CornerRadius="15">
+                                <Border.Background>
+                                    <ImageBrush Stretch="UniformToFill" ImageSource="{Binding ViewModel.AppIconPath, Converter={StaticResource ImageSourceConverter}}"/>
+                                </Border.Background>
+                            </Border>
+                        </Border>
+                    </StackPanel>
+
+                    <StackPanel VerticalAlignment="Bottom">
+                        <ui:Badge x:Name="OverlaySourceBadge" HorizontalAlignment="Center" Margin="0,0,0,10">
+                            <TextBlock x:Name="OverlaySourceText" 
+                               Text="Local" 
+                               FontSize="10" 
+                               FontWeight="SemiBold" 
+                               Foreground="White"/>
+                        </ui:Badge>
+
+                        <!-- ПАНЕЛЬ УСТАНОВКИ -->
+                        <!-- Заменили BorderBrush="#1AFFFFFF" на динамический CardStrokeColorDefaultBrush -->
+                        <ui:Card Padding="20" VerticalAlignment="Bottom">
+                            <StackPanel>
+                                <StackPanel>
+                                    <Grid>
+                                        <ui:ToggleSwitch IsChecked="{Binding ViewModel.IsForceInstall, Mode=TwoWay}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                        <TextBlock Text="Принудительная установка" HorizontalAlignment="Left" FontWeight="SemiBold" VerticalAlignment="Center" FontSize="13"/>
+                                    </Grid>
+                                </StackPanel>
+
+                                <Separator Margin="0,10,0,10"/>
+
+                                <ui:Button x:Name="InstallButton" 
+                                   
+                                   Height="45" FontSize="15" FontWeight="SemiBold" 
+                                   Appearance="Primary" Command="{Binding ViewModel.InstallCommand}" 
+                                   Click="InstallButton_Click" HorizontalAlignment="Stretch">
+                                    <ui:Button.Style>
+                                        <Style TargetType="ui:Button" BasedOn="{StaticResource DefaultUiButtonStyle}">
+                                            <Setter Property="Content" Value="Установить" />
+
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding ViewModel.IsInstalled}" Value="True">
+                                                    <Setter Property="Content" Value="Установлено" />
+                                                    <Setter Property="IsEnabled" Value="False" />
+                                                </DataTrigger>
+
+                                                <MultiDataTrigger>
+                                                    <MultiDataTrigger.Conditions>
+                                                        <Condition Binding="{Binding ViewModel.IsInstalled}" Value="True"/>
+                                                        <Condition Binding="{Binding ViewModel.IsForceInstall}" Value="True" />
+                                                    </MultiDataTrigger.Conditions>
+                                                    <Setter Property="IsEnabled" Value="True" />
+                                                    <Setter Property="Content" Value="Переустановить" />
+                                                </MultiDataTrigger>
+
+                                                <DataTrigger Binding="{Binding ViewModel.IsChecking}" Value="True">
+                                                    <Setter Property="IsEnabled" Value="False" />
+                                                    <Setter Property="Content">
+                                                        <Setter.Value>
+                                                            <ui:ProgressRing Height="20" Width="20" IsIndeterminate="True" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                        </Setter.Value>
+                                                    </Setter>
+                                                </DataTrigger>
+
+                                                <DataTrigger Binding="{Binding ViewModel.IsInstalling}" Value="True">
+                                                    <Setter Property="IsEnabled" Value="False" />
+                                                    <Setter Property="Content">
+                                                        <Setter.Value>
+                                                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                                                <ui:ProgressRing Height="18" Width="18" IsIndeterminate="False" Progress="{Binding ViewModel.ProgressValue}" Margin="0,0,10,0" />
+                                                                <ui:TextBlock Text="Установка..." Foreground="{DynamicResource TextFillColorPrimaryBrush}" VerticalAlignment="Center" FontSize="14"/>
+                                                            </StackPanel>
+                                                        </Setter.Value>
+                                                    </Setter>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </ui:Button.Style>
+                                </ui:Button>
+                                
+                            </StackPanel>
+                        </ui:Card>
+                        <ProgressBar Value="{Binding ViewModel.ProgressValue, Mode=OneWay}" 
+             Height="6" 
+             Margin="0,12,0,0" 
+             Minimum="0" 
+             Maximum="100"
+             Visibility="{Binding ViewModel.IsInstalling, Converter={StaticResource BoolToVis}}" />
+                    </StackPanel>
+                </Grid>
+            </Border>
         </Grid>
     </Grid>
 </Page>

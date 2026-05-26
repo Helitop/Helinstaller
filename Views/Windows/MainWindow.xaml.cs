@@ -2,26 +2,30 @@
 using Helinstaller.Helpers;
 using Helinstaller.Models;
 using Helinstaller.ViewModels.Windows;
+using Helinstaller.Views.Pages;
 using Microsoft.Win32;
 using NAudio.Dsp;
 using NAudio.Wave;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
-using System.IO.Compression;
 using System.Net.Http;
 using System.Runtime.InteropServices;
-using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
-using System.Windows.Shapes;
+using Velopack;
+using Velopack.Sources;
+
 using Wpf.Ui;
 using Wpf.Ui.Abstractions;
 using Wpf.Ui.Appearance;
 using Wpf.Ui.Controls;
 using Path = System.IO.Path;
+using TextBlock = Wpf.Ui.Controls.TextBlock;
 
 namespace Helinstaller.Views.Windows
 {
@@ -32,25 +36,27 @@ namespace Helinstaller.Views.Windows
         private VisualizationProvider? _visProvider;
         private MediaFoundationReader? _mediaReader;
         private bool _globalVisualizerEnabled = true;
-
+        private ScaleTransform _lyricsScale = new ScaleTransform();
+        private TranslateTransform _lyricsTranslate = new TranslateTransform();
+        private ScaleTransform _backgroundScale = new ScaleTransform();
         // Плейлист и навигация
         private List<string> _playlist = new List<string>();
         private int _currentTrackIndex = 0;
-
+        private float _bassHistory = 0;       // Средняя энергия баса
+        private float _beatPulse = 0;         // Текущий уровень пульсации (от 0 до 1)
         // Контроль потоков
         private readonly SemaphoreSlim _playerLock = new SemaphoreSlim(1, 1);
         private bool _isClosed = false;
         private bool _isLoading = false;
 
         // Графика визуализатора
-        private System.Windows.Shapes.Rectangle[] _barShapes;
         private float[] _currentValues;
         private float[] _smoothedValues;
 
         // Поля для анимации UI
         private bool _socialExpanded = false;
         private bool _isRenderingSubscribed = false;
-
+        private bool _isIslandExpanded = false;
         public MainWindowViewModel ViewModel { get; }
 
         public MainWindow(
@@ -64,46 +70,64 @@ namespace Helinstaller.Views.Windows
             SystemThemeWatcher.Watch(this);
 
             InitializeComponent();
+            // --- НАСТРОЙКА ТРАНСФОРМАЦИЙ И АНТИМЫЛА ---
+            var lyricsGroup = new TransformGroup();
+            lyricsGroup.Children.Add(_lyricsScale);
+            lyricsGroup.Children.Add(_lyricsTranslate);
+            LyricsDisplay.RenderTransform = lyricsGroup;
+            LyricsDisplay.RenderTransformOrigin = new Point(0.5, 0.5); // Важно: масштабируем ровно от центра текста
+
+            // Лекарство от мыла при анимации текста в WPF:
+            TextOptions.SetTextFormattingMode(LyricsDisplay, TextFormattingMode.Ideal);
+            TextOptions.SetTextHintingMode(LyricsDisplay, TextHintingMode.Animated); // Отключаем пиксельную привязку
+
+            var bgGroup = new TransformGroup();
+            bgGroup.Children.Add(_backgroundScale);
+            HubBorder.RenderTransform = bgGroup;
+            HubBorder.RenderTransformOrigin = new Point(0.5, 0.5);
+            // ------------------------------------------
             WeakReferenceMessenger.Default.Register<VisualizerStatusChangedMessage>(this, (r, m) =>
             {
                 _globalVisualizerEnabled = m.Value;
 
                 if (!_globalVisualizerEnabled)
                 {
-                    // Полная остановка
                     UnsubscribeFromRendering();
-                    VisualizerCanvas.Visibility = Visibility.Collapsed;
-                    // Очищаем бары, чтобы они не висели мертвым грузом
-                    if (_barShapes != null)
-                    {
-                        foreach (var rect in _barShapes) rect.Height = 0;
-                    }
+                    // Убираем анимацию аватарки в дефолт, если выключено
+                    AvatarScale.ScaleX = 1;
+                    AvatarScale.ScaleY = 1;
+                    AvatarRing.Opacity = 0;
                 }
                 else
                 {
-                    // Включаем обратно
-                    VisualizerCanvas.Visibility = Visibility.Visible;
                     if (_waveOut?.PlaybackState == PlaybackState.Playing)
                     {
                         SubscribeToRendering();
                     }
                 }
             });
+
             SetPageService(navigationViewPageProvider);
             navigationService.SetNavigationControl(RootNavigation);
         }
-
         // Класс для чтения ответа от GitHub API
         public class GitHubFile
         {
             public string name { get; set; } = "";
             public string download_url { get; set; } = "";
         }
+        public class LrcLine
+        {
+            public TimeSpan Time { get; set; }
+            public string Text { get; set; } = "";
+        }
 
-        // === Инициализация Плеера ===
+        // Поля в классе MainWindow
+        private List<LrcLine> _currentLyrics = new List<LrcLine>();
+        private Dictionary<string, string> _lrcMap = new Dictionary<string, string>(); // URL_песни -> URL_лирики
+                                                                                       // === Инициализация Плеера ===
         private async void InitializePlayer()
         {
-            // --- НАСТРОЙКИ ---
             string user = "Helitop";
             string repo = "Heli-Music";
             string path = "";
@@ -119,22 +143,31 @@ namespace Helinstaller.Views.Windows
 
                     if (files != null)
                     {
-                        foreach (var file in files)
+                        // Сначала соберем все аудио и все lrc
+                        var audioFiles = files.Where(f => f.name.EndsWith(".mp3") || f.name.EndsWith(".wav") || f.name.EndsWith(".ogg")).ToList();
+                        var lrcFiles = files.Where(f => f.name.EndsWith(".lrc")).ToList();
+
+                        foreach (var file in audioFiles)
                         {
-                            if (!string.IsNullOrEmpty(file.download_url) &&
-                               (file.name.EndsWith(".mp3") || file.name.EndsWith(".wav") || file.name.EndsWith(".ogg")))
+                            _playlist.Add(file.download_url);
+
+                            // Ищем лирику: имя файла (без расширения) должно совпадать
+                            string baseName = Path.GetFileNameWithoutExtension(file.name);
+                            var matchingLrc = lrcFiles.FirstOrDefault(l => Path.GetFileNameWithoutExtension(l.name) == baseName);
+
+                            if (matchingLrc != null)
                             {
-                                _playlist.Add(file.download_url);
+                                _lrcMap[file.download_url] = matchingLrc.download_url;
                             }
                         }
                     }
+                    playerBadge.Visibility = Visibility.Visible;
                 }
-                playerBadge.Visibility = Visibility.Visible;
             }
             catch (Exception ex)
             {
-                SongTitle.Text = "Ошибка получения списка";
-                System.Diagnostics.Debug.WriteLine(ex.Message);
+                SongTitle.Text = "Ошибка сети";
+                Debug.WriteLine(ex.Message);
             }
 
             if (!_playlist.Any())
@@ -148,145 +181,229 @@ namespace Helinstaller.Views.Windows
             var rng = new Random();
             _playlist = _playlist.OrderBy(a => rng.Next()).ToList();
 
-            // Инициализация WaveOut (устройство вывода)
             _waveOut = new WaveOutEvent { Volume = 0.05f };
             _waveOut.PlaybackStopped += OnPlaybackStopped;
 
-            InitializeVisualizerUI();
-
-            // Загружаем первый трек, но передаем флаг из настроек
             await LoadTrackAsync(_currentTrackIndex, Models.AppSettings.IsMusicAutoPlayEnabled);
+        }
 
-            // Также принудительно проверяем визуализатор при старте
-            _globalVisualizerEnabled = Models.AppSettings.IsVisualizerEnabled;
-            if (!_globalVisualizerEnabled)
+
+
+        // Наведение на невидимую зону в тайтлбаре
+        // Общая логика открытия (вызывается и триггером, и самим островком)
+        private void ExpandIsland()
+        {
+            if (_isIslandExpanded) return;
+            _isIslandExpanded = true;
+
+            var duration = TimeSpan.FromMilliseconds(400);
+            var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
+
+            // Считаем "широкую" цель: либо 320, либо больше, если текст очень длинный
+            double textWidth = MeasureStringWidth(LyricsDisplay.Text, LyricsDisplay.FontSize);
+            double expandedWidth = Math.Max(320, Math.Min(500, textWidth + 120));
+
+            // Анимация роста
+            HubCard.BeginAnimation(WidthProperty, new DoubleAnimation(expandedWidth, duration) { EasingFunction = ease });
+            HubCard.BeginAnimation(HeightProperty, new DoubleAnimation(160, duration) { EasingFunction = ease });
+
+            // Показываем плеер
+            playerBadge.IsHitTestVisible = true;
+            playerBadge.BeginAnimation(OpacityProperty, new DoubleAnimation(1, duration) { BeginTime = TimeSpan.FromMilliseconds(150) });
+            // ПЛАВНО УБИРАЕМ БЛЮР
+            if (HubBorder.Effect is System.Windows.Media.Effects.BlurEffect blur)
             {
-                VisualizerCanvas.Visibility = Visibility.Collapsed;
+                blur.BeginAnimation(System.Windows.Media.Effects.BlurEffect.RadiusProperty,
+                    new DoubleAnimation(0, TimeSpan.FromMilliseconds(400)) { EasingFunction = ease });
             }
         }
 
-        // === Метод загрузки трека (АСИНХРОННЫЙ) ===
+        // Событие для невидимого триггера в тайтлбаре
+        private void HubTrigger_MouseEnter(object sender, MouseEventArgs e)
+        {
+            ExpandIsland();
+        }
+
+        // Событие для самого островка (чтобы не закрывался при переходе курсора)
+        private void HubCard_MouseEnter(object sender, MouseEventArgs e)
+        {
+            ExpandIsland();
+        }
+
+        // Событие ухода мыши
+        private async void HubCard_MouseLeave(object sender, MouseEventArgs e)
+        {
+            await Task.Delay(100);
+            if (HubCard.IsMouseOver || HubTrigger.IsMouseOver) return;
+
+            _isIslandExpanded = false;
+
+            var duration = TimeSpan.FromMilliseconds(300);
+            var ease = new CubicEase { EasingMode = EasingMode.EaseInOut };
+
+            playerBadge.IsHitTestVisible = false;
+            if (HubBorder.Effect is System.Windows.Media.Effects.BlurEffect blur)
+            {
+                blur.BeginAnimation(System.Windows.Media.Effects.BlurEffect.RadiusProperty,
+                    new DoubleAnimation(20, TimeSpan.FromMilliseconds(300)) { EasingFunction = ease });
+            }
+            // Считаем ширину чисто под текст без лимита в 320
+            double textWidth = MeasureStringWidth(LyricsDisplay.Text, LyricsDisplay.FontSize);
+            double collapsedWidth = string.IsNullOrEmpty(LyricsDisplay.Text)
+                                    ? 180
+                                    : Math.Max(180, textWidth + 160);
+
+            HubCard.BeginAnimation(WidthProperty, new DoubleAnimation(collapsedWidth, duration) { EasingFunction = ease });
+            HubCard.BeginAnimation(HeightProperty, new DoubleAnimation(40, duration) { EasingFunction = ease });
+            playerBadge.BeginAnimation(OpacityProperty, new DoubleAnimation(0, TimeSpan.FromMilliseconds(100)));
+        }
+
+
+        // === Загрузка трека (Парсинг имени файла + загрузка LRC) ===
         private async Task LoadTrackAsync(int index, bool startPlaying = true)
         {
             if (_isClosed) return;
-
-            // Блокируем одновременные вызовы (чтобы не наслаивались загрузки)
             await _playerLock.WaitAsync();
 
             _isLoading = true;
+            _currentLyrics.Clear();
+            LyricsDisplay.Text = "";
             songProgress.Value = 0;
             songProgress.IsIndeterminate = true;
-            UpdateControlsState(false); // Отключаем кнопки
 
             try
             {
-                // UI: Показываем статус
-                SongTitle.Text = "...";
-                PlayPauseButton.Content = new ProgressRing() {IsIndeterminate = true, IsHitTestVisible = false, Width = 20, Height = 20, Foreground = songProgress.Foreground };
+                string trackUrl = _playlist[index];
 
-                string trackUrl = "";
-                if (index >= 0 && index < _playlist.Count)
+                // 1. Лирика
+                if (_lrcMap.TryGetValue(trackUrl, out string? lrcUrl))
                 {
-                    trackUrl = _playlist[index];
-                }
-                else
-                {
-                    SongTitle.Text = "Ошибка индекса";
-                    return;
+                    try { using var client = new HttpClient(); string lrcContent = await client.GetStringAsync(lrcUrl); ParseLrc(lrcContent); } catch { }
                 }
 
-                // --- ФОНОВАЯ ЗАДАЧА (HEAVY LIFTING) ---
-                // Создаем ридер и провайдер в отдельном потоке, чтобы UI не вис
+                // 2. Аудио
                 var result = await Task.Run(() =>
                 {
                     try
                     {
-                        // 1. Останавливаем воспроизведение (безопасно)
                         _waveOut?.Stop();
-
-                        // 2. Очищаем старые ресурсы
-                        _visProvider = null;
                         _mediaReader?.Dispose();
-                        _mediaReader = null;
-
-                        // 3. Создаем новые (ЭТО САМАЯ ДОЛГАЯ ОПЕРАЦИЯ)
                         var reader = new MediaFoundationReader(trackUrl);
-                        var sampleProvider = reader.ToSampleProvider();
-                        var visProvider = new VisualizationProvider(sampleProvider);
-
-                        return (reader, visProvider, null as Exception);
+                        var visProvider = new VisualizationProvider(reader.ToSampleProvider());
+                        string cleanName = System.Net.WebUtility.UrlDecode(Path.GetFileNameWithoutExtension(trackUrl));
+                        string artist = ""; string title = cleanName;
+                        if (cleanName.Contains(" - ")) { var parts = cleanName.Split(new[] { " - " }, 2, StringSplitOptions.None); artist = parts[0].Trim(); title = parts[1].Trim(); }
+                        return (reader, visProvider, artist, title, null as Exception);
                     }
-                    catch (Exception ex)
-                    {
-                        return (null, null, ex);
-                    }
+                    catch (Exception ex) { return (null, null, "", "", ex); }
                 });
 
-                // --- ВОЗВРАТ В UI ПОТОК ---
-                if (result.Item3 != null)
-                {
-                    throw result.Item3;
-                }
+                if (result.Item5 != null) throw result.Item5;
 
                 _mediaReader = result.Item1;
                 _visProvider = result.Item2;
+                _waveOut.Init(_visProvider);
 
-                if (_waveOut != null && _visProvider != null)
+                songProgress.Maximum = _mediaReader.TotalTime.TotalSeconds;
+                ArtistTitle.Text = result.Item3;
+                SongTitle.Text = result.Item4;
+                songProgress.IsIndeterminate = false;
+
+                // --- ОБНОВЛЕНИЕ ЦВЕТОВ И ОБЛОЖКИ ---
+                UpdateVisualizerColor(trackUrl);
+                var coverBrush = await GetTrackCoverAsync(trackUrl);
+
+                if (coverBrush != null)
                 {
-                    _waveOut.Init(_visProvider);
-
-                    // === ДОБАВИТЬ ЭТО ===
-                    // Устанавливаем длину прогресс-бара в секундах
-                    songProgress.Minimum = 0;
-                    songProgress.Maximum = _mediaReader.TotalTime.TotalSeconds;
-                    songProgress.Value = 0;
-                    // ===================
-
-                    UpdateVisualizerColor(trackUrl);
-                    // Обновляем текст
-                    string cleanName = System.Net.WebUtility.UrlDecode(System.IO.Path.GetFileNameWithoutExtension(trackUrl));
-                    SongTitle.Text = cleanName;
-                    songProgress.IsIndeterminate = false;
-                    if (startPlaying)
+                    HubBorder.Background = coverBrush;
+                    HubBorder.Effect = new System.Windows.Media.Effects.BlurEffect
                     {
-                        _waveOut.Play();
-                        PlayPauseButton.Content = PlayIcon;
-                        PlayIcon.Symbol = SymbolRegular.Pause48;
-                        SubscribeToRendering(); // Включаем рендер только если играем
-                    }
-                    else
-                    {
-                        // Просто ставим значок Play и не запускаем движок
-                        _waveOut.Pause(); // На всякий случай
-                        PlayPauseButton.Content = PlayIcon;
-                        PlayIcon.Symbol = SymbolRegular.Play48;
-                        UnsubscribeFromRendering(); // Рендер не нужен
-                    }
-
-
+                        Radius = _isIslandExpanded ? 0 : 20,
+                        KernelType = System.Windows.Media.Effects.KernelType.Gaussian
+                    };
                 }
+                else
+                {
+                    HubBorder.Background = new SolidColorBrush(Color.FromArgb(255, 18, 18, 18));
+                    HubBorder.Effect = null;
+                }
+
+                if (startPlaying) { _waveOut.Play(); PlayIcon.Symbol = SymbolRegular.Pause48; SubscribeToRendering(); }
+                else { PlayIcon.Symbol = SymbolRegular.Play48; UnsubscribeFromRendering(); }
             }
-            catch (Exception ex)
-            {
-                SongTitle.Text = "Ошибка: " + ex.Message;
-                PlayPauseButton.Content = PlayIcon;
-                PlayIcon.Symbol = SymbolRegular.ErrorCircle24;
-                _visProvider = null; // Маркер ошибки для кнопок
-            }
-            finally
-            {
-                _isLoading = false;
-                UpdateControlsState(true); // Включаем кнопки
-                _playerLock.Release();
-            }
+            catch { SongTitle.Text = "Ошибка загрузки"; }
+            finally { _isLoading = false; _playerLock.Release(); }
         }
 
-        private void UpdateControlsState(bool isEnabled)
+        // Метод, который создает идеальную "пилюлю" для обрезки
+        private void UpdateIslandClip()
         {
-            // Можно блокировать кнопки, чтобы юзер не спамил
-            // Если кнопки NextButton/PrevButton имеют имена в XAML, раскомментируйте:
-            // NextButton.IsEnabled = isEnabled;
-            // PrevButton.IsEnabled = isEnabled;
+            if (HubCard == null) return;
+
+            // Создаем геометрию прямоугольника с радиусом скругления 20
+            var clipGeometry = new RectangleGeometry
+            {
+                RadiusX = 20,
+                RadiusY = 20,
+                Rect = new Rect(0, 0, HubCard.ActualWidth, HubCard.ActualHeight)
+            };
+
+            // Накладываем эту маску на саму карточку
+            // Теперь НИЧТО (ни блюр, ни картинка) не вылезет за эти границы
+            HubCard.Clip = clipGeometry;
+        }
+
+        // Событие, которое срабатывает при ЛЮБОМ изменении размера (в т.ч. во время анимации)
+        private void HubCard_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            UpdateIslandClip();
+        }
+
+        private void ParseLrc(string lrcContent)
+        {
+            _currentLyrics.Clear();
+
+            // Регулярка для поиска [мм:сс.фф] или [мм:сс:фф]
+            var regex = new Regex(@"\[(?<min>\d+):(?<sec>\d+)(?:[.:](?<ms>\d+))?\]");
+            var lines = lrcContent.Split(new[] { "\r\n", "\n" }, StringSplitOptions.RemoveEmptyEntries);
+
+            foreach (var line in lines)
+            {
+                // Ищем все временные метки в строке (бывает, что одна строка относится к нескольким меткам)
+                var matches = regex.Matches(line);
+                if (matches.Count == 0) continue;
+
+                // Очищаем текст строки от всех временных меток [00:00.00]
+                string text = regex.Replace(line, "").Trim();
+
+                foreach (Match match in matches)
+                {
+                    int m = int.Parse(match.Groups["min"].Value);
+                    int s = int.Parse(match.Groups["sec"].Value);
+                    int ms = 0;
+
+                    if (match.Groups["ms"].Success)
+                    {
+                        string msVal = match.Groups["ms"].Value;
+                        ms = int.Parse(msVal);
+
+                        // Стандарт LRC: .75 — это 750мс, .7 — это 700мс, .750 — это 750мс
+                        if (msVal.Length == 2) ms *= 10;
+                        else if (msVal.Length == 1) ms *= 100;
+                    }
+
+                    // ИСПРАВЛЕНО: Правильный конструктор (0 дней, 0 часов, m минут, s секунд, ms миллисекунд)
+                    var timeSpan = new TimeSpan(0, 0, m, s, ms);
+
+                    _currentLyrics.Add(new LrcLine
+                    {
+                        Time = timeSpan,
+                        Text = text
+                    });
+                }
+            }
+            // Сортируем по времени на случай, если метки в файле идут вразнобой
+            _currentLyrics = _currentLyrics.OrderBy(l => l.Time).ToList();
         }
 
         // === Обработчики событий плеера ===
@@ -353,6 +470,164 @@ namespace Helinstaller.Views.Windows
             catch (Exception ex)
             { SongTitle.Text = ex.Message; }
         }
+        private bool _isShowingProgress = false;
+        private void InitializeDownloadProgressTracking()
+        {
+            DownloadTaskManager.Instance.Tasks.CollectionChanged += Tasks_CollectionChanged;
+
+            foreach (var task in DownloadTaskManager.Instance.Tasks)
+            {
+                task.PropertyChanged += Task_PropertyChanged;
+            }
+
+            UpdateGlobalDownloadProgress();
+        }
+
+        private void Tasks_CollectionChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
+        {
+            if (e.NewItems != null)
+            {
+                foreach (DownloadTask task in e.NewItems)
+                {
+                    task.PropertyChanged += Task_PropertyChanged;
+                }
+            }
+            if (e.OldItems != null)
+            {
+                foreach (DownloadTask task in e.OldItems)
+                {
+                    task.PropertyChanged -= Task_PropertyChanged;
+                }
+            }
+            UpdateGlobalDownloadProgress();
+        }
+
+        private void Task_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(DownloadTask.Progress) ||
+                e.PropertyName == nameof(DownloadTask.IsCompleted) ||
+                e.PropertyName == nameof(DownloadTask.IsIndeterminate) ||
+                e.PropertyName == nameof(DownloadTask.IsError))
+            {
+                Dispatcher.BeginInvoke(new Action(UpdateGlobalDownloadProgress), System.Windows.Threading.DispatcherPriority.Background);
+            }
+        }
+
+        private enum IslandStatusState
+        {
+            Normal,     // Иконка музыки
+            Progress,   // Прогресс-ринг скачивания
+            Success,    // Зеленая галочка
+            Error       // Красный крестик
+        }
+
+        private IslandStatusState _currentIslandState = IslandStatusState.Normal;
+        private System.Threading.CancellationTokenSource? _stateResetCts;
+
+        private async void UpdateGlobalDownloadProgress()
+        {
+            var activeTasks = DownloadTaskManager.Instance.Tasks
+                .Where(t => !t.IsCompleted && !t.IsError)
+                .ToList();
+
+            if (activeTasks.Count > 0)
+            {
+                // Если появились или идут активные задачи, сбрасываем любые таймеры возврата к ноте
+                _stateResetCts?.Cancel();
+                _stateResetCts = null;
+
+                if (_currentIslandState != IslandStatusState.Progress)
+                {
+                    TransitionIslandState(IslandStatusState.Progress);
+                }
+
+                // Вычисляем прогресс
+                bool isIndeterminate = activeTasks.Any(t => t.IsIndeterminate || t.Progress <= 0);
+                if (isIndeterminate)
+                {
+                    DownloadProgressRing.IsIndeterminate = true;
+                }
+                else
+                {
+                    double average = activeTasks.Average(t => t.Progress);
+                    DownloadProgressRing.IsIndeterminate = false;
+                    DownloadProgressRing.Progress = average;
+                }
+                return;
+            }
+
+            // Активных задач больше нет!
+            // Но мы должны проверить: перешли ли мы только что из состояния Progress (скачивания)?
+            if (_currentIslandState == IslandStatusState.Progress)
+            {
+                // Ищем последнюю завершенную задачу в списке, чтобы понять, успешна ли она
+                var lastFinishedTask = DownloadTaskManager.Instance.Tasks
+                    .OrderByDescending(t => t.StartTime)
+                    .FirstOrDefault(t => t.IsCompleted || t.IsError);
+
+                IslandStatusState targetState = IslandStatusState.Success;
+                if (lastFinishedTask != null && lastFinishedTask.IsError)
+                {
+                    targetState = IslandStatusState.Error;
+                }
+
+                // Показываем галочку или крестик
+                TransitionIslandState(targetState);
+
+                // Запускаем асинхронный таймер возврата в Normal через 5 секунд
+                _stateResetCts?.Cancel();
+                _stateResetCts = new System.Threading.CancellationTokenSource();
+                var token = _stateResetCts.Token;
+
+                try
+                {
+                    await Task.Delay(5000, token);
+                    if (!token.IsCancellationRequested)
+                    {
+                        TransitionIslandState(IslandStatusState.Normal);
+                    }
+                }
+                catch (TaskCanceledException) { }
+            }
+            else if (_currentIslandState != IslandStatusState.Success && _currentIslandState != IslandStatusState.Error)
+            {
+                // Если мы не в состоянии Успеха/Ошибки и нет активных задач — возвращаем ноту
+                TransitionIslandState(IslandStatusState.Normal);
+            }
+        }
+
+        private void TransitionIslandState(IslandStatusState newState)
+        {
+            if (_currentIslandState == newState) return;
+
+            var oldState = _currentIslandState;
+            _currentIslandState = newState;
+
+            var duration = TimeSpan.FromMilliseconds(250);
+            var ease = new CubicEase { EasingMode = EasingMode.EaseInOut };
+
+            var fadeOut = new DoubleAnimation(0, duration) { EasingFunction = ease };
+            var fadeIn = new DoubleAnimation(1, duration) { EasingFunction = ease };
+
+            // Плавно прячем предыдущее состояние
+            GetElementByState(oldState)?.BeginAnimation(OpacityProperty, fadeOut);
+
+            // Плавно проявляем новое состояние
+            GetElementByState(newState)?.BeginAnimation(OpacityProperty, fadeIn);
+        }
+
+        private UIElement? GetElementByState(IslandStatusState state)
+        {
+            return state switch
+            {
+                IslandStatusState.Normal => MusicIcon,
+                IslandStatusState.Progress => DownloadProgressRing,
+                IslandStatusState.Success => SuccessIcon,
+                IslandStatusState.Error => ErrorIcon,
+                _ => null
+            };
+        }
+
 
         private async void PrevButton_Click(object sender, RoutedEventArgs e)
         {
@@ -369,66 +644,23 @@ namespace Helinstaller.Views.Windows
         // --- ЛОГИКА ЦВЕТОВ ---
         public enum VisualizerStyle
         {
-            Default, Cyberpunk, BlueYellow, Edgerunners
+            Default
         }
 
         private void UpdateVisualizerColor(string filename)
         {
             VisualizerStyle style = VisualizerStyle.Default;
             string lowerName = System.IO.Path.GetFileName(filename).ToLower();
-            // Определение стиля
-            if (lowerName.Contains("johnny") || lowerName.Contains("ballad") || lowerName.Contains("anthem"))
-                style = VisualizerStyle.BlueYellow;
-            else if (lowerName.Contains("edgerunners") || lowerName.Contains("rat") || lowerName.Contains("house"))
-                style = VisualizerStyle.Edgerunners;
-            else if (lowerName.Contains("cyber") || lowerName.Contains("sneak") || lowerName.Contains("rebel") || lowerName.Contains("synth") || lowerName.Contains("phantom") || lowerName.Contains("samurai"))
-                style = VisualizerStyle.Cyberpunk;
 
             FontFamily font = this.FontFamily;
             LinearGradientBrush gradient = new LinearGradientBrush { StartPoint = new Point(0, 1), EndPoint = new Point(0, 0) };
 
-            switch (style)
-            {
-                case VisualizerStyle.Cyberpunk:
-                    gradient.GradientStops.Add(new GradientStop(Color.FromRgb(180, 40, 100), 0.3));
-                    gradient.GradientStops.Add(new GradientStop(Color.FromRgb(100, 255, 240), 0.8));
-                    gradient.GradientStops.Add(new GradientStop(Color.FromRgb(150, 255, 255), 1.0));
-                    font = new FontFamily(new Uri("pack://application:,,,/"), "./Assets/voyage-fantastique-4.ttf#Voyage Fantastique Condensed");
-                    break;
-                case VisualizerStyle.BlueYellow:
-                    gradient.GradientStops.Add(new GradientStop(Color.FromRgb(40, 90, 200), 0.0));
-                    gradient.GradientStops.Add(new GradientStop(Color.FromRgb(255, 220, 80), 0.7));
-                    gradient.GradientStops.Add(new GradientStop(Color.FromRgb(255, 255, 120), 1.0));
-                    font = new FontFamily(new Uri("pack://application:,,,/"), "./Assets/voyage-fantastique-4.ttf#Voyage Fantastique Condensed");
-                    break;
-                case VisualizerStyle.Edgerunners:
-                    gradient.GradientStops.Add(new GradientStop(Color.FromRgb(142, 241, 27), 0.0));
-                    gradient.GradientStops.Add(new GradientStop(Color.FromRgb(207, 252, 3), 0.7));
-                    gradient.GradientStops.Add(new GradientStop(Color.FromRgb(234, 234, 19), 1.0));
-                    font = new FontFamily(new Uri("pack://application:,,,/Assets"), "./Assets/voyage-fantastique-4.ttf#Voyage Fantastique Condensed");
-                    break;
-                case VisualizerStyle.Default:
-                default:
-                    // === ВОТ ЗДЕСЬ БЕРЕМ СИСТЕМНЫЙ ЦВЕТ ===
-                    // Создаем градиент из одного цвета (системного), чтобы он был совместим с остальной логикой
-                    Color sysColor = SystemColors.AccentColor;
-                    gradient.GradientStops.Add(new GradientStop(sysColor, 0.0));
-                    gradient.GradientStops.Add(new GradientStop(sysColor, 1.0));
-                    font = this.FontFamily;
-                    break;
-            }
-            // 1. Полоски эквалайзера
-            if (_barShapes != null)
-            {
-                foreach (var rect in _barShapes)
-                {
-                    if (style == VisualizerStyle.Default)
-                        // Для дефолта лучше использовать ResourceReference (чтобы менялось при смене темы винды на лету)
-                        rect.SetResourceReference(Shape.FillProperty, SystemColors.AccentColorBrushKey);
-                    else
-                        rect.Fill = gradient;
-                }
-            }
+            // === ВОТ ЗДЕСЬ БЕРЕМ СИСТЕМНЫЙ ЦВЕТ ===
+            // Создаем градиент из одного цвета (системного), чтобы он был совместим с остальной логикой
+            Color sysColor = SystemColors.AccentColor;
+            gradient.GradientStops.Add(new GradientStop(sysColor, 0.0));
+            gradient.GradientStops.Add(new GradientStop(sysColor, 1.0));
+            font = this.FontFamily;
 
             // 2. Прогресс бар (Крутим)
             // Тут используем gradient (в котором теперь лежит системный цвет для Default)
@@ -440,137 +672,187 @@ namespace Helinstaller.Views.Windows
             // 3. Бордер и фон
             if (style == VisualizerStyle.Default)
             {
-                // === ДЕФОЛТНОЕ ПОВЕДЕНИЕ ===
-                // Если хотите рамку системного цвета:
-                // HubCard.BorderBrush = gradient; 
-                
-                // Если хотите убрать рамку в дефолте (как было в старом коде):
                 HubCard.BorderBrush = Brushes.Transparent;
 
-                // Убираем фон и маску шума
-                HubBorder.Background = Brushes.Transparent;
+                // Проверяем на принадлежность к базовому типу TileBrush (подойдет и ImageBrush, и DrawingBrush)
+                if (!(HubBorder.Background is TileBrush))
+                {
+                    HubBorder.Background = new SolidColorBrush(Color.FromRgb(18, 18, 18));
+                }
+
                 HubBorder.OpacityMask = null;
-
                 SongTitle.Foreground = this.Foreground;
-                SongTitle.FontSize = this.FontSize;
             }
-            else
-            {
-                SongTitle.Foreground = progressGradient;
-                
-                SongTitle.FontSize = 24;
-                // === ЦВЕТНЫЕ СТИЛИ С АНИМАЦИЕЙ ===
-                HubBorder.Background = gradient;
 
-                // Анимация шума
-                var uri = new Uri("pack://application:,,,/Assets/noise.png");
-                var bitmap = new BitmapImage(uri);
-                var bgBrush = new ImageBrush(bitmap);
-
-                bgBrush.TileMode = TileMode.Tile;
-                bgBrush.Viewport = new Rect(0, 0, 1, 2);
-                bgBrush.ViewportUnits = BrushMappingMode.RelativeToBoundingBox;
-
-                var translate = new TranslateTransform();
-                bgBrush.RelativeTransform = translate;
-
-                var animation = new DoubleAnimation
-                {
-                    From = 0,
-                    To = 1,
-                    Duration = TimeSpan.FromSeconds(10),
-                    RepeatBehavior = RepeatBehavior.Forever
-                };
-                translate.BeginAnimation(TranslateTransform.YProperty, animation);
-
-                HubBorder.OpacityMask = bgBrush;
-            }
         }
 
-        private void InitializeVisualizerUI()
+
+        private const int BANDS = 60; // Делаем много точек для плавности линии
+
+
+
+        private bool _isLyricsAnimating = false;
+
+        private void AnimateLyricsChange(string newText)
         {
-            VisualizerCanvas.Children.Clear();
-            int bands = 96;
-            _barShapes = new System.Windows.Shapes.Rectangle[bands];
-            _currentValues = new float[bands];
-            _smoothedValues = new float[bands];
-            for (int i = 0; i < bands; i++)
+            // Если текст тот же или сейчас идет анимация - выходим
+            if (LyricsDisplay.Text == newText || _isLyricsAnimating) return;
+            _isLyricsAnimating = true;
+
+            var duration = TimeSpan.FromMilliseconds(300);
+            var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
+
+            // 1. Исчезновение старого текста
+            var fadeOut = new DoubleAnimation(0, TimeSpan.FromMilliseconds(150));
+            fadeOut.Completed += (s, e) =>
             {
-                var rect = new System.Windows.Shapes.Rectangle
-                {
-                    RadiusX = 3,
-                    RadiusY = 3,
-                    Width = 6,
-                    Height = 1,
-                    Fill = Brushes.Transparent
-                };
-                VisualizerCanvas.Children.Add(rect);
-                _barShapes[i] = rect;
-            }
+                LyricsDisplay.Text = newText;
+
+                // 2. Рассчитываем и анимируем размеры островка
+                AdjustIslandAndText(newText);
+
+                // 3. Появление нового текста (выплывает снизу вверх)
+                var fadeIn = new DoubleAnimation(1, duration);
+                var moveUp = new DoubleAnimation(10, 0, duration) { EasingFunction = ease };
+
+                fadeIn.Completed += (s2, e2) => _isLyricsAnimating = false;
+
+                LyricsDisplay.BeginAnimation(OpacityProperty, fadeIn);
+
+                _lyricsTranslate.BeginAnimation(TranslateTransform.YProperty, moveUp);
+            };
+
+            LyricsDisplay.BeginAnimation(OpacityProperty, fadeOut);
         }
 
-        // === Логика Визуализатора (Отрисовка) ===
+        private void AdjustIslandAndText(string text)
+        {
+            // 1. Сначала подбираем размер шрифта БЕЗ анимации
+            double targetFontSize = 14;
+            double textWidth = MeasureStringWidth(text, 14); // Считаем ширину для 14 шрифта
+
+            if (textWidth + 160 > this.ActualWidth - 40) // Если не влезает в окно
+            {
+                targetFontSize = 11;
+            }
+
+            LyricsDisplay.FontSize = targetFontSize;
+
+            // 2. Теперь считаем ширину с нужным шрифтом
+            textWidth = MeasureStringWidth(text, targetFontSize);
+            double neededWidth = Math.Max(180, textWidth + 160);
+
+            // 3. Анимируем ширину
+            var widthAnim = new DoubleAnimation(neededWidth, TimeSpan.FromMilliseconds(300))
+            {
+                EasingFunction = new QuarticEase { EasingMode = EasingMode.EaseOut }
+            };
+            HubCard.BeginAnimation(WidthProperty, widthAnim);
+        }
+
+        // Перегрузка для удобства
+        private double MeasureStringWidth(string text, double fontSize)
+        {
+            if (string.IsNullOrEmpty(text)) return 0;
+
+            var formattedText = new FormattedText(
+                text,
+                System.Globalization.CultureInfo.CurrentCulture,
+                FlowDirection.LeftToRight,
+                new Typeface(
+                    LyricsDisplay.FontFamily,
+                    LyricsDisplay.FontStyle,
+                    LyricsDisplay.FontWeight,
+                    LyricsDisplay.FontStretch),
+                fontSize, // Теперь мы передаем сюда double
+                Brushes.Black,
+                VisualTreeHelper.GetDpi(this).PixelsPerDip);
+
+            return formattedText.Width;
+        }
+
+        private float _visualizerMaxPeak = 0.5f; // Для авто-усиления
+
+        // --- Отрисовка и Обновление текста (OnRendering) ---
         private void OnRendering(object? sender, EventArgs e)
         {
-            // САМАЯ ВАЖНАЯ ПРОВЕРКА: если выключен кодово — выходим сразу
-            if (!_globalVisualizerEnabled) return;
+            if (!_globalVisualizerEnabled || _visProvider == null || _visProvider.FftData == null) return;
 
+            // 1. ЛОГИКА ТЕКСТА (Лирика или Название трека)
             if (_mediaReader != null && !_isLoading && _waveOut?.PlaybackState == PlaybackState.Playing)
             {
                 songProgress.Value = _mediaReader.CurrentTime.TotalSeconds;
-            }
 
-            // Если провайдера нет или выключено — не считаем FFT
-            if (_visProvider == null || _visProvider.FftData == null || _barShapes == null) return;
+                // Ищем текущую строку лирики
+                var line = _currentLyrics.LastOrDefault(x => x.Time <= _mediaReader.CurrentTime);
+
+                // Если лирики нет или она еще не началась — берем название песни
+                string targetDisplay = (!string.IsNullOrWhiteSpace(line?.Text))
+                                       ? line.Text
+                                       : SongTitle.Text;
+
+                if (LyricsDisplay.Text != targetDisplay)
+                    AnimateLyricsChange(targetDisplay);
+            }
 
             float[] fft = _visProvider.FftData;
-            double w = VisualizerCanvas.ActualWidth;
-            double h = VisualizerCanvas.ActualHeight;
-            if (w <= 0 || h <= 0) return;
 
-            int bands = _barShapes.Length;
-            int half = bands / 2;
-            double barWidth = w / bands;
-            double gap = 2;
-            double actualWidth = Math.Max(3, barWidth - gap);
+            // --- ДЕТЕКТОР БИТА (УСИЛЕННЫЙ) ---
+            float currentBass = 0;
+            for (int i = 1; i <= 5; i++) currentBass += fft[i];
+            currentBass /= 5.0f;
 
-            float attack = 0.9f;
-            float release = 0.2f;
-            float ema = 0.3f;
-            double maxMultiplier = 0.50;
+            float currentMax = 0;
+            for (int i = 0; i < 20; i++) if (fft[i] > currentMax) currentMax = fft[i];
+            if (currentMax > _visualizerMaxPeak) _visualizerMaxPeak = currentMax;
+            else _visualizerMaxPeak -= (_visualizerMaxPeak - Math.Max(0.01f, currentMax)) * 0.02f;
 
-            for (int i = 0; i < half; i++)
+            float normalizedBass = currentBass / Math.Max(0.05f, _visualizerMaxPeak);
+
+            if (normalizedBass > _beatPulse)
+                _beatPulse += (normalizedBass - _beatPulse) * 0.8f;
+            else
+                _beatPulse += (normalizedBass - _beatPulse) * 0.15f;
+
+            _beatPulse = Math.Clamp(_beatPulse, 0f, 1.2f);
+
+            // ==========================================
+            // 1. АВАТАРКА (СИЛЬНЫЙ БИТ)
+            // ==========================================
+            double avatarTarget = 1.0 + (_beatPulse * 0.25); // Увеличение на 25% (было 15)
+            AvatarScale.ScaleX += (avatarTarget - AvatarScale.ScaleX) * 0.35;
+            AvatarScale.ScaleY += (avatarTarget - AvatarScale.ScaleY) * 0.35;
+
+            // ==========================================
+            // 2. КОЛЬЦО (УДАРНАЯ ВОЛНА)
+            // ==========================================
+            double ringTarget = 1.0 + (_beatPulse * 1.2); // Кольцо разлетается еще дальше
+            RingScale.ScaleX += (ringTarget - RingScale.ScaleX) * 0.2;
+            RingScale.ScaleY += (ringTarget - RingScale.ScaleY) * 0.2;
+            AvatarRing.Opacity = Math.Clamp(_beatPulse * 0.7, 0, 0.7);
+
+            // ==========================================
+            // 3. ТЕКСТ (ТЕПЕРЬ ОН ПРЫГАЕТ!)
+            // ==========================================
+            // Увеличиваем множитель до 0.12 (12% роста вместо 3%). Теперь это будет видно!
+            double textTarget = 1.0 + (_beatPulse * 0.12);
+            _lyricsScale.ScaleX += (textTarget - _lyricsScale.ScaleX) * 0.3;
+            _lyricsScale.ScaleY += (textTarget - _lyricsScale.ScaleY) * 0.3;
+
+            // ДОПОЛНИТЕЛЬНО: Текст вспыхивает (свечение) под бит
+            if (LyricsDisplay.Effect is System.Windows.Media.Effects.DropShadowEffect glow)
             {
-                double t = 1 - (double)i / half;
-                int fftIndex = (int)(Math.Pow(t, 2.0) * (fft.Length - 1));
-                float raw = fftIndex < fft.Length ? fft[fftIndex] : 0f;
-
-                raw = MathF.Log10(1 + raw * 70) * 0.5f;
-                raw = Math.Clamp(raw, 0, 3.0f);
-
-                UpdateSingleBar(i, raw, h, barWidth, gap, actualWidth, attack, release, ema, maxMultiplier);
-                UpdateSingleBar(bands - 1 - i, raw, h, barWidth, gap, actualWidth, attack, release, ema, maxMultiplier);
+                glow.Opacity = 0.3 + (_beatPulse * 0.7);
+                glow.BlurRadius = 5 + (_beatPulse * 15);
             }
+
+            // ==========================================
+            // 4. ОБЩИЙ ФОН
+            // ==========================================
+            double bgTarget = 1.0 + (_beatPulse * 0.04);
+            _backgroundScale.ScaleX += (bgTarget - _backgroundScale.ScaleX) * 0.2;
+            _backgroundScale.ScaleY += (bgTarget - _backgroundScale.ScaleY) * 0.2;
         }
-
-        private void UpdateSingleBar(int index, float raw, double h, double barWidth, double gap, double actualWidth,
-                                     float attack, float release, float ema, double maxMultiplier)
-        {
-            float current = _currentValues[index];
-            if (raw > current) current += (raw - current) * attack;
-            else current += (raw - current) * release;
-            _currentValues[index] = current;
-
-            _smoothedValues[index] += (current - _smoothedValues[index]) * ema;
-            double barHeight = _smoothedValues[index] * h * maxMultiplier;
-
-            var rect = _barShapes[index];
-            rect.Width = actualWidth;
-            rect.Height = Math.Max(3, barHeight);
-            Canvas.SetLeft(rect, index * barWidth + gap / 2);
-            Canvas.SetBottom(rect, 0);
-        }
-
         private void SubscribeToRendering()
         {
             // Если в настройках выключено, даже не подписываемся на событие таймера/рендера
@@ -592,44 +874,14 @@ namespace Helinstaller.Views.Windows
             }
         }
 
-        // === UI События ===
-        private void SocialToggleButton_Click(object sender, RoutedEventArgs e)
-        {
-            SocialToggleButton.Appearance = ControlAppearance.Secondary;
-            double targetWidth = _socialExpanded ? 0 : 600;
-            double targetOpacity = _socialExpanded ? 0 : 1;
-            var widthAnim = new DoubleAnimation
-            {
-                To = targetWidth,
-                Duration = TimeSpan.FromMilliseconds(400),
-                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
-            };
-            var opacityAnim = new DoubleAnimation
-            {
-                To = targetOpacity,
-                Duration = TimeSpan.FromMilliseconds(350)
-            };
-            SocialPanelContainer.BeginAnimation(FrameworkElement.WidthProperty, widthAnim);
-            SocialPanel.BeginAnimation(UIElement.OpacityProperty, opacityAnim);
-            _socialExpanded = !_socialExpanded;
-        }
 
-        private void SocialLink_Click(object sender, RoutedEventArgs e)
-        {
-            if (sender is Wpf.Ui.Controls.Button btn)
-            {
-                string? url = btn.CommandParameter as string ?? btn.Tag as string;
-                if (!string.IsNullOrWhiteSpace(url))
-                {
-                    try { Process.Start(new ProcessStartInfo(url) { UseShellExecute = true }); } catch { }
-                }
-            }
-        }
 
         private async void FluentWindow_Initialized(object sender, EventArgs e)
         {
             AppSettings.Load();
+            InitializeDownloadProgressTracking();
 
+            // Запускаем проверку соединения
             var connectionTask = ConnectionCheck();
 
             string userName = Environment.UserName;
@@ -640,205 +892,74 @@ namespace Helinstaller.Views.Windows
             else if (hour >= 17 && hour < 23) greeting = "Добрый вечер";
             else greeting = "Доброй ночи";
 
-            Message.Text = $"{greeting}, {userName}!";
-            User.Text = userName;
+            TitleBar.Title = $"{greeting}, {userName}!";
             Picture.Source = GetUserAvatar();
 
+            // Ждем завершения проверки сети
             await connectionTask;
             InitializePlayer();
+
             if (!ThemeChanger.IsSystemInDarkMode())
             {
                 var res = CustomMessageBox.Show("Рекомендуется использовать тёмную тему.", "", System.Windows.MessageBoxButton.YesNo);
                 if (res == CustomMessageBox.MessageBoxResult.Yes) ThemeChanger.ToggleWindowsTheme();
             }
-            var updateItem = this.RootNavigation.FooterMenuItems
-            .OfType<NavigationViewItem>()
-            .FirstOrDefault(x => x.Content?.ToString() == "Обновления");
-            updateItem.Click += UpdateItem_Click;
-        }
-        private Version GetAssemblyVersion()
-        {
-            return System.Reflection.Assembly
-                .GetExecutingAssembly()
-                .GetName()
-                .Version
-                ?? new Version(0, 0, 0, 0);
+
+            // Запускаем автоматическую фоновую проверку обновлений через Velopack
+            // Метод вызывается без await, чтобы не блокировать UI-поток приложения при старте
+            _ = CheckForUpdatesOnStartupAsync();
         }
 
-        private async void UpdateItem_Click(object sender, RoutedEventArgs e)
-        {
-            if (sender is NavigationViewItem item)
-            {
-                await CheckUpdatesForItem(item);
-            }
-        }
-
-        private async Task CheckUpdatesForItem(NavigationViewItem updateItem)
+        /// <summary>
+        /// Автоматическая фоновая проверка обновлений Velopack при старте
+        /// </summary>
+        private async Task CheckForUpdatesOnStartupAsync()
         {
             try
             {
-                updateItem.IsEnabled = false;
-                updateItem.Content = "Проверка обновлений...";
+                // Подключаемся к релизам вашего репозитория на GitHub
+                var source = new GithubSource("https://github.com/Helitop/Helinstaller", accessToken: null, prerelease: false);
+                var mgr = new UpdateManager(source);
 
-                Version currentVersion = GetAssemblyVersion();
-
-                // 1️⃣ Получаем последний релиз с GitHub
-                using var http = new HttpClient();
-                http.DefaultRequestHeaders.UserAgent.ParseAdd("Helinstaller");
-                string releasesJson = await http.GetStringAsync(
-                    "https://api.github.com/repos/Helitop/Helinstaller/releases/latest");
-
-                using var doc = JsonDocument.Parse(releasesJson);
-                var tagName = doc.RootElement.GetProperty("tag_name").GetString();
-                if (string.IsNullOrWhiteSpace(tagName)) return;
-
-                var match = Regex.Match(tagName, @"\d+(\.\d+)+");
-                if (!match.Success) return;
-
-                Version latestVersion = new Version(match.Value);
-
-                if (latestVersion <= currentVersion)
+                // 1. Проверяем наличие новой версии на сервере
+                var newVersion = await mgr.CheckForUpdatesAsync();
+                if (newVersion == null)
                 {
-                    updateItem.Content = "Обновлений нет";
-                    updateItem.IsEnabled = true; // Возвращаем активность кнопке
+                    Debug.WriteLine("[Velopack] Обновлений не найдено. Работаем на актуальной версии.");
                     return;
                 }
 
-                // --- НОВЫЙ БЛОК: ПОДТВЕРЖДЕНИЕ ОБНОВЛЕНИЯ ---
-                updateItem.Content = $"Найдена версия {latestVersion}";
+                Debug.WriteLine($"[Velopack] Найдено обновление: {newVersion.TargetFullRelease.Version}. Начинаем фоновую загрузку...");
 
+                // 2. Тихо скачиваем обновление в фоновом режиме (пользователь может продолжать пользоваться программой)
+                await mgr.DownloadUpdatesAsync(newVersion);
+
+                Debug.WriteLine("[Velopack] Обновление успешно скачано в фоновом режиме.");
+
+                // 3. Выводим диалоговое окно с предложением перезапуститься прямо сейчас
                 var uiMessageBox = new Wpf.Ui.Controls.MessageBox
                 {
                     Title = "Доступно обновление",
-                    Content = $"Найдена новая версия: {latestVersion}\nТекущая версия: {currentVersion}\n\nХотите установить обновление сейчас? Приложение будет перезапущено.",
-                    PrimaryButtonText = "Установить",
-                    SecondaryButtonText = "Позже",
+                    Content = $"Для Helinstaller скачана новая версия: {newVersion.TargetFullRelease.Version}.\n\nПерезапустить приложение сейчас, чтобы применить изменения?",
+                    PrimaryButtonText = "Перезапустить",
+                    SecondaryButtonText = "Позже (при следующем запуске)",
                     CloseButtonText = "Отмена"
                 };
 
                 var result = await uiMessageBox.ShowDialogAsync();
-
-                if (result != Wpf.Ui.Controls.MessageBoxResult.Primary)
+                if (result == Wpf.Ui.Controls.MessageBoxResult.Primary)
                 {
-                    updateItem.Content = "Обновление отложено";
-                    updateItem.IsEnabled = true;
-                    return;
+                    // Velopack мгновенно применит обновление и автоматически откроет программу заново
+                    mgr.ApplyUpdatesAndRestart(newVersion);
                 }
-                // --------------------------------------------
-
-                updateItem.Content = "Загрузка...";
-
-                // 2️⃣ Находим ZIP в релизе
-                var assets = doc.RootElement.GetProperty("assets");
-                string zipUrl = null;
-
-                foreach (var asset in assets.EnumerateArray())
-                {
-                    var name = asset.GetProperty("name").GetString();
-                    if (name != null && name.EndsWith("Helinstaller.zip"))
-                    {
-                        zipUrl = asset.GetProperty("browser_download_url").GetString();
-                        break;
-                    }
-                }
-
-                if (zipUrl == null)
-                {
-                    updateItem.Content = "ZIP не найден";
-                    updateItem.IsEnabled = true;
-                    return;
-                }
-
-                // 3️⃣ Скачиваем ZIP
-                string tempFile = Path.Combine(Path.GetTempPath(), "Helinstaller_update.zip");
-                using (var fs = new FileStream(tempFile, FileMode.Create, FileAccess.Write, FileShare.None))
-                {
-                    var stream = await http.GetStreamAsync(zipUrl);
-                    await stream.CopyToAsync(fs);
-                }
-
-                updateItem.Content = "Распаковка...";
-                string tempExtract = Path.Combine(Path.GetTempPath(), "Helinstaller_update");
-                if (Directory.Exists(tempExtract))
-                    Directory.Delete(tempExtract, true);
-
-                ZipFile.ExtractToDirectory(tempFile, tempExtract);
-
-                // Путь к новой версии (проверь, что в ZIP именно такая структура папок)
-                string newAppFolder = Path.Combine(tempExtract, "Helinstaller Packed");
-
-                // 4️⃣ Запускаем PowerShell для замены текущей версии и перезапуска
-                string currentExe = Process.GetCurrentProcess().MainModule!.FileName;
-                string currentDir = Path.GetDirectoryName(currentExe);
-
-                // Сценарий PowerShell: Ждем закрытия, удаляем всё кроме папки с обновлением, копируем, запускаем
-                string psScript = $@"
-    Start-Sleep -Milliseconds 1000;
-    Get-Process | Where-Object {{ $_.MainModule.FileName -eq '{currentExe}' }} | Stop-Process -Force -ErrorAction SilentlyContinue;
-    Remove-Item -Recurse -Force -Path '{currentDir}\*' -Exclude 'Helinstaller_update*';
-    Copy-Item -RecShort -Force -Path '{newAppFolder}\*' -Destination '{currentDir}';
-    Start-Process '{currentExe}';
-";
-
-                string psFile = Path.Combine(Path.GetTempPath(), "update.ps1");
-                await File.WriteAllTextAsync(psFile, psScript);
-
-                // Запуск PowerShell
-                ProcessStartInfo psi = new ProcessStartInfo("powershell", $"-NoProfile -ExecutionPolicy Bypass -File \"{psFile}\"")
-                {
-                    UseShellExecute = true,
-                    WindowStyle = ProcessWindowStyle.Hidden,
-                    CreateNoWindow = true
-                };
-
-                Process.Start(psi);
-
-                // Заканчиваем текущую программу
-                Application.Current.Shutdown();
             }
             catch (Exception ex)
             {
-                var errorMsg = new Wpf.Ui.Controls.MessageBox
-                {
-                    Title = "Ошибка обновления",
-                    Content = ex.Message,
-                    CloseButtonText = "Ок"
-                };
-                await errorMsg.ShowDialogAsync();
-
-                updateItem.Content = "Ошибка обновления";
-                updateItem.IsEnabled = true;
+                // Ошибки автообновления пишем в дебаг, чтобы не мешать пользователю, если, например, пропал интернет
+                Debug.WriteLine($"[Velopack] Ошибка автообновления: {ex.Message}");
             }
         }
 
-
-        public static async Task<(bool IsUpdateAvailable, Version? LatestVersion)>
-        CheckUpdates(string owner, string repo, Version currentVersion)
-        {
-            using var http = new HttpClient();
-            http.DefaultRequestHeaders.UserAgent.ParseAdd("Helinstaller");
-
-            var url = $"https://api.github.com/repos/{owner}/{repo}/tags";
-            var json = await http.GetStringAsync(url);
-
-            using var doc = JsonDocument.Parse(json);
-            if (doc.RootElement.GetArrayLength() == 0)
-                return (false, null);
-
-            var tagName = doc.RootElement[0].GetProperty("name").GetString();
-
-            if (string.IsNullOrWhiteSpace(tagName))
-                return (false, null);
-
-            // выдёргиваем версию из тега (v1.2.3 → 1.2.3)
-            var match = Regex.Match(tagName, @"\d+(\.\d+)+");
-            if (!match.Success)
-                return (false, null);
-
-            var latestVersion = new Version(match.Value);
-
-            return (latestVersion > currentVersion, latestVersion);
-        }
 
         // === Вспомогательные классы и методы ===
         public static class ThemeChanger
@@ -949,15 +1070,6 @@ namespace Helinstaller.Views.Windows
                         stat.Symbol = SymbolRegular.CloudError48;
                         stat.Visibility = Visibility.Visible;
                         ring.Visibility = Visibility.Collapsed;
-                        var updateItem = this.RootNavigation.FooterMenuItems
-                        .OfType<NavigationViewItem>()
-                        .FirstOrDefault(x => (string?)x.Tag == "updates");
-
-                        if (updateItem != null)
-                            await CheckUpdatesForItem(updateItem); // ✅ Task, await можно использовать
-
-                        // Прерываем проверку, так как цепочка нарушена
-                        // (например, если нет интернета, нет смысла проверять GitHub)
                         break;
                     }
                 }
@@ -989,7 +1101,7 @@ namespace Helinstaller.Views.Windows
                 // Логика на случай провала:
                 // Либо оставляем висеть ошибку, либо пускаем в приложение с ограничениями.
                 // Если нужно пустить в приложение даже при ошибке, раскомментируй код ниже:
-                
+
 
                 await Task.Delay(2000); // Даем прочитать ошибку
                 MainGrid.Visibility = Visibility.Visible;
@@ -1003,6 +1115,83 @@ namespace Helinstaller.Views.Windows
             }
         }
 
+        private async Task<Brush?> GetTrackCoverAsync(string url)
+        {
+            try
+            {
+                using var client = new HttpClient();
+                client.DefaultRequestHeaders.Range = new System.Net.Http.Headers.RangeHeaderValue(0, 3000000);
+
+                var response = await client.GetAsync(url);
+                if (!response.IsSuccessStatusCode) return null;
+
+                var bytes = await response.Content.ReadAsByteArrayAsync();
+                using var ms = new MemoryStream(bytes);
+
+                var abstraction = new SimpleFileAbstraction(Path.GetFileName(url), ms);
+
+                try
+                {
+                    using var tagFile = TagLib.File.Create(abstraction);
+                    if (tagFile != null && tagFile.Tag.Pictures.Length > 0)
+                    {
+                        var bin = tagFile.Tag.Pictures[0].Data.Data;
+                        var bitmap = new BitmapImage();
+                        using (var stream = new MemoryStream(bin))
+                        {
+                            bitmap.BeginInit();
+                            bitmap.StreamSource = stream;
+                            bitmap.CacheOption = BitmapCacheOption.OnLoad;
+                            bitmap.EndInit();
+                        }
+                        bitmap.Freeze();
+
+                        // === МАГИЯ КОМПОЗИЦИИ ДЛЯ ИСКЛЮЧЕНИЯ ПРОЗРАЧНОСТИ ===
+                        var drawingGroup = new DrawingGroup();
+
+                        // 1. Создаем гарантированную сплошную темную подложку
+                        var backgroundBrush = new SolidColorBrush(Color.FromRgb(18, 18, 18));
+                        var backgroundGeometry = new RectangleGeometry(new Rect(0, 0, 1, 1));
+                        var backgroundDrawing = new GeometryDrawing(backgroundBrush, null, backgroundGeometry);
+                        drawingGroup.Children.Add(backgroundDrawing);
+
+                        // 2. Создаем рисунок обложки
+                        var imageDrawing = new ImageDrawing(bitmap, new Rect(0, 0, 1, 1));
+
+                        // 3. Заворачиваем обложку в группу с Opacity = 0.4 (настраиваем степень затемнения)
+                        var imageGroup = new DrawingGroup { Opacity = 0.4 };
+                        imageGroup.Children.Add(imageDrawing);
+                        drawingGroup.Children.Add(imageGroup);
+
+                        // 4. Помещаем скомпонованный рисунок в непрозрачную кисть
+                        var drawingBrush = new DrawingBrush(drawingGroup)
+                        {
+                            Stretch = Stretch.UniformToFill
+                        };
+                        drawingBrush.Freeze(); // Замораживаем для производительности
+
+                        return drawingBrush;
+                    }
+                }
+                catch (TagLib.CorruptFileException) { }
+            }
+            catch (Exception ex) { Debug.WriteLine("Ошибка сети/чтения: " + ex.Message); }
+            return null;
+        }
+
+        private class SimpleFileAbstraction : TagLib.File.IFileAbstraction
+        {
+            public SimpleFileAbstraction(string name, Stream stream)
+            {
+                Name = name;
+                ReadStream = stream;
+                WriteStream = stream;
+            }
+            public string Name { get; }
+            public Stream ReadStream { get; }
+            public Stream WriteStream { get; }
+            public void CloseStream(Stream stream) { }
+        }
         public static BitmapImage? GetUserAvatar()
         {
             string dir = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -1045,6 +1234,11 @@ namespace Helinstaller.Views.Windows
 
         public void SetServiceProvider(IServiceProvider serviceProvider) => throw new NotImplementedException();
         private void info_TextChanged(object sender, TextChangedEventArgs e) { info.Visibility = Visibility.Visible; }
+
+        private void Donate_Click(object sender, RoutedEventArgs e)
+        {
+            Navigate(typeof(Helinstaller.Views.Pages.Donate));
+        }
     }
 
     /// <summary>

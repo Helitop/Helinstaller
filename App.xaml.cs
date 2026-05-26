@@ -1,4 +1,4 @@
-﻿using Helinstaller.Services;
+using Helinstaller.Services;
 using Helinstaller.ViewModels.Pages;
 using Helinstaller.ViewModels.Windows;
 using Helinstaller.Views.Pages;
@@ -11,6 +11,7 @@ using System.Windows.Threading;
 using Wpf.Ui;
 using Wpf.Ui.DependencyInjection;
 using System.Text;
+using Velopack;
 
 namespace Helinstaller
 {
@@ -19,12 +20,12 @@ namespace Helinstaller
     /// </summary>
     public partial class App
     {
-
-        // The.NET Generic Host provides dependency injection, configuration, logging, and other services.
-        // https://docs.microsoft.com/dotnet/core/extensions/generic-host
-        // https://docs.microsoft.com/dotnet/core/extensions/dependency-injection
-        // https://docs.microsoft.com/dotnet/core/extensions/configuration
-        // https://docs.microsoft.com/dotnet/core/extensions/logging
+        public App()
+        {
+            // Velopack должен быть запущен как можно раньше. 
+            // Конструктор App — идеальное место для этого в стандартном WPF.
+            VelopackApp.Build().Run();
+        }
 
         private static readonly IHost _host = Host
             .CreateDefaultBuilder()
@@ -54,15 +55,22 @@ namespace Helinstaller
                 services.AddSingleton<SettingsViewModel>();
                 services.AddSingleton<Tweaks>();
                 services.AddSingleton<TweaksViewModel>();
-                services.AddSingleton<AppPageViewmodel>();
-                services.AddSingleton<AppPage>();
+
                 services.AddSingleton<Donate>();
                 services.AddSingleton<DonateViewmodel>();
                 services.AddSingleton<Advices>();
+
                 services.AddSingleton<Ventoy>();
-                services.AddSingleton<Editor>();
+
                 services.AddSingleton<DownloadsPage>();
                 services.AddSingleton<DownloadsViewModel>();
+
+                // Custom Business Services
+                services.AddSingleton<IWingetService, WingetService>();
+                services.AddSingleton<IDownloadService, DownloadService>();
+                services.AddSingleton<IUsbDriveService, UsbDriveService>();
+                services.AddSingleton<IVentoyService, VentoyService>();
+                services.AddSingleton<ITweaksService, TweaksService>();
             }).Build();
 
         /// <summary>

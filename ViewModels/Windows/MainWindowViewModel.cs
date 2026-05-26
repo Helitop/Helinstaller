@@ -34,12 +34,6 @@ namespace Helinstaller.ViewModels.Windows
             },
             new NavigationViewItem()
             {
-                Content = "Установить приложение?",
-                Visibility = Visibility.Collapsed,
-                TargetPageType = typeof(Views.Pages.AppPage)
-            },
-            new NavigationViewItem()
-            {
                 Content = "Советы",
                 Icon = new SymbolIcon { Symbol = SymbolRegular.Question16 },
                 TargetPageType = typeof(Views.Pages.Advices)

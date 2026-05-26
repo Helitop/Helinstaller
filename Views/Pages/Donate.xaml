@@ -5,26 +5,38 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
-    mc:Ignorable="d" Margin="0,15,0,0" >
+    mc:Ignorable="d" Margin="0,15,0,0"
+    ui:Design.Background="{DynamicResource ApplicationBackgroundBrush}"
+    ui:Design.Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+    Foreground="{DynamicResource TextFillColorPrimaryBrush}">
 
-    <Grid>
+    <!-- Используем Grid вместо StackPanel -->
+    <Grid Margin="20,15,20,20">
         <Grid.RowDefinitions>
-            <RowDefinition/>
-            <RowDefinition/>
+            <!-- Верхняя строка подстраивается под текст -->
+            <RowDefinition Height="Auto"/>
+            <!-- Нижняя строка забирает всё ОСТАВШЕЕСЯ место -->
+            <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
-        <ui:CardExpander Grid.Row="0" Header="Я конечно ошалею, если кто сюда перейдёт. Ну короче если не жалко - закинь на сухарики." VerticalAlignment="Top" IsExpanded="True">
-            <StackPanel>
-                <ui:Button Appearance="Success" Click="Button_Click" HorizontalAlignment="Center" Margin="0,0,0,15">
-                    <StackPanel Orientation="Horizontal">
-                        <ui:SymbolIcon Symbol="Gift16" Margin="0,0,5,0" FontSize="16"/>
-                        <ui:TextBlock Text="Пожертвовать"/>
-                        <ui:Image Source="/Assets/tbank.png" Margin="0,0,0,0" Height="20" CornerRadius="20"/>
-                    </StackPanel>
-                </ui:Button>
-                <ui:Image Source="/Assets/donation.png" CornerRadius="20" Width="350" Height="350"/>
-            </StackPanel>
-        </ui:CardExpander>
+
+        <ui:TextBlock 
+            Grid.Row="0"
+            TextAlignment="Center" 
+            Text="Буду очень благодарен поддержке проекта. QRчик на Сбер, если есть желание оставить копеечку:"  
+            FontTypography="Title" 
+            TextWrapping="Wrap" 
+            Margin="0,0,0,20"/>
+
+        <!-- Картинка во второй строке -->
+        <ui:Image 
+            Grid.Row="1"
+            Source="/Assets/donation.png" 
+            CornerRadius="20"
+            Stretch="Uniform" 
+            HorizontalAlignment="Center"
+            VerticalAlignment="Top"
+            MaxWidth="400"/>
+        <!-- MaxWidth, чтобы на огромных мониторах QR не стал гигантским -->
 
     </Grid>
-
 </Page>

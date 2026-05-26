@@ -789,13 +789,6 @@ exit");
                 return false;
             }
         }
-
-        private void Button_Click(object sender, RoutedEventArgs e)
-        {
-            HackMenu.Visibility = Visibility.Visible;
-            HackButton.Visibility = Visibility.Hidden;
-        }
-
         private async void Button_Click_1(object sender, RoutedEventArgs e)
         {
             if (ImagesList.SelectedItem != null)

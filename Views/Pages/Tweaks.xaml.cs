@@ -125,8 +125,9 @@ public partial class Tweaks : INavigableView<TweaksViewModel>
         var msg = new Wpf.Ui.Controls.MessageBox
         {
             Title = "Подтверждение очистки",
-            Content = "Будет удалена Яндекс.Музыка и заблокирована автоматическая установка регионального софта в будущем. Продолжить?",
-            PrimaryButtonText = "Стерилизовать",
+            Content = "Будет удалена Яндекс.Музыка (UWP), а географический регион системы (GeoID) сменится на США для отключения автоустановок в будущем (язык системы не изменится).\n\n" +
+                      "В Edge и Chrome установится поиск Google, но настройки останутся полностью разблокированными для вашего выбора. Продолжить?",
+            PrimaryButtonText = "Очистить систему",
             CloseButtonText = "Отмена"
         };
 
@@ -134,10 +135,11 @@ public partial class Tweaks : INavigableView<TweaksViewModel>
 
         try
         {
-            // 1. Сносим пакеты (и установленные, и заготовки)
-            // Используем -ErrorAction SilentlyContinue, чтобы не вылетали ошибки, если чего-то уже нет
-            string script = "Get-AppxPackage -AllUsers *Yandex* | Remove-AppxPackage -AllUsers; " +
-                            "Get-AppxProvisionedPackage -Online | Where-Object { $_.DisplayName -like '*Yandex*' } | Remove-AppxProvisionedPackage -Online";
+            // 1. Сносим UWP-пакет из MS Store и переключаем системный регион на США (GeoID 244),
+            // чтобы навсегда заблокировать будущие скрытые загрузки регионального софта.
+            string script = "Get-AppxPackage -Name 'A025C540.Yandex.Music' -AllUsers | Remove-AppxPackage -AllUsers; " +
+                            "Get-AppxProvisionedPackage -Online | Where-Object { $_.DisplayName -eq 'A025C540.Yandex.Music' } | Remove-AppxProvisionedPackage -Online; " +
+                            "Set-WinHomeLocation -GeoId 244";
 
             await Task.Run(() => {
                 var ps = new ProcessStartInfo
@@ -146,12 +148,12 @@ public partial class Tweaks : INavigableView<TweaksViewModel>
                     Arguments = $"-NoProfile -ExecutionPolicy Bypass -Command \"{script}\"",
                     CreateNoWindow = true,
                     UseShellExecute = false,
-                    Verb = "runas" // На всякий случай просим админа
+                    Verb = "runas"
                 };
                 Process.Start(ps)?.WaitForExit();
             });
 
-            // 2. Блокируем в реестре навязывание (Content Delivery Manager)
+            // 2. Блокируем автозагрузку рекламных приложений в реестре
             string cdmPath = @"Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager";
             using (var key = Registry.CurrentUser.OpenSubKey(cdmPath, true))
             {
@@ -159,22 +161,74 @@ public partial class Tweaks : INavigableView<TweaksViewModel>
                 {
                     key.SetValue("SilentInstalledAppsEnabled", 0, RegistryValueKind.DWord);
                     key.SetValue("PreInstalledAppsEnabled", 0, RegistryValueKind.DWord);
+                    key.SetValue("OemPreInstalledAppsEnabled", 0, RegistryValueKind.DWord);
+                    key.SetValue("SubscribedContent-314559Enabled", 0, RegistryValueKind.DWord);
+                    key.SetValue("SubscribedContent-338388Enabled", 0, RegistryValueKind.DWord);
+                    key.SetValue("SystemPaneSuggestionsEnabled", 0, RegistryValueKind.DWord);
                 }
             }
 
-            // 3. Фиксируем Google в Edge (через политики)
-            string edgePolicyPath = @"SOFTWARE\Policies\Microsoft\Edge";
-            using (var key = Registry.LocalMachine.CreateSubKey(edgePolicyPath))
+            string cloudContentPath = @"SOFTWARE\Policies\Microsoft\Windows\CloudContent";
+            using (var key = Registry.LocalMachine.CreateSubKey(cloudContentPath))
             {
-                key.SetValue("DefaultSearchProviderEnabled", 1, RegistryValueKind.DWord);
-                key.SetValue("DefaultSearchProviderSearchURL", "https://www.google.com/search?q={searchTerms}", RegistryValueKind.String);
+                if (key != null) key.SetValue("DisableWindowsConsumerFeatures", 1, RegistryValueKind.DWord);
             }
 
-            await ShowUiMessageBox("Готово", "Яндекс успешно уничтожен. Система стала чище.");
+            string storePolicyPath = @"SOFTWARE\Policies\Microsoft\WindowsStore";
+            using (var key = Registry.LocalMachine.CreateSubKey(storePolicyPath))
+            {
+                if (key != null) key.SetValue("AutoDownload", 2, RegistryValueKind.DWord);
+            }
+
+            // 3. АНТИ-ЯНДЕКС (РЕКОМЕНДОВАННЫЕ политики вместо ПРИНУДИТЕЛЬНЫХ)
+            // Записываем параметры поиска в ветку "\Recommended". Браузеры установят Google по умолчанию,
+            // но интерфейс настроек останется ПОЛНОСТЬЮ СВОБОДНЫМ (пользователь сможет вернуть Bing, Mail.ru и др.)
+            string[] browserRecommendedPaths = {
+            @"SOFTWARE\Policies\Microsoft\Edge\Recommended",
+            @"SOFTWARE\Policies\Google\Chrome\Recommended",
+            @"SOFTWARE\Policies\Chromium\Recommended"
+        };
+
+            foreach (var path in browserRecommendedPaths)
+            {
+                using (var key = Registry.LocalMachine.CreateSubKey(path))
+                {
+                    if (key != null)
+                    {
+                        key.SetValue("DefaultSearchProviderEnabled", 1, RegistryValueKind.DWord);
+                        key.SetValue("DefaultSearchProviderName", "Google", RegistryValueKind.String);
+                        key.SetValue("DefaultSearchProviderSearchURL", "https://www.google.com/search?q={searchTerms}", RegistryValueKind.String);
+                        key.SetValue("DefaultSearchProviderSuggestURL", "https://www.google.com/complete/search?output=chrome&q={searchTerms}", RegistryValueKind.String);
+                    }
+                }
+            }
+
+            // 4. ОЧИСТКА СТАРЫХ БЛОКИРОВОК
+            // Стираем старые жесткие политики (если они применялись раньше), чтобы убрать плашку "Управляет организация"
+            string[] browserMandatoryPaths = {
+            @"SOFTWARE\Policies\Microsoft\Edge",
+            @"SOFTWARE\Policies\Google\Chrome",
+            @"SOFTWARE\Policies\Chromium"
+        };
+            foreach (var path in browserMandatoryPaths)
+            {
+                using (var key = Registry.LocalMachine.OpenSubKey(path, true))
+                {
+                    if (key != null)
+                    {
+                        key.DeleteValue("DefaultSearchProviderEnabled", false);
+                        key.DeleteValue("DefaultSearchProviderName", false);
+                        key.DeleteValue("DefaultSearchProviderSearchURL", false);
+                        key.DeleteValue("DefaultSearchProviderSuggestURL", false);
+                    }
+                }
+            }
+
+            await ShowUiMessageBox("Готово", "Яндекс.Музыка (UWP) удалена, региональные параметры сброшены на США. Рекомендуемый поиск изменен на Google (настройки браузеров свободны для выбора).");
         }
         catch (Exception ex)
         {
-            await ShowUiMessageBox("Ошибка при дезинфекции", ex.Message);
+            await ShowUiMessageBox("Ошибка", ex.Message);
         }
     }
 

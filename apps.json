@@ -2,7 +2,8 @@
   {
     "name": "WinRAR",
     "title": "WinRAR",
-    "previewPath": "/Assets/winrarprev.png",
+    "description": "Популярнейший архиватор, сжиматор и ваще всё чё угодно упаковатор.",
+    "iconPath": "/Assets/winrar.png",
     "downloadUrl": "winget:RARLab.WinRAR"
   },
   {
@@ -10,7 +11,6 @@
     "title": "Chrome",
     "description": "Лучший браузер... после Edge и Firefox",
     "iconPath": "/Assets/chrome.png",
-    "previewPath": "/Assets/chromeprev.png",
     "downloadUrl": "winget:Google.Chrome"
   },
   {
@@ -18,78 +18,68 @@
     "title": "Discord",
     "description": "А кто не знает? Захотелось в Доту с друзяками - заходишь сюда.",
     "iconPath": "/Assets/discord.png",
-    "previewPath": "/Assets/discordprev.png",
-    "downloadUrl": "https://stable.dl2.discordapp.net/distro/app/stable/win/x64/1.0.9219/DiscordSetup.exe"
+    "downloadUrl": "winget:Discord.Discord"
   },
   {
     "name": "Steam",
     "title": "Steam",
-    "description": "Тут игрушки качаешь, увы конечно платно. Если хочется бесплатно, то жмёшь на установку зелёной буковки µ",
+    "description": "Тут игрушки качаешь, увы конечно платно.",
     "iconPath": "/Assets/steam.png",
-    "previewPath": "/Assets/steamprev.png",
-    "downloadUrl": "https://cdn.akamai.steamstatic.com/client/installer/SteamSetup.exe"
+    "downloadUrl": "winget:Valve.Steam"
   },
   {
-    "name": "µTorrent",
-    "title": "µTorrent",
+    "name": "Office",
+    "title": "Office",
+    "description": "Набор офисных приложений: Word, Excel, Powerpoint, Access, Visio - Всё тут.",
+    "iconPath": "/Assets/office.png"
+  },
+  {
+    "name": "Visual Studio",
+    "title": "Visual Studio",
+    "description": "Полноценная IDE для разработки.",
+    "iconPath": "/Assets/vs.png",
+    "downloadUrl": "winget:Microsoft.VisualStudio.Community"
+  },
+  {
+    "name": "Visual Studio Code",
+    "title": "Visual Studio Code",
+    "description": "Лёгкий и универсальный редактор кода.",
+    "iconPath": "/Assets/vscode.png",
+    "downloadUrl": "winget:Microsoft.VisualStudioCode"
+  },
+  {
+    "name": "qBittorrent",
+    "title": "qBittorrent",
     "description": "Как раз тот случай когда хочется юзать стим, а денюжки нет.",
-    "iconPath": "/Assets/utorrent.png",
-    "previewPath": "/Assets/utorrentprev.png",
-    "downloadUrl": "https://v2.utorrent.com/f82ddad9-5ed1-4923-a2ca-f2ae48b21180"
-  },
-  {
-    "name": "Zapret",
-    "title": "Zapret",
-    "description": "Если не работает Дискордик или ютуб - запускай.",
-    "iconPath": "",
-    "previewPath": "/Assets/zapretprev.png",
-    "downloadUrl": "github:https://api.github.com/repos/Flowseal/zapret-discord-youtube/releases/latest"
-  },
-  {
-    "name": "EP",
-    "title": "ExplorerPatcher",
-    "description": "Набор приколов для проводника. Если неприятна панель задач из 11 Винды - настраивай через эту штуку.",
-    "iconPath": "",
-    "previewPath": "/Assets/epprev.png",
-    "downloadUrl": "github:https://api.github.com/repos/valinet/ExplorerPatcher/releases/latest"
+    "iconPath": "/Assets/qbittorrent.png",
+    "downloadUrl": "winget:qBittorrent.qBittorrent"
   },
   {
     "name": "PT",
     "title": "PowerToys",
     "description": "Много различных инструментов прям в Винде. К примеру пипетка и линейка экрана по пикселям.",
     "iconPath": "/Assets/powertoys.png",
-    "previewPath": "/Assets/powertoysprev.png",
-    "downloadUrl": "ms-windows-store://pdp/?ProductId=xp89dcgq3k6vld"
+    "downloadUrl": "winget:Microsoft.PowerToys"
   },
   {
     "name": "Windhawk",
     "title": "Windhawk",
     "description": "Модификация и кастомизация Windows. Схоже с ExplorerPatcher",
     "iconPath": "/Assets/windhawk.png",
-    "previewPath": "/Assets/windhawkprev.png",
-    "downloadUrl": "https://ramensoftware.com/downloads/windhawk_setup.exe"
+    "downloadUrl": "winget:RamenSoftware.Windhawk"
   },
   {
     "name": "TB",
     "title": "TranslucentTB",
     "description": "Прозрачная панель задач.",
     "iconPath": "/Assets/translucenttb.png",
-    "previewPath": "/Assets/translucenttbprev.png",
-    "downloadUrl": "ms-windows-store://pdp/?ProductId=9pf4kz2vn4w9"
-  },
-  {
-    "name": "Office",
-    "title": "Office",
-    "description": "Набор офисных приложений: Word, Excel, Powerpoint, Access, Visio - Всё тут.",
-    "iconPath": "/Assets/office.png",
-    "previewPath": "/Assets/officeprev.png"
+    "downloadUrl": "winget:CharlesMilette.TranslucentTB"
   },
   {
     "name": "Radmin VPN",
     "title": "Radmin VPN",
     "description": "Утилита для создания виртуальной локальной сети - в Майнкрафт с друганами сыграть самое то",
     "iconPath": "/Assets/radmin.png",
-    "previewPath": "/Assets/radminprev.png",
     "downloadUrl": "winget:Famatech.RadminVPN"
   }
 ]

@@ -2750,7 +2750,8 @@
         "STR_INSTALL_TIP":"Ta disk bo formatiran in vsi podatki bodo izbrisani.#@Nadaljujem?",
         "STR_INSTALL_TIP2":"Ta disk bo formatiran in vsi podatki bodo izbrisani.#@Nadaljujem? (Druga potrditev)",
         "STR_INSTALL_SUCCESS":"Čestitamo!#@Ventoy je bil uspešno nameščen na napravo.",
-        "STR_INSTALL_FAILED":"Med namestitvijo je prišlo do napake. Iztaknite in ponovno priklopite USB. Preverite log.txt za podrobnosti.",
+        "STR_INSTALL_FAILED":"Med namestitvijo je prišlo do napake. Iztaknite in ponovno priklopite USB. 
+          erite log.txt za podrobnosti.",
         "STR_UPDATE_SUCCESS":"Čestitamo!#@Ventoy na napravi je bil uspešno posodobljen.",
         "STR_UPDATE_FAILED":"Prišlo je do napake med nadgradnjo. Iztaknite in ponovno priklopite USB. Preverite log.txt za podrobnosti.",
         "STR_WAIT_PROCESS":"Proces teče, prosimo počakajte, ...",
