@@ -10,7 +10,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
 	<SelfContained>true</SelfContained>
 	<SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
-	<AssemblyVersion>1.4.2</AssemblyVersion>
+	<AssemblyVersion>1.4.4</AssemblyVersion>
   </PropertyGroup>
 
   <ItemGroup>
