@@ -12,6 +12,70 @@
                 <ui:ThemesDictionary Theme="Light" />
                 <ui:ControlsDictionary />
             </ResourceDictionary.MergedDictionaries>
+
+            <BooleanToVisibilityConverter x:Key="BoolToVis" />
+
+            <!-- ИДЕАЛЬНО БЕСШОВНЫЙ ПЕРЕЛИВАЮЩИЙСЯ СКЕЛЕТОН (MS STORE / STEAM STYLE) -->
+            <Style x:Key="SkeletonBox" TargetType="Control">
+                <Setter Property="Background" Value="Transparent"/>
+                <Setter Property="MinHeight" Value="10"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Control">
+                            <Border CornerRadius="6" ClipToBounds="True">
+                                <Border.Background>
+                                    <LinearGradientBrush StartPoint="0,0.5" EndPoint="1,0.5">
+                                        <LinearGradientBrush.RelativeTransform>
+                                            <TranslateTransform X="-1.0"/>
+                                        </LinearGradientBrush.RelativeTransform>
+                                        <GradientStop Color="#12FFFFFF" Offset="0.0"/>
+                                        <GradientStop Color="#12FFFFFF" Offset="0.3"/>
+                                        <GradientStop Color="#30FFFFFF" Offset="0.5"/>
+                                        <GradientStop Color="#12FFFFFF" Offset="0.7"/>
+                                        <GradientStop Color="#12FFFFFF" Offset="1.0"/>
+                                    </LinearGradientBrush>
+                                </Border.Background>
+                                <Border.Triggers>
+                                    <EventTrigger RoutedEvent="Loaded">
+                                        <BeginStoryboard>
+                                            <Storyboard RepeatBehavior="Forever">
+                                                <DoubleAnimation 
+                                                    Storyboard.TargetProperty="(Border.Background).(LinearGradientBrush.RelativeTransform).(TranslateTransform.X)"
+                                                    From="-1.0" To="1.0" 
+                                                    Duration="0:0:1.4">
+                                                    <DoubleAnimation.EasingFunction>
+                                                        <SineEase EasingMode="EaseInOut"/>
+                                                    </DoubleAnimation.EasingFunction>
+                                                </DoubleAnimation>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </EventTrigger>
+                                </Border.Triggers>
+                            </Border>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <!-- ШАБЛОН СКЕЛЕТОНА ДЛЯ КАРТОЧКИ ПРИЛОЖЕНИЯ -->
+            <ControlTemplate x:Key="AppTileSkeleton">
+                <ui:Card Width="240" Height="100" Margin="0,0,12,0" Padding="12">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <!-- Иконка -->
+                        <Control Style="{StaticResource SkeletonBox}" Width="48" Height="48" Margin="0,0,12,0"/>
+                        <!-- Текстовые строки -->
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                            <Control Style="{StaticResource SkeletonBox}" Height="14" Width="100" HorizontalAlignment="Left" Margin="0,0,0,8"/>
+                            <Control Style="{StaticResource SkeletonBox}" Height="10" Width="140" HorizontalAlignment="Left" Margin="0,0,0,5"/>
+                            <Control Style="{StaticResource SkeletonBox}" Height="10" Width="80" HorizontalAlignment="Left"/>
+                        </StackPanel>
+                    </Grid>
+                </ui:Card>
+            </ControlTemplate>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

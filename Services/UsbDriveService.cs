@@ -49,6 +49,7 @@ namespace Helinstaller.Services
         {
             return await Task.Run(() =>
             {
+                string? scriptPath = null;
                 try
                 {
                     var driveInfo = drive.ToDriveInfo();
@@ -57,7 +58,7 @@ namespace Helinstaller.Services
                     string? diskNumber = GetDiskNumber(driveInfo.RootDirectory.FullName);
                     if (diskNumber == null) return false;
 
-                    string scriptPath = Path.Combine(Path.GetTempPath(), "diskpart_script.txt");
+                    scriptPath = Path.Combine(Path.GetTempPath(), $"diskpart_script_{Guid.NewGuid():N}.txt");
                     File.WriteAllText(scriptPath,
 $@"select disk {diskNumber}
 clean
@@ -86,6 +87,13 @@ exit");
                 {
                     return false;
                 }
+                finally
+                {
+                    if (scriptPath != null && File.Exists(scriptPath))
+                    {
+                        try { File.Delete(scriptPath); } catch { }
+                    }
+                }
             });
         }
 
@@ -94,16 +102,21 @@ exit");
             try
             {
                 var query = $"ASSOCIATORS OF {{Win32_LogicalDisk.DeviceID='{driveLetter.TrimEnd('\\')}'}} WHERE AssocClass=Win32_LogicalDiskToPartition";
-                var searcher = new ManagementObjectSearcher(query);
-                foreach (ManagementObject partition in searcher.Get())
+                using var searcher = new ManagementObjectSearcher(query);
+                using var results = searcher.Get();
+
+                foreach (ManagementObject partition in results)
                 {
-                    string? deviceId = partition["DeviceID"]?.ToString();
-                    if (deviceId != null && deviceId.Contains("#"))
+                    using (partition)
                     {
-                        int idx = deviceId.IndexOf('#') + 1;
-                        int comma = deviceId.IndexOf(',', idx);
-                        string num = comma > 0 ? deviceId.Substring(idx, comma - idx) : deviceId.Substring(idx);
-                        return num.Trim();
+                        string? deviceId = partition["DeviceID"]?.ToString();
+                        if (deviceId != null && deviceId.Contains("#"))
+                        {
+                            int idx = deviceId.IndexOf('#') + 1;
+                            int comma = deviceId.IndexOf(',', idx);
+                            string num = comma > 0 ? deviceId.Substring(idx, comma - idx) : deviceId.Substring(idx);
+                            return num.Trim();
+                        }
                     }
                 }
             }

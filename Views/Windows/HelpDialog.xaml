@@ -1,0 +1,51 @@
+﻿<ui:FluentWindow
+    x:Class="Helinstaller.Views.Windows.HelpDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+    Title="Руководство для пользователя"
+    Height="600" Width="680"
+    WindowStartupLocation="CenterOwner"
+    ResizeMode="NoResize"
+    ExtendsContentIntoTitleBar="True"
+    WindowBackdropType="Mica">
+
+    <Grid Margin="24,10,24,20">
+        <Grid.RowDefinitions>
+            <!-- 0. Шапка с системными кнопками -->
+            <RowDefinition Height="Auto"/>
+            <!-- 1. Заголовок справки -->
+            <RowDefinition Height="Auto"/>
+            <!-- 2. Скролл с разбором каждого элемента -->
+            <RowDefinition Height="*"/>
+            <!-- 3. Кнопка "Всё понятно" -->
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <ui:TitleBar Title="Справка и руководство" Grid.Row="0" Margin="-24,-10,-24,0"/>
+
+        <!-- 1. Заголовок раздела -->
+        <StackPanel Grid.Row="1" Margin="0,10,0,16">
+            <StackPanel Orientation="Horizontal">
+                <ui:SymbolIcon x:Name="PageIcon" Symbol="Lightbulb24" FontSize="26" Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" Margin="0,0,10,0" VerticalAlignment="Center"/>
+                <TextBlock x:Name="PageTitle" Text="Разбор страницы" FontSize="20" FontWeight="Bold" Foreground="{DynamicResource TextFillColorPrimaryBrush}" VerticalAlignment="Center"/>
+            </StackPanel>
+            <TextBlock x:Name="PageSubtitle" Text="Пошаговое объяснение каждого элемента на человеческом языке." FontSize="12" Opacity="0.6" Margin="36,4,0,0"/>
+        </StackPanel>
+
+        <!-- 2. Контейнер карточек с разбором элементов -->
+        <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel x:Name="HelpCardsContainer" Margin="0,0,10,0"/>
+        </ScrollViewer>
+
+        <!-- 3. Подвал -->
+        <ui:Button Grid.Row="3" 
+                   Content="Всё понятно, закрыть" 
+                   Appearance="Primary" 
+                   HorizontalAlignment="Stretch" 
+                   Height="40" 
+                   FontWeight="SemiBold"
+                   Margin="0,15,0,0" 
+                   Click="CloseButton_Click"/>
+    </Grid>
+</ui:FluentWindow>

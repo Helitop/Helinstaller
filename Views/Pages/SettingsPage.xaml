@@ -10,7 +10,7 @@
     Title="SettingsPage"
     d:DataContext="{d:DesignInstance local:SettingsPage,
                                      IsDesignTimeCreatable=False}"
-    d:DesignHeight="450"
+    d:DesignHeight="650"
     d:DesignWidth="800"
     ui:Design.Background="{DynamicResource ApplicationBackgroundBrush}"
     ui:Design.Foreground="{DynamicResource TextFillColorPrimaryBrush}"
@@ -20,51 +20,171 @@
         <helpers:EnumToBooleanConverter x:Key="EnumToBooleanConverter" />
     </Page.Resources>
 
-    <StackPanel>
-        <TextBlock
-            FontSize="20"
-            FontWeight="Medium"
-            Text="Персонализация" />
-        <TextBlock Margin="0,12,0,0" Text="Тема" />
-        <RadioButton
-            Margin="0,12,0,0"
-            Command="{Binding ViewModel.ChangeThemeCommand, Mode=OneWay}"
-            CommandParameter="theme_light"
-            Content="Светлая"
-            GroupName="themeSelect"
-            IsChecked="{Binding ViewModel.CurrentTheme, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=Light, Mode=OneWay}" />
-        <RadioButton
-            Margin="0,8,0,0"
-            Command="{Binding ViewModel.ChangeThemeCommand, Mode=OneWay}"
-            CommandParameter="theme_dark"
-            Content="Тёмная"
-            GroupName="themeSelect"
-            IsChecked="{Binding ViewModel.CurrentTheme, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=Dark, Mode=OneWay}" />
-        <TextBlock Margin="0,24,0,0" FontSize="20" FontWeight="Medium" Text="Музыка" />
-        <ui:ToggleSwitch 
-    Margin="0,12,0,0" 
-    Content="Авто-воспроизведение при старте" 
-    IsChecked="{Binding ViewModel.IsMusicAutoPlayEnabled, Mode=TwoWay}" />
-        <ui:TextBlock 
-    Margin="40,0,0,0" 
-    Appearance="Tertiary" 
-    FontSize="12" 
-    Text="Если выключено, плеер загрузится, но не начнет играть, пока вы не нажмете Play." />
-        <TextBlock Margin="0,24,0,0" FontSize="20" FontWeight="Medium" Text="Производительность" />
-        <ui:ToggleSwitch 
-    Margin="0,12,0,0" 
-    Content="Аудио-визуализатор" 
-    IsChecked="{Binding ViewModel.IsVisualizerEnabled, Mode=TwoWay}" />
-        <ui:TextBlock 
-    Margin="40,0,0,0"
-    Appearance="Tertiary" 
-    FontSize="12" 
-    Text="Полностью отключает отрисовку и расчет частот для экономии ресурсов CPU." />
-        <TextBlock
-            Margin="0,24,0,0"
-            FontSize="20"
-            FontWeight="Medium"
-            Text="О Helinstaller" />
-        <TextBlock Margin="0,12,0,0" Text="{Binding ViewModel.AppVersion, Mode=OneWay}" />
-    </StackPanel>
+    <ui:DynamicScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Margin="0,0,15,30">
+            <!-- 1. ТЕМА -->
+            <TextBlock FontSize="20" FontWeight="Medium" Text="Персонализация" />
+            <TextBlock Margin="0,12,0,0" Text="Тема" />
+            <RadioButton
+                Margin="0,12,0,0"
+                Command="{Binding ViewModel.ChangeThemeCommand, Mode=OneWay}"
+                CommandParameter="theme_light"
+                Content="Светлая"
+                GroupName="themeSelect"
+                IsChecked="{Binding ViewModel.CurrentTheme, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=Light, Mode=OneWay}" />
+            <RadioButton
+                Margin="0,8,0,0"
+                Command="{Binding ViewModel.ChangeThemeCommand, Mode=OneWay}"
+                CommandParameter="theme_dark"
+                Content="Тёмная"
+                GroupName="themeSelect"
+                IsChecked="{Binding ViewModel.CurrentTheme, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=Dark, Mode=OneWay}" />
+
+            <!-- 2. МУЗЫКА -->
+            <TextBlock Margin="0,24,0,0" FontSize="20" FontWeight="Medium" Text="Музыка" />
+            <ui:ToggleSwitch 
+                Margin="0,12,0,0" 
+                Content="Авто-воспроизведение при старте" 
+                IsChecked="{Binding ViewModel.IsMusicAutoPlayEnabled, Mode=TwoWay}" />
+            <ui:TextBlock 
+                Margin="40,0,0,0" 
+                Appearance="Tertiary" 
+                FontSize="12" 
+                Text="Если выключено, плеер загрузится, но не начнет играть, пока вы не нажмете Play." />
+
+            <!-- 3. ПРОИЗВОДИТЕЛЬНОСТЬ -->
+            <TextBlock Margin="0,24,0,0" FontSize="20" FontWeight="Medium" Text="Производительность" />
+            <ui:ToggleSwitch 
+                Margin="0,12,0,0" 
+                Content="Аудио-визуализатор" 
+                IsChecked="{Binding ViewModel.IsVisualizerEnabled, Mode=TwoWay}" />
+            <ui:TextBlock 
+                Margin="40,0,0,0"
+                Appearance="Tertiary" 
+                FontSize="12" 
+                Text="Полностью отключает отрисовку и расчет частот для экономии ресурсов CPU." />
+
+            <!-- 4. TELEGRAM ПРОКСИ -->
+            <TextBlock Margin="0,24,0,0" FontSize="20" FontWeight="Medium" Text="Telegram Прокси" />
+
+            <!-- Порог пинга (500 - 5000 мс) -->
+            <ui:CardControl Margin="0,12,0,0" 
+                            Header="Порог пинга / Таймаут проверки" 
+                            Icon="{ui:SymbolIcon Timer24}">
+                <ui:CardControl.Content>
+                    <Grid Width="250">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="70" />
+                        </Grid.ColumnDefinitions>
+
+                        <Slider Minimum="500" Maximum="5000" TickFrequency="100" IsSnapToTickEnabled="True"
+                                Value="{Binding ViewModel.ProxyPingTimeoutMs, Mode=TwoWay}"
+                                VerticalAlignment="Center" Margin="0,0,10,0"/>
+
+                        <ui:TextBlock Grid.Column="1" 
+                                     Text="{Binding ViewModel.ProxyPingTimeoutMs, StringFormat='{}{0} мс'}" 
+                                     FontWeight="SemiBold" 
+                                     VerticalAlignment="Center" 
+                                     HorizontalAlignment="Right"/>
+                    </Grid>
+                </ui:CardControl.Content>
+            </ui:CardControl>
+            <ui:TextBlock 
+                Margin="40,4,0,0" 
+                Appearance="Tertiary" 
+                FontSize="12" 
+                Text="Максимальное время ожидания отклика сервера. Серверы с задержкой выше заданного порога считаются недоступными." />
+
+            <!-- Лимит параллельности задач (5 - 100) -->
+            <ui:CardControl Margin="0,12,0,0" 
+                            Header="Лимит параллельных потоков" 
+                            Icon="{ui:SymbolIcon Layer24}">
+                <ui:CardControl.Content>
+                    <Grid Width="250">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="70" />
+                        </Grid.ColumnDefinitions>
+
+                        <Slider Minimum="5" Maximum="100" TickFrequency="5" IsSnapToTickEnabled="True"
+                                Value="{Binding ViewModel.ProxyMaxParallelism, Mode=TwoWay}"
+                                VerticalAlignment="Center" Margin="0,0,10,0"/>
+
+                        <ui:TextBlock Grid.Column="1" 
+                                     Text="{Binding ViewModel.ProxyMaxParallelism, StringFormat='{}{0} шт'}" 
+                                     FontWeight="SemiBold" 
+                                     VerticalAlignment="Center" 
+                                     HorizontalAlignment="Right"/>
+                    </Grid>
+                </ui:CardControl.Content>
+            </ui:CardControl>
+            <ui:TextBlock 
+                Margin="40,4,0,0" 
+                Appearance="Tertiary" 
+                FontSize="12" 
+                Text="Количество одновременных сетевых сокетов для тестирования. Рекомендуется 20–40 для стабильной работы без просадок интернета." />
+
+            <!-- 5. УСТАНОВКА И ЗАГРУЗКИ -->
+            <TextBlock Margin="0,24,0,0" FontSize="20" FontWeight="Medium" Text="Установка и загрузки" />
+
+            <ui:CardControl Margin="0,12,0,0" 
+                            Header="Таймаут зависания установщиков" 
+                            Icon="{ui:SymbolIcon Timer24}">
+                <ui:CardControl.Content>
+                    <Grid Width="250">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="65" />
+                        </Grid.ColumnDefinitions>
+
+                        <Slider Minimum="15" Maximum="300" TickFrequency="5" IsSnapToTickEnabled="True"
+                                Value="{Binding ViewModel.InstallTimeoutSeconds, Mode=TwoWay}"
+                                VerticalAlignment="Center" Margin="0,0,10,0"/>
+
+                        <ui:TextBlock Grid.Column="1" 
+                                     Text="{Binding ViewModel.InstallTimeoutSeconds, StringFormat='{}{0} сек'}" 
+                                     FontWeight="SemiBold" 
+                                     VerticalAlignment="Center" 
+                                     HorizontalAlignment="Right"/>
+                    </Grid>
+                </ui:CardControl.Content>
+            </ui:CardControl>
+            <ui:TextBlock 
+                Margin="40,4,0,0" 
+                Appearance="Tertiary" 
+                FontSize="12" 
+                Text="Если процесс установки не отвечает дольше указанного времени, Helinstaller принудительно завершит его дерево процессов." />
+
+            <!-- 6. ДИАГНОСТИКА -->
+            <TextBlock Margin="0,24,0,0" FontSize="20" FontWeight="Medium" Text="Диагностика" />
+
+            <ui:CardControl Margin="0,12,0,0" 
+                            Header="Логирование событий" 
+                            Icon="DocumentText24" 
+                            ContentStringFormat="Если программа работает неправильно, вы можете открыть лог-файл и отправить его разработчику для исправления ошибок.">
+                <ui:Button Content="Открыть файл логов" 
+                           Icon="FolderOpen24" 
+                           Appearance="Secondary"
+                           Command="{Binding ViewModel.OpenLogCommand}" />
+            </ui:CardControl>
+
+            <ui:CardControl Margin="0,12,0,0"
+                    Header="Интерактивное обучение"
+                    Icon="{ui:SymbolIcon QuestionCircle24}"
+                    ContentStringFormat="Запустить краткий ознакомительный тур по функциям программы.">
+                <ui:Button Content="Запустить тур" 
+                   Appearance="Secondary"
+                   Click="RestartTour_Click" />
+            </ui:CardControl>
+
+            <!-- 7. О ПРОГРАММЕ -->
+            <TextBlock
+                Margin="0,24,0,0"
+                FontSize="20"
+                FontWeight="Medium"
+                Text="О Helinstaller" />
+            <TextBlock Margin="0,12,0,0" Text="{Binding ViewModel.AppVersion, Mode=OneWay}" />
+        </StackPanel>
+    </ui:DynamicScrollViewer>
 </Page>

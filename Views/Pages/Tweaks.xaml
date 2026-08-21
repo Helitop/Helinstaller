@@ -6,112 +6,232 @@
       xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
       xmlns:gif="clr-namespace:WpfAnimatedGif;assembly=WpfAnimatedGif"
       mc:Ignorable="d"
-      Title="Tweaks">
+      Loaded="Page_Loaded"
+      Title="Tweaks"
+      ui:Design.Background="{DynamicResource ApplicationBackgroundBrush}"
+      ui:Design.Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+      Foreground="{DynamicResource TextFillColorPrimaryBrush}">
 
     <Page.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
     </Page.Resources>
 
-    <Grid>
-        <!-- Фоновый GIF чуть меньше и прозрачнее для стиля -->
-        <Image x:Name="GIF" gif:ImageBehavior.AnimationSpeedRatio="0.75" Width="400" Height="400" Opacity="0.1" IsHitTestVisible="False"/>
+    <Grid Margin="12,8,12,12">
+        <Grid.RowDefinitions>
+            <!-- 0. Шапка страницы -->
+            <RowDefinition Height="Auto"/>
+            <!-- 1. Сетка карточек с фоновым GIF -->
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
 
-        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-            <ItemsControl ItemsSource="{Binding TweakItems}" Margin="20">
-                <!-- Сетка 3 колонки -->
-                <ItemsControl.ItemsPanel>
-                    <ItemsPanelTemplate>
-                        <UniformGrid Columns="3" VerticalAlignment="Top"/>
-                    </ItemsPanelTemplate>
-                </ItemsControl.ItemsPanel>
+        <!-- 0. ШАПКА СТРАНИЦЫ -->
+        <DockPanel Grid.Row="0" LastChildFill="False" Margin="8,6,8,8">
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                <ui:SymbolIcon Symbol="Wrench24" FontSize="20" Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                <TextBlock Text="Твики и оптимизация" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center"/>
+            </StackPanel>
 
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate>
-                        <ui:Card Margin="6" Padding="0">
-                            <ui:Button Click="TileButton_Click"
-                                   Tag="{Binding Tag}"
-                                   Appearance="Transparent"
-                                   HorizontalAlignment="Stretch"
-                                   VerticalAlignment="Stretch"
-                                   Padding="16"
-                                   MinHeight="150"
-                                   Cursor="Hand">
-                                <Grid>
-                                    <Grid.RowDefinitions>
-                                        <RowDefinition Height="Auto"/>
-                                        <RowDefinition Height="Auto"/>
-                                        <RowDefinition Height="*"/>
-                                    </Grid.RowDefinitions>
+            <ui:Button Content="Помощь" 
+                       Icon="{ui:SymbolIcon QuestionCircle24}" 
+                       Appearance="Secondary" 
+                       DockPanel.Dock="Right"
+                       Click="ShowHelpButton_Click"/>
+        </DockPanel>
 
-                                    <!-- Верх: Иконка и Переключатель -->
-                                    <DockPanel Grid.Row="0" LastChildFill="False" Margin="0,0,0,12">
-                                        <ui:SymbolIcon Symbol="{Binding Icon}" 
-                                                   FontSize="28" 
-                                                   DockPanel.Dock="Left"
-                                                   Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}"/>
+        <!-- 1. ОСНОВНОЙ КОНТЕЙНЕР -->
+        <Grid x:Name="RootContainer" Grid.Row="1" Opacity="0">
+            <Grid.Triggers>
+                <EventTrigger RoutedEvent="Loaded">
+                    <BeginStoryboard>
+                        <Storyboard>
+                            <DoubleAnimation Storyboard.TargetName="RootContainer" 
+                                             Storyboard.TargetProperty="Opacity" 
+                                             From="0" To="1" Duration="0:0:0.35">
+                                <DoubleAnimation.EasingFunction>
+                                    <CubicEase EasingMode="EaseOut"/>
+                                </DoubleAnimation.EasingFunction>
+                            </DoubleAnimation>
+                        </Storyboard>
+                    </BeginStoryboard>
+                </EventTrigger>
+            </Grid.Triggers>
 
-                                        <ui:ToggleSwitch DockPanel.Dock="Right"
-                                                     IsChecked="{Binding IsChecked, Mode=OneWay}"
-                                                     Visibility="{Binding ShowSwitch, Converter={StaticResource BoolToVis}}"
-                                                     IsHitTestVisible="False"/>
-                                    </DockPanel>
+            <!-- ФОНОВЫЙ GIF С МЯГКОЙ РАДИАЛЬНОЙ ВИНЬЕТКОЙ -->
+            <Image x:Name="GIF" 
+                   gif:ImageBehavior.AnimationSpeedRatio="0.75" 
+                   Width="460" Height="460" 
+                   Opacity="0.09" 
+                   HorizontalAlignment="Center" 
+                   VerticalAlignment="Center"
+                   IsHitTestVisible="False">
+                <Image.OpacityMask>
+                    <RadialGradientBrush Center="0.5,0.5" GradientOrigin="0.5,0.5" RadiusX="0.5" RadiusY="0.5">
+                        <GradientStop Color="#FFFFFFFF" Offset="0.15"/>
+                        <GradientStop Color="#80FFFFFF" Offset="0.55"/>
+                        <GradientStop Color="#00000000" Offset="0.95"/>
+                    </RadialGradientBrush>
+                </Image.OpacityMask>
+            </Image>
 
-                                    <!-- Заголовок -->
-                                    <TextBlock Grid.Row="1"
-                                           Text="{Binding Title}"
-                                           FontSize="14"
-                                           FontWeight="SemiBold"
-                                           TextWrapping="Wrap"
-                                           Margin="0,0,0,6"
-                                           Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+            <!-- СЕТКА КАРТОЧЕК ТВIKOB -->
+            <ui:DynamicScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <ItemsControl ItemsSource="{Binding TweakItems}" Margin="4,0,4,12">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <UniformGrid Columns="3" VerticalAlignment="Top"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
 
-                                    <!-- Описание -->
-                                    <TextBlock x:Name="DescriptionText"
-                                           Grid.Row="2"
-                                           Text="{Binding Description}"
-                                           FontSize="12"
-                                           Opacity="0.6"
-                                           TextWrapping="Wrap"
-                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <ui:Card Margin="5" Padding="0" RenderTransformOrigin="0.5,0.5">
+                                <ui:Card.RenderTransform>
+                                    <ScaleTransform x:Name="CardScale" ScaleX="1" ScaleY="1"/>
+                                </ui:Card.RenderTransform>
 
-                                    <!-- Стрелочка (Шеврон) -->
-                                    <ui:SymbolIcon x:Name="ChevronIcon" 
-                                               Symbol="ChevronRight24" 
-                                               Grid.Row="2"
-                                               VerticalAlignment="Bottom" 
-                                               HorizontalAlignment="Right"
-                                               FontSize="14"
-                                               Opacity="0.5"/>
-                                </Grid>
-                            </ui:Button>
-                        </ui:Card>
+                                <ui:Button x:Name="TileBtn"
+                                           Click="TileButton_Click"
+                                           Tag="{Binding Tag}"
+                                           Appearance="Transparent"
+                                           HorizontalAlignment="Stretch"
+                                           VerticalAlignment="Stretch"
+                                           Padding="16"
+                                           MinHeight="146"
+                                           Cursor="Hand">
+                                    <Grid>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="*"/>
+                                        </Grid.RowDefinitions>
 
-                        <DataTemplate.Triggers>
-                            <!-- ЛОГИКА: Если есть Switch, прячем стрелочку -->
-                            <DataTrigger Binding="{Binding ShowSwitch}" Value="True">
-                                <Setter TargetName="ChevronIcon" Property="Visibility" Value="Collapsed"/>
-                            </DataTrigger>
+                                        <!-- Верх: Иконка и Переключатель -->
+                                        <DockPanel Grid.Row="0" LastChildFill="False" Margin="0,0,0,10">
+                                            <ui:SymbolIcon Symbol="{Binding Icon}" 
+                                                           FontSize="26" 
+                                                           DockPanel.Dock="Left"
+                                                           Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}"/>
 
-                            <!-- Анимация при наведении на всю карточку -->
-                            <EventTrigger RoutedEvent="MouseEnter">
-                                <BeginStoryboard>
-                                    <Storyboard>
-                                        <DoubleAnimation Storyboard.TargetName="DescriptionText" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.2"/>
-                                    </Storyboard>
-                                </BeginStoryboard>
-                            </EventTrigger>
-                            <EventTrigger RoutedEvent="MouseLeave">
-                                <BeginStoryboard>
-                                    <Storyboard>
-                                        <DoubleAnimation Storyboard.TargetName="DescriptionText" Storyboard.TargetProperty="Opacity" To="0.6" Duration="0:0:0.2"/>
-                                    </Storyboard>
-                                </BeginStoryboard>
-                            </EventTrigger>
-                        </DataTemplate.Triggers>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
-        </ScrollViewer>
-        
+                                            <ui:ToggleSwitch DockPanel.Dock="Right"
+                                                             IsChecked="{Binding IsChecked, Mode=OneWay}"
+                                                             Visibility="{Binding ShowSwitch, Converter={StaticResource BoolToVis}}"
+                                                             IsHitTestVisible="False"/>
+                                        </DockPanel>
+
+                                        <!-- Заголовок -->
+                                        <TextBlock Grid.Row="1"
+                                                   Text="{Binding Title}"
+                                                   FontSize="13.5"
+                                                   FontWeight="SemiBold"
+                                                   TextWrapping="Wrap"
+                                                   Margin="0,0,0,5"
+                                                   Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+
+                                        <!-- Описание -->
+                                        <TextBlock x:Name="DescriptionText"
+                                                   Grid.Row="2"
+                                                   Text="{Binding Description}"
+                                                   FontSize="11.5"
+                                                   Opacity="0.65"
+                                                   LineHeight="15"
+                                                   TextWrapping="Wrap"
+                                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+
+                                        <!-- Шеврон -->
+                                        <ui:SymbolIcon x:Name="ChevronIcon" 
+                                                       Symbol="ChevronRight24" 
+                                                       Grid.Row="2"
+                                                       VerticalAlignment="Bottom" 
+                                                       HorizontalAlignment="Right"
+                                                       FontSize="14"
+                                                       Opacity="0.45"/>
+                                    </Grid>
+                                </ui:Button>
+                            </ui:Card>
+
+                            <DataTemplate.Triggers>
+                                <DataTrigger Binding="{Binding ShowSwitch}" Value="True">
+                                    <Setter TargetName="ChevronIcon" Property="Visibility" Value="Collapsed"/>
+                                </DataTrigger>
+
+                                <!-- 1. НАВЕДЕНИЕ -->
+                                <EventTrigger SourceName="TileBtn" RoutedEvent="MouseEnter">
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="DescriptionText" Storyboard.TargetProperty="Opacity" To="0.95" Duration="0:0:0.18"/>
+                                            <DoubleAnimation Storyboard.TargetName="CardScale" Storyboard.TargetProperty="ScaleX" To="1.025" Duration="0:0:0.18">
+                                                <DoubleAnimation.EasingFunction>
+                                                    <CubicEase EasingMode="EaseOut"/>
+                                                </DoubleAnimation.EasingFunction>
+                                            </DoubleAnimation>
+                                            <DoubleAnimation Storyboard.TargetName="CardScale" Storyboard.TargetProperty="ScaleY" To="1.025" Duration="0:0:0.18">
+                                                <DoubleAnimation.EasingFunction>
+                                                    <CubicEase EasingMode="EaseOut"/>
+                                                </DoubleAnimation.EasingFunction>
+                                            </DoubleAnimation>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </EventTrigger>
+
+                                <!-- 2. УХОД МЫШИ -->
+                                <EventTrigger SourceName="TileBtn" RoutedEvent="MouseLeave">
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="DescriptionText" Storyboard.TargetProperty="Opacity" To="0.65" Duration="0:0:0.18"/>
+                                            <DoubleAnimation Storyboard.TargetName="CardScale" Storyboard.TargetProperty="ScaleX" To="1.0" Duration="0:0:0.18">
+                                                <DoubleAnimation.EasingFunction>
+                                                    <CubicEase EasingMode="EaseOut"/>
+                                                </DoubleAnimation.EasingFunction>
+                                            </DoubleAnimation>
+                                            <DoubleAnimation Storyboard.TargetName="CardScale" Storyboard.TargetProperty="ScaleY" To="1.0" Duration="0:0:0.18">
+                                                <DoubleAnimation.EasingFunction>
+                                                    <CubicEase EasingMode="EaseOut"/>
+                                                </DoubleAnimation.EasingFunction>
+                                            </DoubleAnimation>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </EventTrigger>
+
+                                <!-- 3. НАЖАТИЕ -->
+                                <EventTrigger SourceName="TileBtn" RoutedEvent="PreviewMouseDown">
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="CardScale" Storyboard.TargetProperty="ScaleX" To="0.96" Duration="0:0:0.08">
+                                                <DoubleAnimation.EasingFunction>
+                                                    <CubicEase EasingMode="EaseOut"/>
+                                                </DoubleAnimation.EasingFunction>
+                                            </DoubleAnimation>
+                                            <DoubleAnimation Storyboard.TargetName="CardScale" Storyboard.TargetProperty="ScaleY" To="0.96" Duration="0:0:0.08">
+                                                <DoubleAnimation.EasingFunction>
+                                                    <CubicEase EasingMode="EaseOut"/>
+                                                </DoubleAnimation.EasingFunction>
+                                            </DoubleAnimation>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </EventTrigger>
+
+                                <!-- 4. ОТПУСКАНИЕ КЛИКА -->
+                                <EventTrigger SourceName="TileBtn" RoutedEvent="PreviewMouseUp">
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="CardScale" Storyboard.TargetProperty="ScaleX" To="1.025" Duration="0:0:0.12">
+                                                <DoubleAnimation.EasingFunction>
+                                                    <CubicEase EasingMode="EaseOut"/>
+                                                </DoubleAnimation.EasingFunction>
+                                            </DoubleAnimation>
+                                            <DoubleAnimation Storyboard.TargetName="CardScale" Storyboard.TargetProperty="ScaleY" To="1.025" Duration="0:0:0.12">
+                                                <DoubleAnimation.EasingFunction>
+                                                    <CubicEase EasingMode="EaseOut"/>
+                                                </DoubleAnimation.EasingFunction>
+                                            </DoubleAnimation>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </EventTrigger>
+                            </DataTemplate.Triggers>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ui:DynamicScrollViewer>
+        </Grid>
     </Grid>
 </Page>

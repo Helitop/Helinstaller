@@ -7,6 +7,7 @@ using Helinstaller.Views.Windows;
 using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel; // Необходим для отслеживания изменения свойств задач
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -16,6 +17,8 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using System.Windows;
+using Wpf.Ui;
 using Wpf.Ui.Abstractions.Controls;
 using Wpf.Ui.Appearance;
 
@@ -26,11 +29,260 @@ namespace Helinstaller.ViewModels.Pages
         private bool _isInitialized = false;
         private List<AppInfo> _applications = new List<AppInfo>();
         private readonly IWingetService _wingetService;
+        private readonly INavigationService _navigationService;
+        [ObservableProperty] private bool _isTelegramApp = false;
+        [ObservableProperty] private bool _isProgressIndeterminate = true;
 
-        public DashboardViewModel(IWingetService wingetService)
+        // СОСТОЯНИЯ WINGET:
+        [ObservableProperty] private bool _isWingetAvailable = true;
+        [ObservableProperty] private bool _isWingetUnavailable = false;
+        [ObservableProperty] private bool _isInstallingWinget = false;
+        [ObservableProperty] private string _wingetInstallStatus = string.Empty;
+        [ObservableProperty] private double _wingetInstallProgress = 0;
+        [ObservableProperty] private string _appCategory = string.Empty;
+        [ObservableProperty] private string _appSizeText = "Размер: Запрос...";
+        [ObservableProperty] private string _appSourceDetails = string.Empty;
+        // СОСТОЯНИЯ ОБНОВЛЕНИЙ:
+        [ObservableProperty] private bool _isCheckingUpdates = false;
+        [ObservableProperty] private bool _hasAnyUpdates = false;
+        [ObservableProperty] private int _availableUpdatesCount = 0;
+        [ObservableProperty] private string _upgradeAllButtonText = "Обновить всё";
+        [ObservableProperty] private bool _hasUpdate = false; // Для открытой карточки
+
+        // Хранилище ID и названий пакетов, требующих обновления
+        public HashSet<string> UpgradablePackageIds { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+        // Событие для оповещения DashboardPage о необходимости подсветить плашки
+        public event Action? UpgradesRefreshed;
+
+        [RelayCommand]
+        public async Task CheckUpdates()
+        {
+            if (IsCheckingUpdates || !IsWingetAvailable) return;
+            IsCheckingUpdates = true;
+            Logger.LogInfo("Проверка обновлений программ через WinGet...");
+
+            try
+            {
+                var upgradableList = await _wingetService.GetUpgradablePackageIdsAsync();
+                UpgradablePackageIds.Clear();
+
+                foreach (var item in upgradableList)
+                {
+                    if (!string.IsNullOrWhiteSpace(item))
+                        UpgradablePackageIds.Add(item);
+                }
+
+                int count = 0;
+                foreach (var app in _applications)
+                {
+                    string id = app.DownloadUrl.Replace("winget:", "", StringComparison.OrdinalIgnoreCase)
+                                               .Replace("msstore:", "", StringComparison.OrdinalIgnoreCase).Trim();
+
+                    if (UpgradablePackageIds.Contains(id) ||
+                        UpgradablePackageIds.Contains(app.Title) ||
+                        UpgradablePackageIds.Contains(app.Name))
+                    {
+                        count++;
+                    }
+                }
+
+                AvailableUpdatesCount = count;
+                HasAnyUpdates = count > 0;
+                UpgradeAllButtonText = $"Обновить всё ({count})";
+
+                UpdateCurrentAppHasUpdate();
+                UpgradesRefreshed?.Invoke();
+
+                Logger.LogInfo($"Поиск обновлений завершен. Найдено для наших программ: {count}");
+
+                // УВЕДОМЛЕНИЕ В ОСТРОВОК
+                if (count > 0)
+                {
+                    CapsuleToastService.Show($"Доступно обновлений: {count}", ToastType.Info);
+                }
+                else
+                {
+                    CapsuleToastService.Show("Все программы актуальны!", ToastType.Success);
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError("Ошибка при поиске обновлений", ex);
+                CapsuleToastService.Show($"Ошибка проверки обновлений: {ex.Message}", ToastType.Error);
+            }
+            finally
+            {
+                IsCheckingUpdates = false;
+            }
+        }
+
+        private void UpdateCurrentAppHasUpdate()
+        {
+            if (string.IsNullOrEmpty(DownloadUrl))
+            {
+                HasUpdate = false;
+                return;
+            }
+
+            string id = DownloadUrl.Replace("winget:", "", StringComparison.OrdinalIgnoreCase)
+                                   .Replace("msstore:", "", StringComparison.OrdinalIgnoreCase).Trim();
+
+            HasUpdate = UpgradablePackageIds.Contains(id) ||
+                        UpgradablePackageIds.Contains(AppTitle);
+        }
+
+
+        [RelayCommand]
+        private async Task UpgradeAll()
+        {
+            if (!HasAnyUpdates) return;
+
+            var appsToUpgrade = _applications.Where(app =>
+            {
+                string id = app.DownloadUrl.Replace("winget:", "", StringComparison.OrdinalIgnoreCase)
+                                           .Replace("msstore:", "", StringComparison.OrdinalIgnoreCase).Trim();
+                return UpgradablePackageIds.Contains(id) || UpgradablePackageIds.Contains(app.Title);
+            }).ToList();
+
+            CapsuleToastService.Show($"Запущено обновление ({appsToUpgrade.Count} прогр.)...", ToastType.Info);
+
+            foreach (var app in appsToUpgrade)
+            {
+                var active = DownloadTaskManager.Instance.Tasks.FirstOrDefault(t => t.AppName == app.Title && !t.IsCompleted && !t.IsError);
+                if (active != null) continue;
+
+                var task = new DownloadTask
+                {
+                    Title = $"Обновление: {app.Title}",
+                    AppName = app.Title,
+                    IconPath = app.IconPath ?? ""
+                };
+
+                DownloadTaskManager.Instance.AddTask(task);
+
+                _ = DownloadTaskManager.Instance.EnqueueAsync(task, async () =>
+                {
+                    task.Status = "Обновление через WinGet...";
+                    string appId = app.DownloadUrl.Replace("winget:", "", StringComparison.OrdinalIgnoreCase)
+                                                  .Replace("msstore:", "", StringComparison.OrdinalIgnoreCase).Trim();
+                    string? source = app.DownloadUrl.StartsWith("msstore:", StringComparison.OrdinalIgnoreCase) ? "msstore" : null;
+
+                    var statusProgress = new Progress<string>(l => task.Status = l);
+                    var percentProgress = new Progress<double>(p => task.Progress = p);
+
+                    bool ok = await _wingetService.InstallPackageAsync(appId, statusProgress, percentProgress, force: false, source: source);
+                    if (!ok) throw new Exception("Сбой при обновлении");
+
+                    task.Progress = 100;
+                    task.IsCompleted = true;
+                    task.Status = "Обновлено";
+
+                    UpgradablePackageIds.Remove(appId);
+                    UpgradablePackageIds.Remove(app.Title);
+                    AvailableUpdatesCount = Math.Max(0, AvailableUpdatesCount - 1);
+                    HasAnyUpdates = AvailableUpdatesCount > 0;
+                    UpgradeAllButtonText = $"Обновить всё ({AvailableUpdatesCount})";
+                    UpdateCurrentAppHasUpdate();
+                    UpgradesRefreshed?.Invoke();
+
+                    // УВЕДОМЛЕНИЕ В ОСТРОВОК ОБ УСПЕШНОМ ОБНОВЛЕНИИ
+                    CapsuleToastService.Show($"{app.Title} успешно обновлен!", ToastType.Success);
+                });
+            }
+        }
+
+        // РАЗРЕШЕНИЕ НА УСТАНОВКУ КОНКРЕТНОГО ПРИЛОЖЕНИЯ:
+        [ObservableProperty] private bool _isInstallAllowed = true;
+
+        partial void OnIsWingetAvailableChanged(bool value)
+        {
+            IsWingetUnavailable = !value;
+            UpdateInstallAllowed();
+        }
+
+        private void UpdateInstallAllowed()
+        {
+            if (string.IsNullOrEmpty(DownloadUrl))
+            {
+                IsInstallAllowed = true;
+                return;
+            }
+
+            bool requiresWinget = DownloadUrl.StartsWith("winget:", StringComparison.OrdinalIgnoreCase) ||
+                                  DownloadUrl.StartsWith("msstore:", StringComparison.OrdinalIgnoreCase) ||
+                                  DownloadUrl.StartsWith("ms-windows-store:", StringComparison.OrdinalIgnoreCase);
+
+            IsInstallAllowed = !requiresWinget || IsWingetAvailable;
+        }
+
+        public DashboardViewModel(IWingetService wingetService, INavigationService navigationService)
         {
             _wingetService = wingetService;
+            _navigationService = navigationService; // <--- Сохраняем сервис навигации
+
+            DownloadTaskManager.Instance.Tasks.CollectionChanged += (s, e) =>
+            {
+                if (e.NewItems != null)
+                {
+                    foreach (DownloadTask task in e.NewItems)
+                        task.PropertyChanged += Task_PropertyChanged;
+                }
+                if (e.OldItems != null)
+                {
+                    foreach (DownloadTask task in e.OldItems)
+                        task.PropertyChanged -= Task_PropertyChanged;
+                }
+                UpdateCurrentAppStatus();
+            };
         }
+        [RelayCommand]
+        private void OpenProxySearcher()
+        {
+            _navigationService.Navigate(typeof(Views.Pages.ProxyPage));
+        }
+        private void Task_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            if (sender is DownloadTask task && task.AppName == AppTitle)
+            {
+                Application.Current.Dispatcher.Invoke(() =>
+                {
+                    if (e.PropertyName == nameof(DownloadTask.Progress) || e.PropertyName == nameof(DownloadTask.IsIndeterminate))
+                    {
+                        ProgressValue = task.Progress;
+                        IsProgressIndeterminate = task.IsIndeterminate || task.Progress <= 0;
+                    }
+                    else if (e.PropertyName == nameof(DownloadTask.IsCompleted) || e.PropertyName == nameof(DownloadTask.IsError))
+                    {
+                        UpdateCurrentAppStatus();
+                        _ = CheckInstallViaRegistry(AppTitle).ContinueWith(t =>
+                        {
+                            IsInstalled = t.Result;
+                        }, TaskScheduler.FromCurrentSynchronizationContext());
+                    }
+                });
+            }
+        }
+
+        private void UpdateCurrentAppStatus()
+        {
+            var activeTask = DownloadTaskManager.Instance.Tasks
+                .FirstOrDefault(t => t.AppName == AppTitle && !t.IsCompleted && !t.IsError);
+
+            if (activeTask != null)
+            {
+                IsInstalling = true;
+                ProgressValue = activeTask.Progress;
+                IsProgressIndeterminate = activeTask.IsIndeterminate || activeTask.Progress <= 0;
+            }
+            else
+            {
+                IsInstalling = false;
+                ProgressValue = 0;
+                IsProgressIndeterminate = true;
+            }
+        }
+
         [ObservableProperty] private ApplicationTheme _currentTheme = ApplicationTheme.Unknown;
         [ObservableProperty] private string _appTitle = string.Empty;
         [ObservableProperty] private string _appDescription = string.Empty;
@@ -40,7 +292,6 @@ namespace Helinstaller.ViewModels.Pages
         [ObservableProperty] private bool _isChecking = false;
         [ObservableProperty] private double _progressValue = 0;
         [ObservableProperty] private string _downloadUrl = string.Empty;
-
         [ObservableProperty] private bool _isForceInstall = false;
 
         public async Task OnNavigatedToAsync()
@@ -53,6 +304,7 @@ namespace Helinstaller.ViewModels.Pages
         private async Task InitializeViewModel()
         {
             if (_isInitialized) return;
+            IsWingetAvailable = await _wingetService.IsWingetAvailableAsync();
             await LoadApplicationData("apps.json");
             _isInitialized = true;
         }
@@ -71,6 +323,7 @@ namespace Helinstaller.ViewModels.Pages
 
         public async Task OnNavigateToApp(string appName)
         {
+            Logger.LogInfo($"Навигация к карточке приложения: {appName}");
             var selectedApp = _applications.FirstOrDefault(a => a.Name == appName);
             if (selectedApp != null)
             {
@@ -79,10 +332,34 @@ namespace Helinstaller.ViewModels.Pages
                 AppIconPath = selectedApp.IconPath ?? string.Empty;
                 DownloadUrl = selectedApp.DownloadUrl;
 
-                IsInstalling = false;
-                IsInstalled = false;
-                ProgressValue = 0;
+                // Определяем, относится ли приложение к Telegram
+                IsTelegramApp = selectedApp.Title.Contains("Telegram", StringComparison.OrdinalIgnoreCase) ||
+                                selectedApp.Name.Contains("Telegram", StringComparison.OrdinalIgnoreCase) ||
+                                selectedApp.Name.Contains("Unigram", StringComparison.OrdinalIgnoreCase);
+
+                AppCategory = !string.IsNullOrWhiteSpace(selectedApp.Category) ? selectedApp.Category : "Утилиты";
+
+                if (DownloadUrl.StartsWith("winget:", StringComparison.OrdinalIgnoreCase))
+                    AppSourceDetails = $"WinGet: {DownloadUrl.Replace("winget:", "").Trim()}";
+                else if (DownloadUrl.StartsWith("msstore:", StringComparison.OrdinalIgnoreCase))
+                    AppSourceDetails = $"MS Store: {DownloadUrl.Replace("msstore:", "").Trim()}";
+                else if (DownloadUrl.StartsWith("github:", StringComparison.OrdinalIgnoreCase))
+                    AppSourceDetails = "GitHub Релиз";
+                else
+                    AppSourceDetails = "Прямая ссылка";
+
+                AppSizeText = "Размер: ...";
+                _ = MetadataService.GetInstallerSizeAsync(DownloadUrl).ContinueWith(t =>
+                {
+                    Application.Current.Dispatcher.Invoke(() => AppSizeText = t.Result);
+                });
+
+                IsChecking = false;
                 IsForceInstall = false;
+
+                UpdateInstallAllowed();
+                UpdateCurrentAppStatus();
+                UpdateCurrentAppHasUpdate();
 
                 await CheckCommand.ExecuteAsync(null);
             }
@@ -94,7 +371,50 @@ namespace Helinstaller.ViewModels.Pages
             IsChecking = true;
             await AutoFillMetadata();
             IsInstalled = await CheckInstallViaRegistry(AppTitle);
+            UpdateInstallAllowed();
             IsChecking = false;
+        }
+
+        [RelayCommand]
+        private async Task InstallWinget()
+        {
+            if (IsInstallingWinget) return;
+            IsInstallingWinget = true;
+            WingetInstallStatus = "Подготовка к установке...";
+            WingetInstallProgress = 0;
+
+            var progress = new Progress<double>(p => WingetInstallProgress = p);
+            var status = new Progress<string>(s => WingetInstallStatus = s);
+
+            bool success = await _wingetService.InstallOrUpdateWingetAsync(progress, status);
+            await Task.Delay(1000);
+
+            if (success)
+            {
+                IsWingetAvailable = await _wingetService.IsWingetAvailableAsync();
+                Application.Current.Dispatcher.Invoke(() =>
+                {
+                    UpdateInstallAllowed();
+                });
+
+                if (IsWingetAvailable)
+                {
+                    WingetInstallStatus = "Служба Winget успешно установлена и готова к работе!";
+                    CapsuleToastService.Show("Служба WinGet успешно установлена!", ToastType.Success);
+                }
+                else
+                {
+                    WingetInstallStatus = "Установка завершена. Если поиск закрыт, включите 'Установщик пакетов' в Параметры -> Псевдонимы выполнения приложений.";
+                    CapsuleToastService.Show("Включите псевдоним WinGet в параметрах Windows", ToastType.Warning);
+                }
+            }
+            else
+            {
+                WingetInstallStatus = "Не удалось завершить установку автоматически. Попробуйте перезапустить приложение.";
+                CapsuleToastService.Show("Не удалось установить WinGet", ToastType.Error);
+            }
+
+            IsInstallingWinget = false;
         }
 
         private async Task<bool> CheckInstallViaRegistry(string appName)
@@ -102,112 +422,225 @@ namespace Helinstaller.ViewModels.Pages
             return await Task.Run(() =>
             {
                 if (string.IsNullOrWhiteSpace(appName)) return false;
-                string searchName = appName.ToLowerInvariant();
+
+                // Находим текущее приложение в списке для получения CheckPattern и DownloadUrl
+                var currentApp = _applications.FirstOrDefault(a => a.Title == appName || a.Name == appName);
+
+                var searchTerms = new List<string>();
+
+                if (currentApp != null && !string.IsNullOrWhiteSpace(currentApp.CheckPattern))
+                {
+                    searchTerms.AddRange(currentApp.CheckPattern.Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+                }
+                else
+                {
+                    searchTerms.Add(appName);
+                    if (currentApp != null && !string.IsNullOrWhiteSpace(currentApp.Name))
+                        searchTerms.Add(currentApp.Name);
+                }
+
+                // Добавляем Store ID из downloadUrl (если это msstore)
+                if (currentApp != null && !string.IsNullOrWhiteSpace(currentApp.DownloadUrl))
+                {
+                    string cleanUrl = currentApp.DownloadUrl.Replace("msstore:", "", StringComparison.OrdinalIgnoreCase)
+                                                           .Replace("winget:", "", StringComparison.OrdinalIgnoreCase).Trim();
+                    if (cleanUrl.Length >= 9) searchTerms.Add(cleanUrl);
+                }
+
+                var lowerTerms = searchTerms.Select(s => s.ToLowerInvariant()).Distinct().ToList();
+
+                // 1. Проверка классических программ (Win32 / .exe / .msi)
                 string[] registryKeys = {
                     @"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall",
-                    @"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall",
-                    @"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall"
+                    @"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall"
                 };
-                RegistryKey[] baseKeys = { Registry.LocalMachine, Registry.LocalMachine, Registry.CurrentUser };
+                RegistryKey[] baseKeys = { Registry.LocalMachine, Registry.CurrentUser };
 
-                for (int i = 0; i < baseKeys.Length; i++)
+                foreach (var baseKey in baseKeys)
                 {
-                    using var baseKey = baseKeys[i].OpenSubKey(registryKeys[i]);
-                    if (baseKey == null) continue;
-                    foreach (string subKeyName in baseKey.GetSubKeyNames())
+                    foreach (var regPath in registryKeys)
                     {
-                        using var appKey = baseKey.OpenSubKey(subKeyName);
-                        var displayName = appKey?.GetValue("DisplayName") as string;
-                        if (!string.IsNullOrEmpty(displayName) && displayName.ToLowerInvariant().Contains(searchName))
-                            return true;
+                        using var key = baseKey.OpenSubKey(regPath);
+                        if (key == null) continue;
+
+                        foreach (string subKeyName in key.GetSubKeyNames())
+                        {
+                            using var appKey = key.OpenSubKey(subKeyName);
+                            var displayName = appKey?.GetValue("DisplayName")?.ToString()?.ToLowerInvariant();
+                            if (string.IsNullOrEmpty(displayName)) continue;
+
+                            if (lowerTerms.Any(term => displayName.Contains(term)))
+                                return true;
+                        }
                     }
                 }
+
+                // 2. Проверка приложений Microsoft Store (UWP / AppX / MSIX)
+                try
+                {
+                    using var appxKey = Registry.CurrentUser.OpenSubKey(@"Software\Classes\Local Settings\Software\Microsoft\Windows\CurrentVersion\AppModel\Repository\Packages");
+                    if (appxKey != null)
+                    {
+                        foreach (string pkgName in appxKey.GetSubKeyNames())
+                        {
+                            string pkgLower = pkgName.ToLowerInvariant();
+                            if (lowerTerms.Any(term => pkgLower.Contains(term)))
+                                return true;
+                        }
+                    }
+                }
+                catch { }
+
                 return false;
             });
         }
 
-        [RelayCommand]
+        [RelayCommand(AllowConcurrentExecutions = true)]
         private async Task Install()
         {
-            var task = new DownloadTask { Title = this.AppTitle, AppName = this.AppTitle, IconPath = this.AppIconPath };
-            DownloadTaskManager.Instance.AddTask(task);
-
+            if (IsChecking) return;
+            var activeTask = DownloadTaskManager.Instance.Tasks
+                .FirstOrDefault(t => t.AppName == AppTitle && !t.IsCompleted && !t.IsError);
+            if (activeTask != null) return;
+            Logger.LogInfo($"Запрошена установка для '{AppTitle}'. URL: {DownloadUrl}");
             IsInstalling = true;
-            task.Status = "Подготовка...";
+
+            bool isForce = IsForceInstall;
+            string capturedUrl = DownloadUrl;
+            string capturedTitle = AppTitle;
+            string capturedIcon = AppIconPath;
+
+            string? officeXmlConfig = null;
+            if (capturedTitle == "Office")
+            {
+                var configWindow = new OfficeConfigWindow();
+                if (configWindow.ShowDialog() != true)
+                {
+                    IsInstalling = false;
+                    return;
+                }
+                officeXmlConfig = configWindow.Configuration.GenerateXml();
+            }
+
+            var task = new DownloadTask { Title = capturedTitle, AppName = capturedTitle, IconPath = capturedIcon };
+            DownloadTaskManager.Instance.AddTask(task);
 
             try
             {
-                if (AppTitle == "Office")
+                await DownloadTaskManager.Instance.EnqueueAsync(task, async () =>
                 {
-                    task.Status = "Настройка Office...";
-                    task.IsIndeterminate = true;
-                    await InstallOffice();
-                }
-                else if (DownloadUrl.StartsWith("ms-windows-store:", StringComparison.OrdinalIgnoreCase))
-                {
-                    task.Status = "Открытие в Microsoft Store...";
-                    task.IsIndeterminate = true;
-                    await InstallViaStore(DownloadUrl, task);
-                }
-                else if (DownloadUrl.StartsWith("winget:", StringComparison.OrdinalIgnoreCase))
-                {
-                    task.Status = "Установка через WinGet...";
-                    task.IsIndeterminate = false; // Выключаем бесконечный режим для плавного заполнения
-                    string appId = DownloadUrl.Replace("winget:", "").Trim();
+                    task.Status = "Подготовка...";
 
-                    // Объявляем текстовый прогресс
-                    var statusProgress = new Progress<string>(line =>
+                    if (capturedTitle == "Office" && officeXmlConfig != null)
                     {
-                        string cleanLine = Regex.Replace(line, @"[█░▄▀■►─\-|=+*#•·]|\[|\]", "").Trim();
-                        if (!string.IsNullOrWhiteSpace(cleanLine) && cleanLine.Length > 3)
+                        task.Status = "Установка Office...";
+                        task.IsIndeterminate = true;
+                        await RunOfficeSetupAsync(officeXmlConfig);
+                    }
+                    else if (capturedUrl.StartsWith("winget:", StringComparison.OrdinalIgnoreCase) ||
+                             capturedUrl.StartsWith("msstore:", StringComparison.OrdinalIgnoreCase) ||
+                             capturedUrl.StartsWith("ms-windows-store:", StringComparison.OrdinalIgnoreCase))
+                    {
+                        task.IsIndeterminate = true;
+                        string? source = null;
+                        string appId;
+
+                        if (capturedUrl.StartsWith("msstore:", StringComparison.OrdinalIgnoreCase))
                         {
-                            task.Status = cleanLine;
+                            appId = capturedUrl.Substring("msstore:".Length).Trim();
+                            source = "msstore";
+                            task.Status = "Установка из Microsoft Store...";
                         }
-                    });
+                        else if (capturedUrl.StartsWith("ms-windows-store:", StringComparison.OrdinalIgnoreCase))
+                        {
+                            appId = ExtractStoreId(capturedUrl);
+                            source = "msstore";
+                            task.Status = "Установка из Microsoft Store...";
+                        }
+                        else
+                        {
+                            appId = capturedUrl.Substring("winget:".Length).Trim();
+                            task.Status = "Установка через WinGet...";
+                        }
 
-                    // Объявляем числовой прогресс
-                    var percentProgress = new Progress<double>(pct =>
-                    {
-                        task.Progress = pct;
-                        this.ProgressValue = pct;
-                    });
+                        var statusProgress = new Progress<string>(line =>
+                        {
+                            string cleanLine = Regex.Replace(line, @"[█░▄▀■►─\-|=+*#•·]|\[|\]", "").Trim();
+                            if (!string.IsNullOrWhiteSpace(cleanLine) && cleanLine.Length > 3)
+                            {
+                                task.Status = cleanLine;
+                            }
+                        });
 
-                    bool success = await _wingetService.InstallPackageAsync(appId, statusProgress, percentProgress, IsForceInstall);
-                    if (!success) throw new Exception("Установка через WinGet завершилась неудачно.");
-                }
-                else
-                {
-                    string urlToInstall = DownloadUrl;
-                    if (DownloadUrl.StartsWith("github:", StringComparison.OrdinalIgnoreCase))
+                        var percentProgress = new Progress<double>(pct =>
+                        {
+                            task.Progress = pct;
+                            if (AppTitle == task.AppName)
+                            {
+                                this.ProgressValue = pct;
+                            }
+                        });
+
+                        bool success = await _wingetService.InstallPackageAsync(appId, statusProgress, percentProgress, isForce, source);
+                        if (!success) throw new Exception($"Установка '{appId}' через WinGet завершилась неудачно.");
+                    }
+                    else
                     {
-                        task.Status = "Поиск релиза GitHub...";
-                        urlToInstall = await GetGithubInstallerDownloadUrlAsync(DownloadUrl.Replace("github:", "")) ?? "";
+                        string urlToInstall = capturedUrl;
+                        if (capturedUrl.StartsWith("github:", StringComparison.OrdinalIgnoreCase))
+                        {
+                            task.Status = "Поиск релиза GitHub...";
+                            urlToInstall = await GetGithubInstallerDownloadUrlAsync(capturedUrl.Replace("github:", "")) ?? "";
+                        }
+
+                        if (string.IsNullOrEmpty(urlToInstall)) throw new Exception("URL не найден");
+
+                        task.Status = "Скачивание...";
+                        await InstallFromUrlAsync(urlToInstall, task);
                     }
 
-                    if (string.IsNullOrEmpty(urlToInstall)) throw new Exception("URL не найден");
+                    task.Status = "Установка завершена";
+                    task.Progress = 100;
+                    task.IsCompleted = true;
 
-                    task.Status = "Скачивание...";
-                    await InstallFromUrlAsync(urlToInstall, task);
-                }
+                    // УВЕДОМЛЕНИЕ В ОСТРОВОК
+                    CapsuleToastService.Show($"{capturedTitle} успешно установлено!", ToastType.Success);
+                });
 
-                task.Status = "Установка завершена";
-                task.Progress = 100;
-                task.IsCompleted = true;
-                IsInstalled = await CheckInstallViaRegistry(AppTitle);
+                Logger.LogInfo($"Процесс установки '{capturedTitle}' успешно завершен.");
+                IsInstalled = await CheckInstallViaRegistry(capturedTitle);
             }
             catch (Exception ex)
             {
+                Logger.LogError($"Сбой при установке приложения '{capturedTitle}'", ex);
                 task.Status = "Ошибка";
                 task.IsError = true;
                 task.ErrorMessage = ex.Message;
                 task.IsIndeterminate = false;
+
+                // УВЕДОМЛЕНИЕ В ОСТРОВОК ОБ ОШИБКЕ
+                CapsuleToastService.Show($"Ошибка установки {capturedTitle}: {ex.Message}", ToastType.Error);
             }
             finally
             {
-                IsInstalling = false;
+                UpdateCurrentAppStatus();
                 ProgressValue = 0;
-                IsForceInstall = false; // Сбрасываем флаг здесь!
+                IsForceInstall = false;
             }
+        }
+
+        // Вспомогательный метод парсинга ID из ссылок магазина
+        private static string ExtractStoreId(string url)
+        {
+            if (url.Contains("productid=", StringComparison.OrdinalIgnoreCase))
+            {
+                var match = Regex.Match(url, @"productid=([a-zA-Z0-9]+)", RegexOptions.IgnoreCase);
+                if (match.Success) return match.Groups[1].Value;
+            }
+
+            return url.Replace("ms-windows-store:", "", StringComparison.OrdinalIgnoreCase)
+                      .Replace("//pdp/?", "", StringComparison.OrdinalIgnoreCase)
+                      .Trim('/', ' ');
         }
 
         private async Task InstallFromUrlAsync(string url, DownloadTask task)
@@ -230,7 +663,11 @@ namespace Helinstaller.ViewModels.Pages
                         if (totalBytes.HasValue)
                         {
                             double prog = (double)totalRead / totalBytes.Value * 100.0;
-                            task.Progress = prog; this.ProgressValue = prog;
+                            task.Progress = prog;
+                            if (AppTitle == task.AppName)
+                            {
+                                this.ProgressValue = prog;
+                            }
                         }
                     }
                 }
@@ -238,76 +675,8 @@ namespace Helinstaller.ViewModels.Pages
             task.Status = "Запуск установщика...";
             task.IsIndeterminate = true;
             var psi = new ProcessStartInfo { FileName = tempFile, UseShellExecute = true };
-            if (tempFile.EndsWith(".exe")) ;
-            if (tempFile.EndsWith(".msi")) ;
-
             using var p = Process.Start(psi);
             if (p != null) await p.WaitForExitAsync();
-        }
-
-        private async Task InstallViaWinget(string appId, DownloadTask task)
-        {
-            task.Status = "Установка через Winget...";
-            task.IsIndeterminate = true;
-            string args = $"install --id {appId} --silent --accept-package-agreements --accept-source-agreements";
-
-            ProcessStartInfo psi = new ProcessStartInfo
-            {
-                FileName = "winget",
-                Arguments = args,
-                UseShellExecute = false,
-                CreateNoWindow = true,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                StandardOutputEncoding = Encoding.UTF8
-            };
-
-            using (var process = Process.Start(psi))
-            {
-                if (process != null)
-                {
-                    string output = await process.StandardOutput.ReadToEndAsync();
-                    string error = await process.StandardError.ReadToEndAsync();
-                    await process.WaitForExitAsync();
-                    string fullLog = string.IsNullOrEmpty(error) ? output : $"Output:\n{output}\n\nErrors:\n{error}";
-
-                    var msg = new Wpf.Ui.Controls.MessageBox();
-                    msg.Title = $"Результат Winget (Code: {process.ExitCode})";
-                    msg.Content = new System.Windows.Controls.TextBox
-                    {
-                        Text = fullLog,
-                        IsReadOnly = true,
-                        TextWrapping = System.Windows.TextWrapping.Wrap,
-                        MaxHeight = 400,
-                        VerticalScrollBarVisibility = System.Windows.Controls.ScrollBarVisibility.Auto
-                    };
-                    await msg.ShowDialogAsync();
-
-                    if (process.ExitCode != 0) throw new Exception($"Winget вернул ошибку: {process.ExitCode}");
-                }
-            }
-        }
-
-        private bool IsWingetInstalled()
-        {
-            try
-            {
-                using var process = new Process { StartInfo = new ProcessStartInfo { FileName = "winget", Arguments = "--version", UseShellExecute = false, CreateNoWindow = true } };
-                process.Start(); process.WaitForExit(2000); return process.ExitCode == 0;
-            }
-            catch { return false; }
-        }
-
-        private async Task<bool> TryRepairWinget()
-        {
-            try
-            {
-                string psScript = "Add-AppxPackage -RegisterByFamilyName -MainPackage Microsoft.DesktopAppInstaller_8wekyb3d8bbwe";
-                ProcessStartInfo psi = new ProcessStartInfo { FileName = "powershell", Arguments = $"-Command \"{psScript}\"", UseShellExecute = false, CreateNoWindow = true };
-                using var p = Process.Start(psi); if (p != null) await p.WaitForExitAsync();
-                return IsWingetInstalled();
-            }
-            catch { return false; }
         }
 
         public async Task AutoFillMetadata()
@@ -358,24 +727,11 @@ namespace Helinstaller.ViewModels.Pages
             return null;
         }
 
-        private async Task InstallViaStore(string storeUrl, DownloadTask task)
-        {
-            await Task.Run(() =>
-            {
-                var psi = new ProcessStartInfo { FileName = storeUrl, UseShellExecute = true };
-                Process.Start(psi);
-            });
-            await Task.Delay(2000);
-        }
-
         public class GithubReleaseResponse { public List<GithubAsset> Assets { get; set; } }
         public class GithubAsset { public string Name { get; set; } [JsonPropertyName("browser_download_url")] public string BrowserDownloadUrl { get; set; } }
 
-        private async Task InstallOffice()
+        private async Task RunOfficeSetupAsync(string xmlContent)
         {
-            var configWindow = new OfficeConfigWindow();
-            if (configWindow.ShowDialog() != true) throw new Exception("Установка отменена пользователем");
-
             string officeDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Office");
             string setupPath = Path.Combine(officeDir, "setup.exe");
             string configPath = Path.Combine(officeDir, "Configuration.xml");
@@ -383,7 +739,6 @@ namespace Helinstaller.ViewModels.Pages
             if (!Directory.Exists(officeDir)) Directory.CreateDirectory(officeDir);
             if (!File.Exists(setupPath)) throw new Exception("Файл Office/setup.exe не найден. Поместите оригинальный установщик (ODT) в папку программы.");
 
-            string xmlContent = configWindow.Configuration.GenerateXml();
             await File.WriteAllTextAsync(configPath, xmlContent, Encoding.UTF8);
 
             ProcessStartInfo psi = new ProcessStartInfo

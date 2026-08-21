@@ -10,8 +10,11 @@ using System.IO;
 using System.Windows.Threading;
 using Wpf.Ui;
 using Wpf.Ui.DependencyInjection;
+using System.Diagnostics;
+using System.Security.Principal;
 using System.Text;
 using Velopack;
+using Helinstaller.Helpers;
 
 namespace Helinstaller
 {
@@ -55,7 +58,8 @@ namespace Helinstaller
                 services.AddSingleton<SettingsViewModel>();
                 services.AddSingleton<Tweaks>();
                 services.AddSingleton<TweaksViewModel>();
-
+                services.AddSingleton<SystemDashboardPage>();
+                services.AddSingleton<SystemDashboardViewModel>();
                 services.AddSingleton<Donate>();
                 services.AddSingleton<DonateViewmodel>();
                 services.AddSingleton<Advices>();
@@ -64,13 +68,14 @@ namespace Helinstaller
 
                 services.AddSingleton<DownloadsPage>();
                 services.AddSingleton<DownloadsViewModel>();
-
+                services.AddSingleton<ProxyPage>();
+                services.AddSingleton<ProxyViewModel>();
                 // Custom Business Services
                 services.AddSingleton<IWingetService, WingetService>();
                 services.AddSingleton<IDownloadService, DownloadService>();
                 services.AddSingleton<IUsbDriveService, UsbDriveService>();
                 services.AddSingleton<IVentoyService, VentoyService>();
-                services.AddSingleton<ITweaksService, TweaksService>();
+
             }).Build();
 
         /// <summary>
@@ -89,15 +94,52 @@ namespace Helinstaller
 
         private async void OnStartup(object sender, StartupEventArgs e)
         {
+            Logger.LogInfo("=== Запуск Helinstaller ===");
+            Logger.LogInfo($"ОС: {Environment.OSVersion}, .NET: {Environment.Version}");
+
+            if (!IsRunAsAdmin())
+            {
+                Logger.LogWarning("Запуск без прав администратора. Инициализация перезапуска с повышенными привилегиями...");
+                var processInfo = new ProcessStartInfo
+                {
+                    FileName = Environment.ProcessPath,
+                    UseShellExecute = true,
+                    Verb = "runas"
+                };
+
+                try
+                {
+                    Process.Start(processInfo);
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogError("Пользователь отказался от повышения прав UAC", ex);
+                    MessageBox.Show("Для работы твиков и Ventoy необходимы права администратора.",
+                                    "Доступ ограничен", MessageBoxButton.OK, MessageBoxImage.Warning);
+                }
+
+                Application.Current.Shutdown();
+                return;
+            }
+
+            Logger.LogInfo("Права администратора успешно подтверждены.");
             System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
             await _host.StartAsync();
         }
 
+        // Метод проверки прав администратора
+        private static bool IsRunAsAdmin()
+        {
+            using var identity = WindowsIdentity.GetCurrent();
+            var principal = new WindowsPrincipal(identity);
+            return principal.IsInRole(WindowsBuiltInRole.Administrator);
+        }
         /// <summary>
         /// Occurs when the application is closing.
         /// </summary>
         private async void OnExit(object sender, ExitEventArgs e)
         {
+            Logger.LogInfo("=== Завершение работы Helinstaller ===");
             await _host.StopAsync();
 
             _host.Dispose();
@@ -108,7 +150,10 @@ namespace Helinstaller
         /// </summary>
         private void OnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
         {
-            // For more info see https://docs.microsoft.com/en-us/dotnet/api/system.windows.application.dispatcherunhandledexception?view=windowsdesktop-6.0
+            Logger.LogError("Критический сбой приложения (Unhandled Exception)", e.Exception);
+            MessageBox.Show($"Произошла критическая ошибка. Лог сохранен в файл log.txt рядом с программой.\n\nДетали: {e.Exception.Message}",
+                            "Критическая ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+            e.Handled = true;
         }
     }
 }

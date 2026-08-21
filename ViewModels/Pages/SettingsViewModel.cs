@@ -30,36 +30,68 @@ namespace Helinstaller.ViewModels.Pages
         [ObservableProperty]
         private bool _isMusicAutoPlayEnabled = Models.AppSettings.IsMusicAutoPlayEnabled;
 
+        [ObservableProperty]
+        private int _installTimeoutSeconds = Models.AppSettings.InstallTimeoutSeconds;
+
+        // Новые свойства для слайдеров:
+        [ObservableProperty]
+        private int _proxyPingTimeoutMs = Models.AppSettings.ProxyPingTimeoutMs;
+
+        [ObservableProperty]
+        private int _proxyMaxParallelism = Models.AppSettings.ProxyMaxParallelism;
+
         partial void OnIsVisualizerEnabledChanged(bool value)
         {
             AppSettings.IsVisualizerEnabled = value;
             CommunityToolkit.Mvvm.Messaging.WeakReferenceMessenger.Default.Send(new VisualizerStatusChangedMessage(value));
-
-            // СОХРАНЯЕМ
             AppSettings.Save();
         }
 
         partial void OnIsMusicAutoPlayEnabledChanged(bool value)
         {
             AppSettings.IsMusicAutoPlayEnabled = value;
-
-            // СОХРАНЯЕМ
             AppSettings.Save();
+        }
+
+        partial void OnInstallTimeoutSecondsChanged(int value)
+        {
+            AppSettings.InstallTimeoutSeconds = value;
+            AppSettings.Save();
+        }
+
+        partial void OnProxyPingTimeoutMsChanged(int value)
+        {
+            AppSettings.ProxyPingTimeoutMs = value;
+            AppSettings.Save();
+        }
+
+        partial void OnProxyMaxParallelismChanged(int value)
+        {
+            AppSettings.ProxyMaxParallelism = value;
+            AppSettings.Save();
+        }
+
+        [RelayCommand]
+        private void OpenLog()
+        {
+            Logger.LogInfo("Пользователь запросил просмотр файла логов.");
+            Logger.OpenLogFile();
         }
 
         public Task OnNavigatedFromAsync() => Task.CompletedTask;
 
         private void InitializeViewModel()
         {
-            // Синхронизируем UI с текущими настройками
             IsVisualizerEnabled = Models.AppSettings.IsVisualizerEnabled;
             IsMusicAutoPlayEnabled = Models.AppSettings.IsMusicAutoPlayEnabled;
+            InstallTimeoutSeconds = Models.AppSettings.InstallTimeoutSeconds;
+            ProxyPingTimeoutMs = Models.AppSettings.ProxyPingTimeoutMs;
+            ProxyMaxParallelism = Models.AppSettings.ProxyMaxParallelism;
 
             CurrentTheme = ApplicationThemeManager.GetAppTheme();
             AppVersion = $"Helinstaller - {GetAssemblyVersion()}";
             _isInitialized = true;
         }
-
 
         private string GetAssemblyVersion()
         {
@@ -78,7 +110,6 @@ namespace Helinstaller.ViewModels.Pages
 
                     ApplicationThemeManager.Apply(ApplicationTheme.Light);
                     CurrentTheme = ApplicationTheme.Light;
-
                     break;
 
                 default:
@@ -87,7 +118,6 @@ namespace Helinstaller.ViewModels.Pages
 
                     ApplicationThemeManager.Apply(ApplicationTheme.Dark);
                     CurrentTheme = ApplicationTheme.Dark;
-
                     break;
             }
         }

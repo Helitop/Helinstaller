@@ -1,4 +1,6 @@
-﻿using System.Text.Json.Serialization;
+﻿// FILE [CS]: .\Models\AppInfoModel.cs
+
+using System.Text.Json.Serialization;
 
 namespace Helinstaller.Models
 {
@@ -18,5 +20,15 @@ namespace Helinstaller.Models
 
         [JsonPropertyName("downloadUrl")]
         public string DownloadUrl { get; set; } = string.Empty;
+
+        [JsonPropertyName("category")]
+        public string? Category { get; set; }
+
+        [JsonPropertyName("checkPattern")]
+        public string? CheckPattern { get; set; }
+
+        // Новое свойство: "carousel" (по умолчанию) или "list" (список во всю ширину)
+        [JsonPropertyName("layout")]
+        public string? Layout { get; set; }
     }
 }

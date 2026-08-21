@@ -1,0 +1,329 @@
+﻿<!-- FILE [XAML]: .\Views\Pages\ProxyPage.xaml -->
+
+<Page
+    x:Class="Helinstaller.Views.Pages.ProxyPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+    xmlns:models="clr-namespace:Helinstaller.Models"
+    mc:Ignorable="d"
+    Title="MTProto Proxy"
+    ui:Design.Background="{DynamicResource ApplicationBackgroundBrush}"
+    ui:Design.Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+    Foreground="{DynamicResource TextFillColorPrimaryBrush}">
+
+    <Page.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+    </Page.Resources>
+
+    <Grid Margin="20,10,20,15">
+        <Grid.RowDefinitions>
+            <!-- 0. Шапка -->
+            <RowDefinition Height="Auto"/>
+            <!-- 1. Панель источников и фильтрации -->
+            <RowDefinition Height="Auto"/>
+            <!-- 2. Список прокси -->
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- СТРОКА 0: ШАПКА -->
+        <DockPanel Grid.Row="0" LastChildFill="False" Margin="0,0,0,12">
+            <StackPanel DockPanel.Dock="Left" VerticalAlignment="Center">
+                <StackPanel Orientation="Horizontal">
+                    <ui:SymbolIcon Symbol="ShieldGlobe24" FontSize="24" Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" Margin="0,0,10,0" VerticalAlignment="Center"/>
+                    <ui:TextBlock Text="Telegram MTProto Прокси" FontSize="20" FontWeight="Bold" VerticalAlignment="Center"/>
+                </StackPanel>
+                <ui:TextBlock Text="{Binding ViewModel.StatusText}" FontSize="11.5" Opacity="0.65" Margin="34,2,0,0"/>
+            </StackPanel>
+
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+
+                <!-- КНОПКА: ПРОВЕРИТЬ ПИНГ -->
+                <ui:Button Content="Проверить пинг" 
+                           Icon="{ui:SymbolIcon ArrowCounterclockwise24}" 
+                           Appearance="Secondary" 
+                           Command="{Binding ViewModel.CheckAllProxiesCommand}"
+                           Margin="0,0,8,0">
+                    <ui:Button.Style>
+                        <Style TargetType="ui:Button" BasedOn="{StaticResource DefaultUiButtonStyle}">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding ViewModel.IsChecking}" Value="True">
+                                    <Setter Property="IsEnabled" Value="False"/>
+                                    <Setter Property="Content">
+                                        <Setter.Value>
+                                            <StackPanel Orientation="Horizontal">
+                                                <ui:ProgressRing Width="14" Height="14" IsIndeterminate="True" Margin="0,0,8,0"/>
+                                                <TextBlock Text="Тестирование..."/>
+                                            </StackPanel>
+                                        </Setter.Value>
+                                    </Setter>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </ui:Button.Style>
+                </ui:Button>
+
+                <!-- КНОПКА: ОБНОВИТЬ БАЗУ -->
+                <ui:Button Content="Обновить базу" 
+                           Icon="{ui:SymbolIcon ArrowSync24}" 
+                           Appearance="Secondary" 
+                           Command="{Binding ViewModel.RefreshAndCheckProxiesCommand}"
+                           Margin="0,0,8,0">
+                    <ui:Button.Style>
+                        <Style TargetType="ui:Button" BasedOn="{StaticResource DefaultUiButtonStyle}">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding ViewModel.IsLoading}" Value="True">
+                                    <Setter Property="IsEnabled" Value="False"/>
+                                    <Setter Property="Content">
+                                        <Setter.Value>
+                                            <StackPanel Orientation="Horizontal">
+                                                <ui:ProgressRing Width="14" Height="14" IsIndeterminate="True" Margin="0,0,8,0"/>
+                                                <TextBlock Text="Загрузка..."/>
+                                            </StackPanel>
+                                        </Setter.Value>
+                                    </Setter>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </ui:Button.Style>
+                </ui:Button>
+
+                <!-- КНОПКА: СКОПИРОВАТЬ ВСЕ -->
+                <ui:Button Content="Скопировать все" 
+                           Icon="{ui:SymbolIcon Copy24}" 
+                           Appearance="Primary" 
+                           Command="{Binding ViewModel.CopyAllWorkingCommand}"/>
+            </StackPanel>
+        </DockPanel>
+
+        <!-- СТРОКА 1: ПАНЕЛЬ ДОБАВЛЕНИЯ + ФИЛЬТРЫ -->
+        <ui:Card Grid.Row="1" Margin="0,0,0,10" Padding="12,10">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <Grid Grid.Row="0" Margin="0,0,0,8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <Grid Grid.Column="0" Margin="0,0,12,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <ui:TextBox PlaceholderText="Вставьте ссылку на список прокси (например, https://github.com/.../all_proxies.txt)" 
+                                    Text="{Binding ViewModel.NewSourceUrl, UpdateSourceTrigger=PropertyChanged}"
+                                    Icon="{ui:SymbolIcon Link24}"
+                                    Height="36"/>
+                        <ui:Button Grid.Column="1" 
+                                   Content="Добавить" 
+                                   Appearance="Secondary"
+                                   Margin="8,0,0,0" 
+                                   Command="{Binding ViewModel.AddSourceCommand}"/>
+                    </Grid>
+
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                        <Border Background="#15FFFFFF" CornerRadius="8" Padding="10,6" Margin="0,0,8,0">
+                            <StackPanel Orientation="Horizontal">
+                                <ui:TextBlock Text="Найдено: " Opacity="0.6" FontSize="12"/>
+                                <ui:TextBlock Text="{Binding ViewModel.TotalFound}" FontWeight="Bold" FontSize="12"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Background="#204CD964" CornerRadius="8" Padding="10,6">
+                            <StackPanel Orientation="Horizontal">
+                                <ui:TextBlock Text="Онлайн: " Foreground="#4CD964" FontSize="12"/>
+                                <ui:TextBlock Text="{Binding ViewModel.OnlineCount}" Foreground="#4CD964" FontWeight="Bold" FontSize="12"/>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </Grid>
+
+                <Grid Grid.Row="1">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <ui:TextBox Grid.Column="0"
+                                PlaceholderText="Быстрый поиск по адресу сервера или порту..." 
+                                Text="{Binding ViewModel.SearchQuery, UpdateSourceTrigger=PropertyChanged}"
+                                Icon="{ui:SymbolIcon Search24}"
+                                Height="34"
+                                Margin="0,0,12,0"/>
+
+                    <ui:ToggleSwitch Grid.Column="1" 
+                                     Content="Только онлайн" 
+                                     IsChecked="{Binding ViewModel.OnlyWorking, Mode=TwoWay}" 
+                                     VerticalAlignment="Center"/>
+                </Grid>
+            </Grid>
+        </ui:Card>
+
+        <!-- СТРОКА 2: ТАБЛИЦА ПРОКСИ -->
+        <ui:Card Grid.Row="2" Padding="0">
+            <Grid>
+                <!-- Верхний тонкий индикатор прогресса -->
+                <ProgressBar Height="3" 
+                             VerticalAlignment="Top" 
+                             Minimum="0" 
+                             Maximum="100"
+                             Value="{Binding ViewModel.CheckProgress}"
+                             Visibility="{Binding ViewModel.IsChecking, Converter={StaticResource BoolToVis}}"/>
+
+                <!-- 1. СКЕЛЕТОН ЗАГРУЗКИ -->
+                <StackPanel Margin="12,10">
+                    <StackPanel.Style>
+                        <Style TargetType="StackPanel">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding ViewModel.IsLoading}" Value="True">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </StackPanel.Style>
+
+                    <Control Style="{StaticResource SkeletonBox}" Height="36" Margin="0,0,0,6"/>
+                    <Control Style="{StaticResource SkeletonBox}" Height="36" Margin="0,0,0,6"/>
+                    <Control Style="{StaticResource SkeletonBox}" Height="36" Margin="0,0,0,6"/>
+                    <Control Style="{StaticResource SkeletonBox}" Height="36" Margin="0,0,0,6"/>
+                    <Control Style="{StaticResource SkeletonBox}" Height="36" Margin="0,0,0,6"/>
+                </StackPanel>
+
+                <!-- 2. РЕАЛЬНЫЙ СПИСОК -->
+                <ui:ListView ItemsSource="{Binding ViewModel.Proxies}" 
+                             SelectionMode="Single"
+                             ScrollViewer.CanContentScroll="True"
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                             VirtualizingPanel.IsVirtualizing="True"
+                             VirtualizingPanel.VirtualizationMode="Recycling"
+                             VirtualizingPanel.ScrollUnit="Pixel">
+
+                    <ui:ListView.Style>
+                        <Style TargetType="ui:ListView" BasedOn="{StaticResource {x:Type ui:ListView}}">
+                            <Setter Property="Visibility" Value="Visible"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding ViewModel.IsLoading}" Value="True">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </ui:ListView.Style>
+
+                    <ui:ListView.ItemTemplate>
+                        <DataTemplate DataType="{x:Type models:MtprotoProxyItem}">
+                            <Border BorderThickness="0,0,0,1" BorderBrush="#12FFFFFF" Padding="10,6">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="28"/>
+                                        <ColumnDefinition Width="2.2*"/>
+                                        <ColumnDefinition Width="1*"/>
+                                        <ColumnDefinition Width="2*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- Иконка состояния -->
+                                    <Grid Grid.Column="0" VerticalAlignment="Center">
+                                        <ui:ProgressRing Width="13" Height="13" IsIndeterminate="True">
+                                            <ui:ProgressRing.Style>
+                                                <Style TargetType="ui:ProgressRing">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Status}" Value="{x:Static models:ProxyStatus.Checking}">
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </ui:ProgressRing.Style>
+                                        </ui:ProgressRing>
+
+                                        <Ellipse Width="9" Height="9">
+                                            <Ellipse.Style>
+                                                <Style TargetType="Ellipse">
+                                                    <Setter Property="Fill" Value="Gray"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Status}" Value="{x:Static models:ProxyStatus.Online}">
+                                                            <Setter Property="Fill" Value="#4CD964"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding Status}" Value="{x:Static models:ProxyStatus.Offline}">
+                                                            <Setter Property="Fill" Value="#FF3B30"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding Status}" Value="{x:Static models:ProxyStatus.Checking}">
+                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Ellipse.Style>
+                                        </Ellipse>
+                                    </Grid>
+
+                                    <!-- Сервер и порт -->
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="4,0">
+                                        <TextBlock Text="{Binding Server}" FontWeight="SemiBold" FontSize="13" TextTrimming="CharacterEllipsis"/>
+                                        <TextBlock Text="{Binding Port, StringFormat='Порт: {0}'}" FontSize="11" Opacity="0.5"/>
+                                    </StackPanel>
+
+                                    <!-- Пинг -->
+                                    <StackPanel Grid.Column="2" VerticalAlignment="Center" Margin="4,0">
+                                        <TextBlock Text="{Binding PingText}" FontSize="12" FontWeight="SemiBold">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Foreground" Value="Gray"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Status}" Value="{x:Static models:ProxyStatus.Online}">
+                                                            <Setter Property="Foreground" Value="#4CD964"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding Status}" Value="{x:Static models:ProxyStatus.Offline}">
+                                                            <Setter Property="Foreground" Value="#FF3B30"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </StackPanel>
+
+                                    <!-- Секрет -->
+                                    <TextBlock Grid.Column="3" 
+                                               Text="{Binding Secret}" 
+                                               FontSize="11" 
+                                               Opacity="0.4" 
+                                               FontFamily="Consolas"
+                                               TextTrimming="CharacterEllipsis" 
+                                               VerticalAlignment="Center" 
+                                               Margin="4,0"
+                                               ToolTip="{Binding Secret}"/>
+
+                                    <!-- Кнопки действий -->
+                                    <StackPanel Grid.Column="4" Orientation="Horizontal" VerticalAlignment="Center">
+                                        <ui:Button Icon="{ui:SymbolIcon Copy16}" 
+                                                   Appearance="Secondary" 
+                                                   ToolTip="Скопировать ссылку"
+                                                   Margin="0,0,6,0"
+                                                   Padding="6,4"
+                                                   Height="30"
+                                                   Command="{Binding DataContext.ViewModel.CopySingleCommand, RelativeSource={RelativeSource AncestorType=Page}}"
+                                                   CommandParameter="{Binding}"/>
+
+                                        <ui:Button Icon="{ui:SymbolIcon Send24}" 
+                                                   Appearance="Primary" 
+                                                   ToolTip="Подключить в Telegram"
+                                                   Padding="8,4"
+                                                   Height="30"
+                                                   Command="{Binding DataContext.ViewModel.ConnectSingleCommand, RelativeSource={RelativeSource AncestorType=Page}}"
+                                                   CommandParameter="{Binding}"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ui:ListView.ItemTemplate>
+                </ui:ListView>
+            </Grid>
+        </ui:Card>
+    </Grid>
+</Page>

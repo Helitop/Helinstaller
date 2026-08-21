@@ -85,44 +85,41 @@ namespace Helinstaller.Services
 
         public async Task<bool> InjectOobeAutoAsync(string usbRootPath)
         {
-            return await Task.Run(() =>
+            try
             {
-                try
+                string ventoyDir = Path.Combine(usbRootPath, "ventoy");
+                string jsonPath = Path.Combine(ventoyDir, "ventoy.json");
+                if (!Directory.Exists(ventoyDir))
                 {
-                    string ventoyDir = Path.Combine(usbRootPath, "ventoy");
-                    string jsonPath = Path.Combine(ventoyDir, "ventoy.json");
-                    if (!Directory.Exists(ventoyDir))
-                    {
-                        Directory.CreateDirectory(ventoyDir);
-                    }
+                    Directory.CreateDirectory(ventoyDir);
+                }
 
-                    var ventoyConfig = new
+                var ventoyConfig = new
+                {
+                    control = new[]
                     {
-                        control = new[]
+                        new { VTOY_MENU_LANGUAGE = "ru_RU" }
+                    },
+                    auto_install = new[]
+                    {
+                        new
                         {
-                            new { VTOY_MENU_LANGUAGE = "ru_RU" }
-                        },
-                        auto_install = new[]
-                        {
-                            new
-                            {
-                                parent = "/ISO",
-                                template = new[] { "/autounattend.xml" }
-                            }
+                            parent = "/ISO",
+                            template = new[] { "/autounattend.xml" }
                         }
-                    };
+                    }
+                };
 
-                    var jsonOptions = new JsonSerializerOptions { WriteIndented = true };
-                    string jsonString = JsonSerializer.Serialize(ventoyConfig, jsonOptions);
-                    File.WriteAllText(jsonPath, jsonString, Encoding.UTF8);
+                var jsonOptions = new JsonSerializerOptions { WriteIndented = true };
+                string jsonString = JsonSerializer.Serialize(ventoyConfig, jsonOptions);
+                await File.WriteAllTextAsync(jsonPath, jsonString, Encoding.UTF8);
 
-                    return CopyAutounattendAsync(usbRootPath).Result;
-                }
-                catch
-                {
-                    return false;
-                }
-            });
+                return await CopyAutounattendAsync(usbRootPath);
+            }
+            catch
+            {
+                return false;
+            }
         }
     }
 }

@@ -1,17 +1,24 @@
 ﻿using CommunityToolkit.Mvvm.Messaging;
 using Helinstaller.Helpers;
 using Helinstaller.Models;
+using Helinstaller.Services;
 using Helinstaller.ViewModels.Windows;
 using Helinstaller.Views.Pages;
 using Microsoft.Win32;
 using NAudio.Dsp;
 using NAudio.Wave;
+using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Net.Http;
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -19,7 +26,9 @@ using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
 using Velopack;
 using Velopack.Sources;
-
+using Windows.Media;
+using Windows.Storage;
+using Windows.Storage.Streams;
 using Wpf.Ui;
 using Wpf.Ui.Abstractions;
 using Wpf.Ui.Appearance;
@@ -32,6 +41,7 @@ namespace Helinstaller.Views.Windows
     public partial class MainWindow : INavigationWindow
     {
         // Аудио компоненты
+        private SystemMediaTransportControls? _smtc;
         private IWavePlayer? _waveOut;
         private VisualizationProvider? _visProvider;
         private MediaFoundationReader? _mediaReader;
@@ -39,25 +49,69 @@ namespace Helinstaller.Views.Windows
         private ScaleTransform _lyricsScale = new ScaleTransform();
         private TranslateTransform _lyricsTranslate = new TranslateTransform();
         private ScaleTransform _backgroundScale = new ScaleTransform();
+
         // Плейлист и навигация
         private List<string> _playlist = new List<string>();
         private int _currentTrackIndex = 0;
-        private float _bassHistory = 0;       // Средняя энергия баса
-        private float _beatPulse = 0;         // Текущий уровень пульсации (от 0 до 1)
+        private float _beatPulse = 0;
+        private float _eqMaxPeak = 25.0f;
+
         // Контроль потоков
         private readonly SemaphoreSlim _playerLock = new SemaphoreSlim(1, 1);
         private bool _isClosed = false;
         private bool _isLoading = false;
 
-        // Графика визуализатора
-        private float[] _currentValues;
-        private float[] _smoothedValues;
-
         // Поля для анимации UI
-        private bool _socialExpanded = false;
         private bool _isRenderingSubscribed = false;
         private bool _isIslandExpanded = false;
+
+        // Контроль динамических тостов
+        private CancellationTokenSource? _toastCts;
+        private bool _isToastActive = false;
+
         public MainWindowViewModel ViewModel { get; }
+        private int _currentTourStep = 0;
+
+        private record TourStep(Type PageType, string StepBadge, string Title, string Description, string ButtonText);
+
+        private readonly List<TourStep> _tourSteps = new()
+        {
+            new TourStep(
+                typeof(Views.Pages.SystemDashboardPage),
+                "Шаг 1 из 5",
+                "🌡️ Чё с компом вообще?",
+                "Тут датчики твоего железа в реальном времени. Если полоски короткие — кайфуем. Если полезли за 90% — значит комп пыхтит от нагрузки.",
+                "Понял, дальше →"
+            ),
+            new TourStep(
+                typeof(Views.Pages.DashboardPage),
+                "Шаг 2 из 5",
+                "📦 Софт без мусора и вирусов",
+                "Забудь про поиск по помойкам в браузере. Выбрал прогу, нажал кнопку — она сама скачалась и тихо встала в систему. Сверху есть кнопка обновить всё в 1 клик.",
+                "Круто, дальше →"
+            ),
+            new TourStep(
+                typeof(Views.Pages.Tweaks),
+                "Шаг 3 из 5",
+                "🛠️ Делаем винду послушной",
+                "Тут в один клик вырубаем бесячие всплывашки подтверждения прав, сносим яндекс-мусор, активируем винду и убираем лишние вкладки из Alt+Tab.",
+                "Ясно, дальше →"
+            ),
+            new TourStep(
+                typeof(Views.Pages.Ventoy),
+                "Шаг 4 из 5",
+                "💾 Флешка-выручалка",
+                "Вставил любую флешку, нажал «Установить» — получил загрузочную флешку Ventoy. После этого можно просто перетаскивать на неё любые ISO-образы винды как файлы.",
+                "Супер, дальше →"
+            ),
+            new TourStep(
+                typeof(Views.Pages.SystemDashboardPage),
+                "Шаг 5 из 5",
+                "🎧 Музыкальный островок",
+                "Сверху висит плеер с музыкой и текстами песен, который прыгает под бас. При наведении раскрывается панель управления треками.",
+                "Всё понятно, закрыть!"
+            )
+        };
 
         public MainWindow(
             MainWindowViewModel viewModel,
@@ -70,22 +124,21 @@ namespace Helinstaller.Views.Windows
             SystemThemeWatcher.Watch(this);
 
             InitializeComponent();
-            // --- НАСТРОЙКА ТРАНСФОРМАЦИЙ И АНТИМЫЛА ---
+
             var lyricsGroup = new TransformGroup();
             lyricsGroup.Children.Add(_lyricsScale);
             lyricsGroup.Children.Add(_lyricsTranslate);
             LyricsDisplay.RenderTransform = lyricsGroup;
-            LyricsDisplay.RenderTransformOrigin = new Point(0.5, 0.5); // Важно: масштабируем ровно от центра текста
+            LyricsDisplay.RenderTransformOrigin = new Point(0.5, 0.5);
 
-            // Лекарство от мыла при анимации текста в WPF:
             TextOptions.SetTextFormattingMode(LyricsDisplay, TextFormattingMode.Ideal);
-            TextOptions.SetTextHintingMode(LyricsDisplay, TextHintingMode.Animated); // Отключаем пиксельную привязку
+            TextOptions.SetTextHintingMode(LyricsDisplay, TextHintingMode.Animated);
 
             var bgGroup = new TransformGroup();
             bgGroup.Children.Add(_backgroundScale);
             HubBorder.RenderTransform = bgGroup;
             HubBorder.RenderTransformOrigin = new Point(0.5, 0.5);
-            // ------------------------------------------
+
             WeakReferenceMessenger.Default.Register<VisualizerStatusChangedMessage>(this, (r, m) =>
             {
                 _globalVisualizerEnabled = m.Value;
@@ -93,10 +146,13 @@ namespace Helinstaller.Views.Windows
                 if (!_globalVisualizerEnabled)
                 {
                     UnsubscribeFromRendering();
-                    // Убираем анимацию аватарки в дефолт, если выключено
                     AvatarScale.ScaleX = 1;
                     AvatarScale.ScaleY = 1;
                     AvatarRing.Opacity = 0;
+                    EqBar1.Height = 3;
+                    EqBar2.Height = 3;
+                    EqBar3.Height = 3;
+                    EqBar4.Height = 3;
                 }
                 else
                 {
@@ -110,76 +166,218 @@ namespace Helinstaller.Views.Windows
             SetPageService(navigationViewPageProvider);
             navigationService.SetNavigationControl(RootNavigation);
         }
-        // Класс для чтения ответа от GitHub API
+
+        private void CheckAndStartOnboardingTour()
+        {
+            if (!Models.AppSettings.IsOnboardingCompleted)
+            {
+                Task.Delay(1200).ContinueWith(_ =>
+                {
+                    Dispatcher.InvokeAsync(StartTour);
+                });
+            }
+        }
+
+        public void StartTour()
+        {
+            _currentTourStep = 0;
+            ShowCurrentTourStep();
+
+            TourOverlay.Visibility = Visibility.Visible;
+            TourOverlay.Opacity = 0;
+
+            var bounce = new BackEase { Amplitude = 0.3, EasingMode = EasingMode.EaseOut };
+            TourOverlay.BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromSeconds(0.3)));
+            TourScale.BeginAnimation(ScaleTransform.ScaleYProperty, new DoubleAnimation(0.6, 1.0, TimeSpan.FromSeconds(0.35)) { EasingFunction = bounce });
+        }
+
+        private void ShowCurrentTourStep()
+        {
+            if (_currentTourStep < 0 || _currentTourStep >= _tourSteps.Count) return;
+
+            var step = _tourSteps[_currentTourStep];
+            Navigate(step.PageType);
+
+            TourStepBadge.Content = step.StepBadge;
+            TourTitleText.Text = step.Title;
+            TourDescriptionText.Text = step.Description;
+            NextTourBtn.Content = step.ButtonText;
+        }
+
+        private void NextTourStep_Click(object sender, RoutedEventArgs e)
+        {
+            _currentTourStep++;
+
+            if (_currentTourStep >= _tourSteps.Count)
+            {
+                FinishTour();
+            }
+            else
+            {
+                var fade = new DoubleAnimation(0.2, 1.0, TimeSpan.FromSeconds(0.2));
+                TourDescriptionText.BeginAnimation(OpacityProperty, fade);
+                ShowCurrentTourStep();
+            }
+        }
+
+        private void SkipTour_Click(object sender, RoutedEventArgs e)
+        {
+            FinishTour();
+        }
+
+        private void FinishTour()
+        {
+            Models.AppSettings.IsOnboardingCompleted = true;
+            Models.AppSettings.Save();
+
+            var smoothIn = new CubicEase { EasingMode = EasingMode.EaseIn };
+            var fadeOut = new DoubleAnimation(1, 0, TimeSpan.FromSeconds(0.2)) { EasingFunction = smoothIn };
+            var scaleDown = new DoubleAnimation(1, 0.7, TimeSpan.FromSeconds(0.2)) { EasingFunction = smoothIn };
+
+            fadeOut.Completed += (s, e) => TourOverlay.Visibility = Visibility.Collapsed;
+
+            TourOverlay.BeginAnimation(OpacityProperty, fadeOut);
+            TourScale.BeginAnimation(ScaleTransform.ScaleYProperty, scaleDown);
+        }
+
         public class GitHubFile
         {
+            [System.Text.Json.Serialization.JsonPropertyName("name")]
             public string name { get; set; } = "";
+
+            [System.Text.Json.Serialization.JsonPropertyName("download_url")]
             public string download_url { get; set; } = "";
         }
+
         public class LrcLine
         {
             public TimeSpan Time { get; set; }
             public string Text { get; set; } = "";
         }
 
-        // Поля в классе MainWindow
+        private const string MusicCacheFile = "music_cache.json";
+
         private List<LrcLine> _currentLyrics = new List<LrcLine>();
-        private Dictionary<string, string> _lrcMap = new Dictionary<string, string>(); // URL_песни -> URL_лирики
-                                                                                       // === Инициализация Плеера ===
-        private async void InitializePlayer()
+        private Dictionary<string, string> _lrcMap = new Dictionary<string, string>();
+
+        private async Task InitializePlayerAsync()
         {
             string user = "Helitop";
             string repo = "Heli-Music";
             string path = "";
             string apiUrl = $"https://api.github.com/repos/{user}/{repo}/contents/{path}";
 
+            _playlist.Clear();
+            _lrcMap.Clear();
+
             try
             {
-                using (HttpClient client = new HttpClient())
+                using (HttpClient client = new HttpClient { Timeout = TimeSpan.FromSeconds(6) })
                 {
-                    client.DefaultRequestHeaders.UserAgent.ParseAdd("HelinstallerApp");
-                    string json = await client.GetStringAsync(apiUrl);
-                    var files = System.Text.Json.JsonSerializer.Deserialize<List<GitHubFile>>(json);
+                    client.DefaultRequestHeaders.UserAgent.ParseAdd("HelinstallerApp/1.0");
+                    var response = await client.GetAsync(apiUrl);
 
-                    if (files != null)
+                    if (response.IsSuccessStatusCode)
                     {
-                        // Сначала соберем все аудио и все lrc
-                        var audioFiles = files.Where(f => f.name.EndsWith(".mp3") || f.name.EndsWith(".wav") || f.name.EndsWith(".ogg")).ToList();
-                        var lrcFiles = files.Where(f => f.name.EndsWith(".lrc")).ToList();
+                        string json = await response.Content.ReadAsStringAsync();
+                        var options = new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                        var files = System.Text.Json.JsonSerializer.Deserialize<List<GitHubFile>>(json, options);
 
-                        foreach (var file in audioFiles)
+                        if (files != null)
                         {
-                            _playlist.Add(file.download_url);
+                            var audioFiles = files.Where(f => f.name.EndsWith(".mp3", StringComparison.OrdinalIgnoreCase) ||
+                                                              f.name.EndsWith(".wav", StringComparison.OrdinalIgnoreCase) ||
+                                                              f.name.EndsWith(".ogg", StringComparison.OrdinalIgnoreCase)).ToList();
+                            var lrcFiles = files.Where(f => f.name.EndsWith(".lrc", StringComparison.OrdinalIgnoreCase)).ToList();
 
-                            // Ищем лирику: имя файла (без расширения) должно совпадать
-                            string baseName = Path.GetFileNameWithoutExtension(file.name);
-                            var matchingLrc = lrcFiles.FirstOrDefault(l => Path.GetFileNameWithoutExtension(l.name) == baseName);
-
-                            if (matchingLrc != null)
+                            foreach (var file in audioFiles)
                             {
-                                _lrcMap[file.download_url] = matchingLrc.download_url;
+                                if (!string.IsNullOrEmpty(file.download_url))
+                                {
+                                    _playlist.Add(file.download_url);
+                                    string baseName = Path.GetFileNameWithoutExtension(file.name);
+                                    var matchingLrc = lrcFiles.FirstOrDefault(l => Path.GetFileNameWithoutExtension(l.name).Equals(baseName, StringComparison.OrdinalIgnoreCase));
+
+                                    if (matchingLrc != null && !string.IsNullOrEmpty(matchingLrc.download_url))
+                                    {
+                                        _lrcMap[file.download_url] = matchingLrc.download_url;
+                                    }
+                                }
+                            }
+
+                            if (_playlist.Count > 0)
+                            {
+                                try { File.WriteAllText(MusicCacheFile, json); } catch { }
                             }
                         }
                     }
-                    playerBadge.Visibility = Visibility.Visible;
+                    else
+                    {
+                        Logger.LogWarning($"Плеер: GitHub API вернул статус {response.StatusCode}. Пробуем кэш.");
+                    }
                 }
             }
             catch (Exception ex)
             {
-                SongTitle.Text = "Ошибка сети";
-                Debug.WriteLine(ex.Message);
+                Logger.LogWarning($"Плеер: Не удалось связаться с GitHub API ({ex.Message}). Пробуем локальный кэш.");
+            }
+
+            if (_playlist.Count == 0 && File.Exists(MusicCacheFile))
+            {
+                try
+                {
+                    string cachedJson = File.ReadAllText(MusicCacheFile);
+                    var options = new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                    var files = System.Text.Json.JsonSerializer.Deserialize<List<GitHubFile>>(cachedJson, options);
+
+                    if (files != null)
+                    {
+                        var audioFiles = files.Where(f => f.name.EndsWith(".mp3", StringComparison.OrdinalIgnoreCase) ||
+                                                          f.name.EndsWith(".wav", StringComparison.OrdinalIgnoreCase) ||
+                                                          f.name.EndsWith(".ogg", StringComparison.OrdinalIgnoreCase)).ToList();
+                        var lrcFiles = files.Where(f => f.name.EndsWith(".lrc", StringComparison.OrdinalIgnoreCase)).ToList();
+
+                        foreach (var file in audioFiles)
+                        {
+                            if (!string.IsNullOrEmpty(file.download_url))
+                            {
+                                _playlist.Add(file.download_url);
+                                string baseName = Path.GetFileNameWithoutExtension(file.name);
+                                var matchingLrc = lrcFiles.FirstOrDefault(l => Path.GetFileNameWithoutExtension(l.name).Equals(baseName, StringComparison.OrdinalIgnoreCase));
+
+                                if (matchingLrc != null) _lrcMap[file.download_url] = matchingLrc.download_url;
+                            }
+                        }
+                        Logger.LogInfo($"Плеер: Загружено {_playlist.Count} треков из локального кэша.");
+                    }
+                }
+                catch { }
+            }
+
+            string localMusicDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Music");
+            if (Directory.Exists(localMusicDir))
+            {
+                foreach (var file in Directory.GetFiles(localMusicDir, "*.*").Where(f => f.EndsWith(".mp3") || f.EndsWith(".wav")))
+                {
+                    if (!_playlist.Contains(file)) _playlist.Add(file);
+                }
             }
 
             if (!_playlist.Any())
             {
-                SongTitle.Text = "Плейлист пуст!";
+                SongTitle.Text = "Плейлист пуст";
+                ArtistTitle.Text = "Нет треков";
+                LyricsDisplay.Text = "";
                 playerBadge.Visibility = Visibility.Collapsed;
+                Logger.LogWarning("Плеер: Плейлист пуст.");
                 return;
             }
 
-            // Перемешивание
+            playerBadge.Visibility = Visibility.Visible;
+
             var rng = new Random();
             _playlist = _playlist.OrderBy(a => rng.Next()).ToList();
+            _currentTrackIndex = 0;
 
             _waveOut = new WaveOutEvent { Volume = 0.05f };
             _waveOut.PlaybackStopped += OnPlaybackStopped;
@@ -187,10 +385,6 @@ namespace Helinstaller.Views.Windows
             await LoadTrackAsync(_currentTrackIndex, Models.AppSettings.IsMusicAutoPlayEnabled);
         }
 
-
-
-        // Наведение на невидимую зону в тайтлбаре
-        // Общая логика открытия (вызывается и триггером, и самим островком)
         private void ExpandIsland()
         {
             if (_isIslandExpanded) return;
@@ -199,18 +393,15 @@ namespace Helinstaller.Views.Windows
             var duration = TimeSpan.FromMilliseconds(400);
             var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
 
-            // Считаем "широкую" цель: либо 320, либо больше, если текст очень длинный
             double textWidth = MeasureStringWidth(LyricsDisplay.Text, LyricsDisplay.FontSize);
             double expandedWidth = Math.Max(320, Math.Min(500, textWidth + 120));
 
-            // Анимация роста
             HubCard.BeginAnimation(WidthProperty, new DoubleAnimation(expandedWidth, duration) { EasingFunction = ease });
             HubCard.BeginAnimation(HeightProperty, new DoubleAnimation(160, duration) { EasingFunction = ease });
 
-            // Показываем плеер
             playerBadge.IsHitTestVisible = true;
             playerBadge.BeginAnimation(OpacityProperty, new DoubleAnimation(1, duration) { BeginTime = TimeSpan.FromMilliseconds(150) });
-            // ПЛАВНО УБИРАЕМ БЛЮР
+
             if (HubBorder.Effect is System.Windows.Media.Effects.BlurEffect blur)
             {
                 blur.BeginAnimation(System.Windows.Media.Effects.BlurEffect.RadiusProperty,
@@ -218,19 +409,9 @@ namespace Helinstaller.Views.Windows
             }
         }
 
-        // Событие для невидимого триггера в тайтлбаре
-        private void HubTrigger_MouseEnter(object sender, MouseEventArgs e)
-        {
-            ExpandIsland();
-        }
+        private void HubTrigger_MouseEnter(object sender, MouseEventArgs e) => ExpandIsland();
+        private void HubCard_MouseEnter(object sender, MouseEventArgs e) => ExpandIsland();
 
-        // Событие для самого островка (чтобы не закрывался при переходе курсора)
-        private void HubCard_MouseEnter(object sender, MouseEventArgs e)
-        {
-            ExpandIsland();
-        }
-
-        // Событие ухода мыши
         private async void HubCard_MouseLeave(object sender, MouseEventArgs e)
         {
             await Task.Delay(100);
@@ -247,22 +428,22 @@ namespace Helinstaller.Views.Windows
                 blur.BeginAnimation(System.Windows.Media.Effects.BlurEffect.RadiusProperty,
                     new DoubleAnimation(20, TimeSpan.FromMilliseconds(300)) { EasingFunction = ease });
             }
-            // Считаем ширину чисто под текст без лимита в 320
+
             double textWidth = MeasureStringWidth(LyricsDisplay.Text, LyricsDisplay.FontSize);
             double collapsedWidth = string.IsNullOrEmpty(LyricsDisplay.Text)
                                     ? 180
-                                    : Math.Max(180, textWidth + 160);
+                                    : Math.Max(180, textWidth + 120);
 
             HubCard.BeginAnimation(WidthProperty, new DoubleAnimation(collapsedWidth, duration) { EasingFunction = ease });
             HubCard.BeginAnimation(HeightProperty, new DoubleAnimation(40, duration) { EasingFunction = ease });
             playerBadge.BeginAnimation(OpacityProperty, new DoubleAnimation(0, TimeSpan.FromMilliseconds(100)));
         }
 
+        private int _consecutiveFailedTracks = 0;
 
-        // === Загрузка трека (Парсинг имени файла + загрузка LRC) ===
         private async Task LoadTrackAsync(int index, bool startPlaying = true)
         {
-            if (_isClosed) return;
+            if (_isClosed || _playlist.Count == 0) return;
             await _playerLock.WaitAsync();
 
             _isLoading = true;
@@ -273,45 +454,65 @@ namespace Helinstaller.Views.Windows
 
             try
             {
+                index = Math.Clamp(index, 0, _playlist.Count - 1);
                 string trackUrl = _playlist[index];
+                Logger.LogInfo($"Плеер: Загрузка трека {index + 1}/{_playlist.Count} -> {Path.GetFileName(trackUrl)}");
 
-                // 1. Лирика
-                if (_lrcMap.TryGetValue(trackUrl, out string? lrcUrl))
+                if (_lrcMap.TryGetValue(trackUrl, out string? lrcUrl) && !string.IsNullOrEmpty(lrcUrl))
                 {
-                    try { using var client = new HttpClient(); string lrcContent = await client.GetStringAsync(lrcUrl); ParseLrc(lrcContent); } catch { }
+                    try
+                    {
+                        using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(4) };
+                        string lrcContent = await client.GetStringAsync(lrcUrl);
+                        ParseLrc(lrcContent);
+                    }
+                    catch { }
                 }
 
-                // 2. Аудио
                 var result = await Task.Run(() =>
                 {
                     try
                     {
                         _waveOut?.Stop();
                         _mediaReader?.Dispose();
+
                         var reader = new MediaFoundationReader(trackUrl);
                         var visProvider = new VisualizationProvider(reader.ToSampleProvider());
+
                         string cleanName = System.Net.WebUtility.UrlDecode(Path.GetFileNameWithoutExtension(trackUrl));
-                        string artist = ""; string title = cleanName;
-                        if (cleanName.Contains(" - ")) { var parts = cleanName.Split(new[] { " - " }, 2, StringSplitOptions.None); artist = parts[0].Trim(); title = parts[1].Trim(); }
+                        string artist = "";
+                        string title = cleanName;
+
+                        if (cleanName.Contains(" - "))
+                        {
+                            var parts = cleanName.Split(new[] { " - " }, 2, StringSplitOptions.None);
+                            artist = parts[0].Trim();
+                            title = parts[1].Trim();
+                        }
+
                         return (reader, visProvider, artist, title, null as Exception);
                     }
-                    catch (Exception ex) { return (null, null, "", "", ex); }
+                    catch (Exception ex)
+                    {
+                        return (null, null, "", "", ex);
+                    }
                 });
 
                 if (result.Item5 != null) throw result.Item5;
 
                 _mediaReader = result.Item1;
                 _visProvider = result.Item2;
-                _waveOut.Init(_visProvider);
 
-                songProgress.Maximum = _mediaReader.TotalTime.TotalSeconds;
+                _waveOut?.Init(_visProvider);
+
+                songProgress.Maximum = _mediaReader!.TotalTime.TotalSeconds;
                 ArtistTitle.Text = result.Item3;
                 SongTitle.Text = result.Item4;
                 songProgress.IsIndeterminate = false;
+                _consecutiveFailedTracks = 0;
 
-                // --- ОБНОВЛЕНИЕ ЦВЕТОВ И ОБЛОЖКИ ---
                 UpdateVisualizerColor(trackUrl);
-                var coverBrush = await GetTrackCoverAsync(trackUrl);
+                var (coverBrush, rawBytes) = await GetTrackCoverAsync(trackUrl);
 
                 if (coverBrush != null)
                 {
@@ -328,19 +529,70 @@ namespace Helinstaller.Views.Windows
                     HubBorder.Effect = null;
                 }
 
-                if (startPlaying) { _waveOut.Play(); PlayIcon.Symbol = SymbolRegular.Pause48; SubscribeToRendering(); }
-                else { PlayIcon.Symbol = SymbolRegular.Play48; UnsubscribeFromRendering(); }
+                await UpdateSmtcMetadataAsync(result.Item3, result.Item4, rawBytes);
+
+                string displayTitle = !string.IsNullOrWhiteSpace(result.Item4) ? result.Item4 : result.Item3;
+                if (!string.IsNullOrWhiteSpace(displayTitle))
+                {
+                    AnimateLyricsChange(displayTitle);
+                }
+
+                if (startPlaying)
+                {
+                    _waveOut?.Play();
+                    PlayIcon.Symbol = SymbolRegular.Pause48;
+                    SubscribeToRendering();
+                    if (_smtc != null) _smtc.PlaybackStatus = MediaPlaybackStatus.Playing;
+                }
+                else
+                {
+                    PlayIcon.Symbol = SymbolRegular.Play48;
+                    UnsubscribeFromRendering();
+                    if (_smtc != null) _smtc.PlaybackStatus = MediaPlaybackStatus.Paused;
+                }
             }
-            catch { SongTitle.Text = "Ошибка загрузки"; }
-            finally { _isLoading = false; _playerLock.Release(); }
+            catch (Exception ex)
+            {
+                Logger.LogWarning($"Плеер: Сбой воспроизведения трека: {ex.Message}");
+
+                try { _waveOut?.Stop(); } catch { }
+                try { _mediaReader?.Dispose(); } catch { }
+                _mediaReader = null;
+                _visProvider = null;
+
+                songProgress.Value = 0;
+                songProgress.IsIndeterminate = false;
+
+                _consecutiveFailedTracks++;
+
+                if (_consecutiveFailedTracks >= 3)
+                {
+                    SongTitle.Text = "Ошибка воспроизведения";
+                    ArtistTitle.Text = "Проверьте соединение";
+                    _consecutiveFailedTracks = 0;
+                }
+                else if (_playlist.Count > 1)
+                {
+                    _ = Task.Delay(1000).ContinueWith(async _ =>
+                    {
+                        if (!_isClosed)
+                        {
+                            await Dispatcher.InvokeAsync(NextButton_Click_Async);
+                        }
+                    });
+                }
+            }
+            finally
+            {
+                _isLoading = false;
+                _playerLock.Release();
+            }
         }
 
-        // Метод, который создает идеальную "пилюлю" для обрезки
         private void UpdateIslandClip()
         {
             if (HubCard == null) return;
 
-            // Создаем геометрию прямоугольника с радиусом скругления 20
             var clipGeometry = new RectangleGeometry
             {
                 RadiusX = 20,
@@ -348,12 +600,9 @@ namespace Helinstaller.Views.Windows
                 Rect = new Rect(0, 0, HubCard.ActualWidth, HubCard.ActualHeight)
             };
 
-            // Накладываем эту маску на саму карточку
-            // Теперь НИЧТО (ни блюр, ни картинка) не вылезет за эти границы
             HubCard.Clip = clipGeometry;
         }
 
-        // Событие, которое срабатывает при ЛЮБОМ изменении размера (в т.ч. во время анимации)
         private void HubCard_SizeChanged(object sender, SizeChangedEventArgs e)
         {
             UpdateIslandClip();
@@ -362,18 +611,14 @@ namespace Helinstaller.Views.Windows
         private void ParseLrc(string lrcContent)
         {
             _currentLyrics.Clear();
-
-            // Регулярка для поиска [мм:сс.фф] или [мм:сс:фф]
             var regex = new Regex(@"\[(?<min>\d+):(?<sec>\d+)(?:[.:](?<ms>\d+))?\]");
             var lines = lrcContent.Split(new[] { "\r\n", "\n" }, StringSplitOptions.RemoveEmptyEntries);
 
             foreach (var line in lines)
             {
-                // Ищем все временные метки в строке (бывает, что одна строка относится к нескольким меткам)
                 var matches = regex.Matches(line);
                 if (matches.Count == 0) continue;
 
-                // Очищаем текст строки от всех временных меток [00:00.00]
                 string text = regex.Replace(line, "").Trim();
 
                 foreach (Match match in matches)
@@ -387,12 +632,10 @@ namespace Helinstaller.Views.Windows
                         string msVal = match.Groups["ms"].Value;
                         ms = int.Parse(msVal);
 
-                        // Стандарт LRC: .75 — это 750мс, .7 — это 700мс, .750 — это 750мс
                         if (msVal.Length == 2) ms *= 10;
                         else if (msVal.Length == 1) ms *= 100;
                     }
 
-                    // ИСПРАВЛЕНО: Правильный конструктор (0 дней, 0 часов, m минут, s секунд, ms миллисекунд)
                     var timeSpan = new TimeSpan(0, 0, m, s, ms);
 
                     _currentLyrics.Add(new LrcLine
@@ -402,20 +645,15 @@ namespace Helinstaller.Views.Windows
                     });
                 }
             }
-            // Сортируем по времени на случай, если метки в файле идут вразнобой
             _currentLyrics = _currentLyrics.OrderBy(l => l.Time).ToList();
         }
 
-        // === Обработчики событий плеера ===
         private void OnPlaybackStopped(object? sender, StoppedEventArgs e)
         {
             if (_isClosed) return;
 
-            // Событие происходит из аудио-потока, поэтому нужно использовать Dispatcher
             Application.Current.Dispatcher.Invoke(async () =>
             {
-                // Проверяем, что это естественное окончание трека, а не мы его стопнули для загрузки нового
-                // MediaFoundationReader выставляет Position = Length в конце
                 if (!_isLoading && _mediaReader != null)
                 {
                     bool atEnd = false;
@@ -443,6 +681,8 @@ namespace Helinstaller.Views.Windows
                 PlayPauseButton.Content = PlayIcon;
                 PlayIcon.Symbol = SymbolRegular.Play48;
                 UnsubscribeFromRendering();
+
+                if (_smtc != null) _smtc.PlaybackStatus = MediaPlaybackStatus.Paused;
             }
             else
             {
@@ -450,10 +690,11 @@ namespace Helinstaller.Views.Windows
                 PlayPauseButton.Content = PlayIcon;
                 PlayIcon.Symbol = SymbolRegular.Pause48;
                 SubscribeToRendering();
+
+                if (_smtc != null) _smtc.PlaybackStatus = MediaPlaybackStatus.Playing;
             }
         }
 
-        // Делаем обертку для Next клика
         private async void NextButton_Click(object? sender, RoutedEventArgs? e)
         {
             await NextButton_Click_Async();
@@ -463,14 +704,30 @@ namespace Helinstaller.Views.Windows
         {
             try
             {
-                if (_isLoading) return;
+                if (_isLoading || _playlist.Count == 0) return;
                 _currentTrackIndex = (_currentTrackIndex + 1) % _playlist.Count;
                 await LoadTrackAsync(_currentTrackIndex);
             }
             catch (Exception ex)
-            { SongTitle.Text = ex.Message; }
+            {
+                Logger.LogError("Плеер: Ошибка перехода на следующий трек", ex);
+            }
         }
-        private bool _isShowingProgress = false;
+
+        private async void PrevButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (_isLoading || _playlist.Count == 0) return;
+                _currentTrackIndex = (_currentTrackIndex - 1 + _playlist.Count) % _playlist.Count;
+                await LoadTrackAsync(_currentTrackIndex);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError("Плеер: Ошибка перехода на предыдущий трек", ex);
+            }
+        }
+
         private void InitializeDownloadProgressTracking()
         {
             DownloadTaskManager.Instance.Tasks.CollectionChanged += Tasks_CollectionChanged;
@@ -504,21 +761,58 @@ namespace Helinstaller.Views.Windows
 
         private void Task_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
         {
-            if (e.PropertyName == nameof(DownloadTask.Progress) ||
-                e.PropertyName == nameof(DownloadTask.IsCompleted) ||
-                e.PropertyName == nameof(DownloadTask.IsIndeterminate) ||
-                e.PropertyName == nameof(DownloadTask.IsError))
+            if (sender is DownloadTask task)
             {
-                Dispatcher.BeginInvoke(new Action(UpdateGlobalDownloadProgress), System.Windows.Threading.DispatcherPriority.Background);
+                if (e.PropertyName == nameof(DownloadTask.Progress) ||
+                    e.PropertyName == nameof(DownloadTask.IsCompleted) ||
+                    e.PropertyName == nameof(DownloadTask.IsIndeterminate) ||
+                    e.PropertyName == nameof(DownloadTask.IsError))
+                {
+                    Dispatcher.BeginInvoke(new Action(UpdateGlobalDownloadProgress), System.Windows.Threading.DispatcherPriority.Background);
+                }
+
+                string tag = $"task_{task.Id}";
+                string group = "helinstaller_tasks";
+
+                if (e.PropertyName == nameof(DownloadTask.Status))
+                {
+                    if (task.Status == "В очереди..." || task.Status == "Подготовка..." || task.Status == "Копирование файла..." || task.Status == "Скачивание...")
+                    {
+                        ToastNotificationService.ShowProgressToast(tag, group, task.Title, task.Status);
+                    }
+                    else if (!task.IsCompleted && !task.IsError)
+                    {
+                        ToastNotificationService.UpdateProgressToast(tag, group, task.Title, task.Progress, task.Status);
+                    }
+                }
+                else if (e.PropertyName == nameof(DownloadTask.Progress))
+                {
+                    if (!task.IsCompleted && !task.IsError)
+                    {
+                        ToastNotificationService.UpdateProgressToast(tag, group, task.Title, task.Progress, task.Status);
+                    }
+                }
+                else if (e.PropertyName == nameof(DownloadTask.IsCompleted) && task.IsCompleted)
+                {
+                    string completionMessage = task.AppName == "Ventoy"
+                        ? "Запись файла на флешку успешно завершена!"
+                        : "Установка программы успешно завершена!";
+
+                    ToastNotificationService.CompleteProgressToast(tag, group, task.Title, completionMessage, true);
+                }
+                else if (e.PropertyName == nameof(DownloadTask.IsError) && task.IsError)
+                {
+                    ToastNotificationService.CompleteProgressToast(tag, group, task.Title, $"Произошла ошибка: {task.ErrorMessage}", false);
+                }
             }
         }
 
         private enum IslandStatusState
         {
-            Normal,     // Иконка музыки
-            Progress,   // Прогресс-ринг скачивания
-            Success,    // Зеленая галочка
-            Error       // Красный крестик
+            Normal,
+            Progress,
+            Success,
+            Error
         }
 
         private IslandStatusState _currentIslandState = IslandStatusState.Normal;
@@ -532,7 +826,6 @@ namespace Helinstaller.Views.Windows
 
             if (activeTasks.Count > 0)
             {
-                // Если появились или идут активные задачи, сбрасываем любые таймеры возврата к ноте
                 _stateResetCts?.Cancel();
                 _stateResetCts = null;
 
@@ -541,7 +834,8 @@ namespace Helinstaller.Views.Windows
                     TransitionIslandState(IslandStatusState.Progress);
                 }
 
-                // Вычисляем прогресс
+                QueueCounterText.Text = activeTasks.Count.ToString();
+
                 bool isIndeterminate = activeTasks.Any(t => t.IsIndeterminate || t.Progress <= 0);
                 if (isIndeterminate)
                 {
@@ -556,11 +850,8 @@ namespace Helinstaller.Views.Windows
                 return;
             }
 
-            // Активных задач больше нет!
-            // Но мы должны проверить: перешли ли мы только что из состояния Progress (скачивания)?
             if (_currentIslandState == IslandStatusState.Progress)
             {
-                // Ищем последнюю завершенную задачу в списке, чтобы понять, успешна ли она
                 var lastFinishedTask = DownloadTaskManager.Instance.Tasks
                     .OrderByDescending(t => t.StartTime)
                     .FirstOrDefault(t => t.IsCompleted || t.IsError);
@@ -571,10 +862,8 @@ namespace Helinstaller.Views.Windows
                     targetState = IslandStatusState.Error;
                 }
 
-                // Показываем галочку или крестик
                 TransitionIslandState(targetState);
 
-                // Запускаем асинхронный таймер возврата в Normal через 5 секунд
                 _stateResetCts?.Cancel();
                 _stateResetCts = new System.Threading.CancellationTokenSource();
                 var token = _stateResetCts.Token;
@@ -591,7 +880,6 @@ namespace Helinstaller.Views.Windows
             }
             else if (_currentIslandState != IslandStatusState.Success && _currentIslandState != IslandStatusState.Error)
             {
-                // Если мы не в состоянии Успеха/Ошибки и нет активных задач — возвращаем ноту
                 TransitionIslandState(IslandStatusState.Normal);
             }
         }
@@ -609,18 +897,22 @@ namespace Helinstaller.Views.Windows
             var fadeOut = new DoubleAnimation(0, duration) { EasingFunction = ease };
             var fadeIn = new DoubleAnimation(1, duration) { EasingFunction = ease };
 
-            // Плавно прячем предыдущее состояние
-            GetElementByState(oldState)?.BeginAnimation(OpacityProperty, fadeOut);
+            if (oldState == IslandStatusState.Normal) EqContainer.BeginAnimation(OpacityProperty, fadeOut);
+            else GetElementByState(oldState)?.BeginAnimation(OpacityProperty, fadeOut);
 
-            // Плавно проявляем новое состояние
-            GetElementByState(newState)?.BeginAnimation(OpacityProperty, fadeIn);
+            if (oldState == IslandStatusState.Progress) QueueCounterText.BeginAnimation(OpacityProperty, fadeOut);
+
+            if (newState == IslandStatusState.Normal) EqContainer.BeginAnimation(OpacityProperty, fadeIn);
+            else GetElementByState(newState)?.BeginAnimation(OpacityProperty, fadeIn);
+
+            if (newState == IslandStatusState.Progress) QueueCounterText.BeginAnimation(OpacityProperty, fadeIn);
         }
 
         private UIElement? GetElementByState(IslandStatusState state)
         {
             return state switch
             {
-                IslandStatusState.Normal => MusicIcon,
+                IslandStatusState.Normal => EqContainer,
                 IslandStatusState.Progress => DownloadProgressRing,
                 IslandStatusState.Success => SuccessIcon,
                 IslandStatusState.Error => ErrorIcon,
@@ -628,97 +920,55 @@ namespace Helinstaller.Views.Windows
             };
         }
 
-
-        private async void PrevButton_Click(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                if (_isLoading) return;
-                _currentTrackIndex = (_currentTrackIndex - 1 + _playlist.Count) % _playlist.Count;
-                await LoadTrackAsync(_currentTrackIndex);
-            }
-            catch (Exception ex)
-            { SongTitle.Text = ex.Message; }
-        }
-
-        // --- ЛОГИКА ЦВЕТОВ ---
-        public enum VisualizerStyle
-        {
-            Default
-        }
+        public enum VisualizerStyle { Default }
 
         private void UpdateVisualizerColor(string filename)
         {
-            VisualizerStyle style = VisualizerStyle.Default;
-            string lowerName = System.IO.Path.GetFileName(filename).ToLower();
-
             FontFamily font = this.FontFamily;
             LinearGradientBrush gradient = new LinearGradientBrush { StartPoint = new Point(0, 1), EndPoint = new Point(0, 0) };
 
-            // === ВОТ ЗДЕСЬ БЕРЕМ СИСТЕМНЫЙ ЦВЕТ ===
-            // Создаем градиент из одного цвета (системного), чтобы он был совместим с остальной логикой
             Color sysColor = SystemColors.AccentColor;
             gradient.GradientStops.Add(new GradientStop(sysColor, 0.0));
             gradient.GradientStops.Add(new GradientStop(sysColor, 1.0));
-            font = this.FontFamily;
 
-            // 2. Прогресс бар (Крутим)
-            // Тут используем gradient (в котором теперь лежит системный цвет для Default)
             var progressGradient = gradient.Clone();
             progressGradient.RelativeTransform = new RotateTransform { Angle = 90, CenterX = 0.5, CenterY = 0.5 };
             songProgress.Foreground = progressGradient;
             SongTitle.FontFamily = font;
 
-            // 3. Бордер и фон
-            if (style == VisualizerStyle.Default)
+            HubCard.BorderBrush = Brushes.Transparent;
+
+            if (!(HubBorder.Background is TileBrush))
             {
-                HubCard.BorderBrush = Brushes.Transparent;
-
-                // Проверяем на принадлежность к базовому типу TileBrush (подойдет и ImageBrush, и DrawingBrush)
-                if (!(HubBorder.Background is TileBrush))
-                {
-                    HubBorder.Background = new SolidColorBrush(Color.FromRgb(18, 18, 18));
-                }
-
-                HubBorder.OpacityMask = null;
-                SongTitle.Foreground = this.Foreground;
+                HubBorder.Background = new SolidColorBrush(Color.FromRgb(18, 18, 18));
             }
 
+            HubBorder.OpacityMask = null;
+            SongTitle.Foreground = this.Foreground;
         }
-
-
-        private const int BANDS = 60; // Делаем много точек для плавности линии
-
-
 
         private bool _isLyricsAnimating = false;
 
         private void AnimateLyricsChange(string newText)
         {
-            // Если текст тот же или сейчас идет анимация - выходим
             if (LyricsDisplay.Text == newText || _isLyricsAnimating) return;
             _isLyricsAnimating = true;
 
             var duration = TimeSpan.FromMilliseconds(300);
             var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
 
-            // 1. Исчезновение старого текста
             var fadeOut = new DoubleAnimation(0, TimeSpan.FromMilliseconds(150));
             fadeOut.Completed += (s, e) =>
             {
                 LyricsDisplay.Text = newText;
-
-                // 2. Рассчитываем и анимируем размеры островка
                 AdjustIslandAndText(newText);
 
-                // 3. Появление нового текста (выплывает снизу вверх)
                 var fadeIn = new DoubleAnimation(1, duration);
                 var moveUp = new DoubleAnimation(10, 0, duration) { EasingFunction = ease };
 
                 fadeIn.Completed += (s2, e2) => _isLyricsAnimating = false;
 
                 LyricsDisplay.BeginAnimation(OpacityProperty, fadeIn);
-
                 _lyricsTranslate.BeginAnimation(TranslateTransform.YProperty, moveUp);
             };
 
@@ -727,22 +977,21 @@ namespace Helinstaller.Views.Windows
 
         private void AdjustIslandAndText(string text)
         {
-            // 1. Сначала подбираем размер шрифта БЕЗ анимации
-            double targetFontSize = 14;
-            double textWidth = MeasureStringWidth(text, 14); // Считаем ширину для 14 шрифта
+            double targetFontSize = 13;
+            double textWidth = MeasureStringWidth(text, 13);
 
-            if (textWidth + 160 > this.ActualWidth - 40) // Если не влезает в окно
+            if (textWidth + 120 > this.ActualWidth - 40)
             {
                 targetFontSize = 11;
             }
 
             LyricsDisplay.FontSize = targetFontSize;
 
-            // 2. Теперь считаем ширину с нужным шрифтом
             textWidth = MeasureStringWidth(text, targetFontSize);
-            double neededWidth = Math.Max(180, textWidth + 160);
+            double neededWidth = string.IsNullOrEmpty(text)
+                                ? 180
+                                : Math.Max(180, Math.Min(650, textWidth + 120));
 
-            // 3. Анимируем ширину
             var widthAnim = new DoubleAnimation(neededWidth, TimeSpan.FromMilliseconds(300))
             {
                 EasingFunction = new QuarticEase { EasingMode = EasingMode.EaseOut }
@@ -750,7 +999,6 @@ namespace Helinstaller.Views.Windows
             HubCard.BeginAnimation(WidthProperty, widthAnim);
         }
 
-        // Перегрузка для удобства
         private double MeasureStringWidth(string text, double fontSize)
         {
             if (string.IsNullOrEmpty(text)) return 0;
@@ -764,29 +1012,22 @@ namespace Helinstaller.Views.Windows
                     LyricsDisplay.FontStyle,
                     LyricsDisplay.FontWeight,
                     LyricsDisplay.FontStretch),
-                fontSize, // Теперь мы передаем сюда double
+                fontSize,
                 Brushes.Black,
                 VisualTreeHelper.GetDpi(this).PixelsPerDip);
 
             return formattedText.Width;
         }
 
-        private float _visualizerMaxPeak = 0.5f; // Для авто-усиления
-
-        // --- Отрисовка и Обновление текста (OnRendering) ---
         private void OnRendering(object? sender, EventArgs e)
         {
             if (!_globalVisualizerEnabled || _visProvider == null || _visProvider.FftData == null) return;
 
-            // 1. ЛОГИКА ТЕКСТА (Лирика или Название трека)
-            if (_mediaReader != null && !_isLoading && _waveOut?.PlaybackState == PlaybackState.Playing)
+            if (!_isToastActive && _mediaReader != null && !_isLoading && _waveOut?.PlaybackState == PlaybackState.Playing)
             {
                 songProgress.Value = _mediaReader.CurrentTime.TotalSeconds;
 
-                // Ищем текущую строку лирики
                 var line = _currentLyrics.LastOrDefault(x => x.Time <= _mediaReader.CurrentTime);
-
-                // Если лирики нет или она еще не началась — берем название песни
                 string targetDisplay = (!string.IsNullOrWhiteSpace(line?.Text))
                                        ? line.Text
                                        : SongTitle.Text;
@@ -797,65 +1038,71 @@ namespace Helinstaller.Views.Windows
 
             float[] fft = _visProvider.FftData;
 
-            // --- ДЕТЕКТОР БИТА (УСИЛЕННЫЙ) ---
-            float currentBass = 0;
-            for (int i = 1; i <= 5; i++) currentBass += fft[i];
-            currentBass /= 5.0f;
+            if (_waveOut?.PlaybackState == PlaybackState.Playing)
+            {
+                float b1 = (fft[1] + fft[2]) * 0.5f * 1.0f;
+                float b2 = (fft[3] + fft[4] + fft[5] + fft[6]) * 0.25f * 1.4f;
+                float b3 = (fft[7] + fft[9] + fft[12] + fft[15]) * 0.25f * 2.2f;
+                float b4 = (fft[18] + fft[24] + fft[30] + fft[38]) * 0.25f * 3.5f;
 
-            float currentMax = 0;
-            for (int i = 0; i < 20; i++) if (fft[i] > currentMax) currentMax = fft[i];
-            if (currentMax > _visualizerMaxPeak) _visualizerMaxPeak = currentMax;
-            else _visualizerMaxPeak -= (_visualizerMaxPeak - Math.Max(0.01f, currentMax)) * 0.02f;
+                float frameMax = Math.Max(Math.Max(b1, b2), Math.Max(b3, b4));
+                if (frameMax > _eqMaxPeak)
+                    _eqMaxPeak = frameMax;
+                else
+                    _eqMaxPeak -= (_eqMaxPeak - Math.Max(5f, frameMax)) * 0.03f;
 
-            float normalizedBass = currentBass / Math.Max(0.05f, _visualizerMaxPeak);
+                double norm1 = Math.Clamp(b1 / Math.Max(5f, _eqMaxPeak), 0.0, 1.0);
+                double norm2 = Math.Clamp(b2 / Math.Max(5f, _eqMaxPeak), 0.0, 1.0);
+                double norm3 = Math.Clamp(b3 / Math.Max(5f, _eqMaxPeak), 0.0, 1.0);
+                double norm4 = Math.Clamp(b4 / Math.Max(5f, _eqMaxPeak), 0.0, 1.0);
 
-            if (normalizedBass > _beatPulse)
-                _beatPulse += (normalizedBass - _beatPulse) * 0.8f;
+                double targetH1 = 3.0 + Math.Pow(norm1, 1.2) * 12.0;
+                double targetH2 = 3.0 + Math.Pow(norm2, 1.2) * 12.0;
+                double targetH3 = 3.0 + Math.Pow(norm3, 1.2) * 12.0;
+                double targetH4 = 3.0 + Math.Pow(norm4, 1.2) * 12.0;
+
+                EqBar1.Height += (targetH1 - EqBar1.Height) * 0.45;
+                EqBar2.Height += (targetH2 - EqBar2.Height) * 0.45;
+                EqBar3.Height += (targetH3 - EqBar3.Height) * 0.45;
+                EqBar4.Height += (targetH4 - EqBar4.Height) * 0.45;
+
+                float currentBass = (fft[1] + fft[2] + fft[3]) / 3.0f;
+                float normBass = currentBass / Math.Max(5f, _eqMaxPeak);
+                _beatPulse += (normBass - _beatPulse) * 0.35f;
+                _beatPulse = Math.Clamp(_beatPulse, 0f, 1f);
+
+                double avatarTarget = 1.0 + (_beatPulse * 0.15);
+                AvatarScale.ScaleX += (avatarTarget - AvatarScale.ScaleX) * 0.35;
+                AvatarScale.ScaleY += (avatarTarget - AvatarScale.ScaleY) * 0.35;
+
+                double ringTarget = 1.0 + (_beatPulse * 1.1);
+                RingScale.ScaleX += (ringTarget - RingScale.ScaleX) * 0.2;
+                RingScale.ScaleY += (ringTarget - RingScale.ScaleY) * 0.2;
+                AvatarRing.Opacity = Math.Clamp(_beatPulse * 0.6, 0, 0.6);
+            }
             else
-                _beatPulse += (normalizedBass - _beatPulse) * 0.15f;
+            {
+                EqBar1.Height += (3 - EqBar1.Height) * 0.2;
+                EqBar2.Height += (3 - EqBar2.Height) * 0.2;
+                EqBar3.Height += (3 - EqBar3.Height) * 0.2;
+                EqBar4.Height += (3 - EqBar4.Height) * 0.2;
 
-            _beatPulse = Math.Clamp(_beatPulse, 0f, 1.2f);
+                AvatarScale.ScaleX += (1.0 - AvatarScale.ScaleX) * 0.2;
+                AvatarScale.ScaleY += (1.0 - AvatarScale.ScaleY) * 0.2;
+                AvatarRing.Opacity = 0;
+            }
 
-            // ==========================================
-            // 1. АВАТАРКА (СИЛЬНЫЙ БИТ)
-            // ==========================================
-            double avatarTarget = 1.0 + (_beatPulse * 0.25); // Увеличение на 25% (было 15)
-            AvatarScale.ScaleX += (avatarTarget - AvatarScale.ScaleX) * 0.35;
-            AvatarScale.ScaleY += (avatarTarget - AvatarScale.ScaleY) * 0.35;
-
-            // ==========================================
-            // 2. КОЛЬЦО (УДАРНАЯ ВОЛНА)
-            // ==========================================
-            double ringTarget = 1.0 + (_beatPulse * 1.2); // Кольцо разлетается еще дальше
-            RingScale.ScaleX += (ringTarget - RingScale.ScaleX) * 0.2;
-            RingScale.ScaleY += (ringTarget - RingScale.ScaleY) * 0.2;
-            AvatarRing.Opacity = Math.Clamp(_beatPulse * 0.7, 0, 0.7);
-
-            // ==========================================
-            // 3. ТЕКСТ (ТЕПЕРЬ ОН ПРЫГАЕТ!)
-            // ==========================================
-            // Увеличиваем множитель до 0.12 (12% роста вместо 3%). Теперь это будет видно!
-            double textTarget = 1.0 + (_beatPulse * 0.12);
+            double textTarget = 1.0 + (_beatPulse * 0.06);
             _lyricsScale.ScaleX += (textTarget - _lyricsScale.ScaleX) * 0.3;
             _lyricsScale.ScaleY += (textTarget - _lyricsScale.ScaleY) * 0.3;
 
-            // ДОПОЛНИТЕЛЬНО: Текст вспыхивает (свечение) под бит
-            if (LyricsDisplay.Effect is System.Windows.Media.Effects.DropShadowEffect glow)
-            {
-                glow.Opacity = 0.3 + (_beatPulse * 0.7);
-                glow.BlurRadius = 5 + (_beatPulse * 15);
-            }
-
-            // ==========================================
-            // 4. ОБЩИЙ ФОН
-            // ==========================================
-            double bgTarget = 1.0 + (_beatPulse * 0.04);
+            double bgTarget = 1.0 + (_beatPulse * 0.03);
             _backgroundScale.ScaleX += (bgTarget - _backgroundScale.ScaleX) * 0.2;
             _backgroundScale.ScaleY += (bgTarget - _backgroundScale.ScaleY) * 0.2;
         }
+
         private void SubscribeToRendering()
         {
-            // Если в настройках выключено, даже не подписываемся на событие таймера/рендера
             if (!_globalVisualizerEnabled) return;
 
             if (!_isRenderingSubscribed)
@@ -874,15 +1121,103 @@ namespace Helinstaller.Views.Windows
             }
         }
 
+        private void OnCapsuleToastReceived(string message, ToastType type)
+        {
+            Dispatcher.InvokeAsync(async () =>
+            {
+                await ShowDynamicIslandToastAsync(message, type);
+            });
+        }
 
+        private async Task ShowDynamicIslandToastAsync(string message, ToastType type)
+        {
+            _toastCts?.Cancel();
+            _toastCts = new CancellationTokenSource();
+            var token = _toastCts.Token;
+
+            _isToastActive = true;
+
+            SymbolRegular symbol;
+            Color iconColor;
+            Color badgeColor;
+
+            switch (type)
+            {
+                case ToastType.Success:
+                    symbol = SymbolRegular.Checkmark24;
+                    iconColor = Color.FromRgb(76, 217, 100);
+                    badgeColor = Color.FromArgb(60, 76, 217, 100);
+                    break;
+
+                case ToastType.Warning:
+                    symbol = SymbolRegular.Warning24;
+                    iconColor = Color.FromRgb(255, 204, 0);
+                    badgeColor = Color.FromArgb(60, 255, 204, 0);
+                    break;
+
+                case ToastType.Error:
+                    symbol = SymbolRegular.Dismiss24;
+                    iconColor = Color.FromRgb(255, 59, 48);
+                    badgeColor = Color.FromArgb(60, 255, 59, 48);
+                    break;
+
+                case ToastType.Info:
+                default:
+                    symbol = SymbolRegular.Info24;
+                    iconColor = Color.FromRgb(0, 122, 255);
+                    badgeColor = Color.FromArgb(60, 0, 122, 255);
+                    break;
+            }
+
+            ToastStatusIcon.Symbol = symbol;
+            ToastStatusIcon.Foreground = new SolidColorBrush(iconColor);
+            LeftToastBadge.Background = new SolidColorBrush(badgeColor);
+
+            var duration = TimeSpan.FromMilliseconds(200);
+            var ease = new CubicEase { EasingMode = EasingMode.EaseInOut };
+
+            LeftToastBadge.Visibility = Visibility.Visible;
+            Picture.BeginAnimation(OpacityProperty, new DoubleAnimation(0, duration) { EasingFunction = ease });
+            LeftToastBadge.BeginAnimation(OpacityProperty, new DoubleAnimation(1, duration) { EasingFunction = ease });
+
+            AnimateLyricsChange(message);
+
+            try
+            {
+                await Task.Delay(3000, token);
+
+                if (!token.IsCancellationRequested)
+                {
+                    _isToastActive = false;
+
+                    var fadeOut = new DoubleAnimation(0, duration) { EasingFunction = ease };
+                    fadeOut.Completed += (s, e) => LeftToastBadge.Visibility = Visibility.Collapsed;
+                    LeftToastBadge.BeginAnimation(OpacityProperty, fadeOut);
+                    Picture.BeginAnimation(OpacityProperty, new DoubleAnimation(1, duration) { EasingFunction = ease });
+
+                    string returnText = "";
+                    if (_mediaReader != null && _waveOut?.PlaybackState == PlaybackState.Playing)
+                    {
+                        var line = _currentLyrics.LastOrDefault(x => x.Time <= _mediaReader.CurrentTime);
+                        returnText = (!string.IsNullOrWhiteSpace(line?.Text)) ? line.Text : SongTitle.Text;
+                    }
+                    else if (!string.IsNullOrWhiteSpace(SongTitle.Text) && SongTitle.Text != "...")
+                    {
+                        returnText = SongTitle.Text;
+                    }
+
+                    AnimateLyricsChange(returnText);
+                }
+            }
+            catch (TaskCanceledException) { }
+        }
 
         private async void FluentWindow_Initialized(object sender, EventArgs e)
         {
             AppSettings.Load();
             InitializeDownloadProgressTracking();
 
-            // Запускаем проверку соединения
-            var connectionTask = ConnectionCheck();
+            CapsuleToastService.OnShowToast += OnCapsuleToastReceived;
 
             string userName = Environment.UserName;
             string greeting;
@@ -894,10 +1229,67 @@ namespace Helinstaller.Views.Windows
 
             TitleBar.Title = $"{greeting}, {userName}!";
             Picture.Source = GetUserAvatar();
+            InitializeSmtc();
 
-            // Ждем завершения проверки сети
-            await connectionTask;
-            InitializePlayer();
+            // Запускаем единый плавный пайплайн запуска
+            await RunStartupPipelineAsync();
+        }
+
+        private async Task RunStartupPipelineAsync()
+        {
+            Logger.LogInfo("=== Старт пайплайна инициализации и проверки обновлений ===");
+
+            SplashErrorPanel.Visibility = Visibility.Collapsed;
+            SplashProgressRing.Visibility = Visibility.Visible;
+            SplashProgressRing.IsIndeterminate = true;
+            SplashPercentText.Visibility = Visibility.Collapsed;
+            SplashSubStatusText.Visibility = Visibility.Collapsed;
+
+            // Плавный старт
+            SetSplashStatus("Инициализация системы...");
+            await Task.Delay(350);
+
+            // 1. ТЕСТОВЫЙ РЕЖИМ (Симуляция без релиза на GitHub)
+            // Активируется зажатой клавишей SHIFT при запуске или аргументом --test-update
+            bool isShiftPressed = (Keyboard.Modifiers & ModifierKeys.Shift) != 0 || Keyboard.IsKeyDown(Key.LeftShift) || Keyboard.IsKeyDown(Key.RightShift);
+            bool hasTestArg = Environment.GetCommandLineArgs().Any(a => a.Equals("--test-update", StringComparison.OrdinalIgnoreCase));
+
+            if (isShiftPressed || hasTestArg)
+            {
+                Logger.LogInfo("Сплэш: Активирован режим симуляции обновления (Shift / --test-update).");
+                await SimulateUpdateAnimationAsync();
+            }
+            else
+            {
+                // 2. ПРОВЕРКА СЕТИ
+                SetSplashStatus("Проверка соединения с сетью...");
+                await Task.Delay(300);
+
+                bool isOnline = await CheckNetworkConnectionAsync();
+
+                if (!isOnline)
+                {
+                    Logger.LogWarning("Сетевой тест не пройден: запуск в автономном режиме или ошибка.");
+                    SplashProgressRing.Visibility = Visibility.Collapsed;
+                    SplashErrorPanel.Visibility = Visibility.Visible;
+                    return;
+                }
+
+                // 3. ПРОВЕРКА И ПРИМЕНЕНИЕ РЕАЛЬНЫХ ОБНОВЛЕНИЙ VELOPACK
+                bool isUpdating = await CheckAndApplyVelopackUpdateAsync();
+                if (isUpdating)
+                {
+                    // Если пошел процесс перезапуска инсталлятора, дальнейшая инициализация не требуется
+                    return;
+                }
+            }
+
+            // 4. ЗАВЕРШЕНИЕ ЗАГРУЗКИ И ПЕРЕХОД В ОСНОВНОЙ ИНТЕРФЕЙС
+            SetSplashStatus("Загрузка медиаплеера и треков...");
+            await InitializePlayerAsync(); // <-- теперь сплэш ждет скачивания плейлиста и обложки
+
+            SetSplashStatus("Запуск интерфейса...");
+            await Task.Delay(200);
 
             if (!ThemeChanger.IsSystemInDarkMode())
             {
@@ -905,225 +1297,323 @@ namespace Helinstaller.Views.Windows
                 if (res == CustomMessageBox.MessageBoxResult.Yes) ThemeChanger.ToggleWindowsTheme();
             }
 
-            // Запускаем автоматическую фоновую проверку обновлений через Velopack
-            // Метод вызывается без await, чтобы не блокировать UI-поток приложения при старте
-            _ = CheckForUpdatesOnStartupAsync();
+            await AnimateSplashExitAsync();
+            CheckAndStartOnboardingTour();
         }
 
-        /// <summary>
-        /// Автоматическая фоновая проверка обновлений Velopack при старте
-        /// </summary>
-        private async Task CheckForUpdatesOnStartupAsync()
+        private async Task SimulateUpdateAnimationAsync()
+        {
+            SetSplashStatus("Поиск обновлений...");
+            await Task.Delay(600);
+
+            await Dispatcher.InvokeAsync(() =>
+            {
+                SplashStatusText.Text = "Найдена новая версия: v2.0.0 (Тест)";
+                SplashSubStatusText.Text = "Загрузка тестового пакета обновлений...";
+                SplashSubStatusText.Visibility = Visibility.Visible;
+                SplashProgressRing.IsIndeterminate = false;
+                SplashProgressRing.Progress = 0;
+                SplashPercentText.Text = "0%";
+                SplashPercentText.Visibility = Visibility.Visible;
+            });
+
+            await Task.Delay(400);
+
+            // Плавная симуляция скачивания 0 -> 100%
+            for (int p = 1; p <= 100; p++)
+            {
+                await Dispatcher.InvokeAsync(() =>
+                {
+                    SplashProgressRing.Progress = p;
+                    SplashPercentText.Text = $"{p}%";
+                }, System.Windows.Threading.DispatcherPriority.Background);
+
+                // Динамическая пауза для реалистичности
+                int delay = p switch
+                {
+                    < 25 => 20,
+                    < 60 => 14,
+                    < 85 => 22,
+                    _ => 15
+                };
+                await Task.Delay(delay);
+            }
+
+            await Dispatcher.InvokeAsync(() =>
+            {
+                SplashStatusText.Text = "Установка компонентов обновления...";
+                SplashSubStatusText.Text = "Тест успешно пройден! Открываем интерфейс...";
+                SplashProgressRing.IsIndeterminate = true;
+                SplashPercentText.Visibility = Visibility.Collapsed;
+            });
+
+            await Task.Delay(900);
+        }
+
+        private async Task<bool> CheckNetworkConnectionAsync()
+        {
+            var targets = new[] { "https://google.com", "https://github.com", "https://massgrave.dev" };
+
+            using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(4) };
+            client.DefaultRequestHeaders.UserAgent.ParseAdd("Helinstaller-Check/1.0");
+
+            foreach (var url in targets)
+            {
+                try
+                {
+                    using var response = await client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead);
+                    if (response.IsSuccessStatusCode)
+                    {
+                        return true;
+                    }
+                }
+                catch { }
+            }
+
+            return false;
+        }
+
+        private async Task<bool> CheckAndApplyVelopackUpdateAsync()
         {
             try
             {
-                // Подключаемся к релизам вашего репозитория на GitHub
+                SetSplashStatus("Проверка обновлений...");
+                await Task.Delay(400);
+
                 var source = new GithubSource("https://github.com/Helitop/Helinstaller", accessToken: null, prerelease: false);
                 var mgr = new UpdateManager(source);
 
-                // 1. Проверяем наличие новой версии на сервере
+                if (!mgr.IsInstalled)
+                {
+                    Logger.LogInfo("Velopack: Приложение запущено в Debug/Dev режиме (не установлено через Setup). Пропуск автообновления.");
+                    SetSplashStatus("Все компоненты актуальны");
+                    await Task.Delay(300);
+                    return false;
+                }
+
                 var newVersion = await mgr.CheckForUpdatesAsync();
                 if (newVersion == null)
                 {
-                    Debug.WriteLine("[Velopack] Обновлений не найдено. Работаем на актуальной версии.");
-                    return;
+                    Logger.LogInfo("Velopack: Установлена последняя версия программы.");
+                    SetSplashStatus("Установлена актуальная версия");
+                    await Task.Delay(300);
+                    return false;
                 }
 
-                Debug.WriteLine($"[Velopack] Найдено обновление: {newVersion.TargetFullRelease.Version}. Начинаем фоновую загрузку...");
+                Logger.LogInfo($"Velopack: Обнаружена новая версия {newVersion.TargetFullRelease.Version}. Начинаем загрузку...");
 
-                // 2. Тихо скачиваем обновление в фоновом режиме (пользователь может продолжать пользоваться программой)
-                await mgr.DownloadUpdatesAsync(newVersion);
-
-                Debug.WriteLine("[Velopack] Обновление успешно скачано в фоновом режиме.");
-
-                // 3. Выводим диалоговое окно с предложением перезапуститься прямо сейчас
-                var uiMessageBox = new Wpf.Ui.Controls.MessageBox
+                // Переводим Splash в режим отображения скачивания
+                await Dispatcher.InvokeAsync(() =>
                 {
-                    Title = "Доступно обновление",
-                    Content = $"Для Helinstaller скачана новая версия: {newVersion.TargetFullRelease.Version}.\n\nПерезапустить приложение сейчас, чтобы применить изменения?",
-                    PrimaryButtonText = "Перезапустить",
-                    SecondaryButtonText = "Позже (при следующем запуске)",
-                    CloseButtonText = "Отмена"
-                };
+                    SplashStatusText.Text = $"Загрузка обновления v{newVersion.TargetFullRelease.Version}...";
+                    SplashSubStatusText.Text = "Пожалуйста, подождите завершения";
+                    SplashSubStatusText.Visibility = Visibility.Visible;
+                    SplashProgressRing.IsIndeterminate = false;
+                    SplashProgressRing.Progress = 0;
+                    SplashPercentText.Text = "0%";
+                    SplashPercentText.Visibility = Visibility.Visible;
+                });
 
-                var result = await uiMessageBox.ShowDialogAsync();
-                if (result == Wpf.Ui.Controls.MessageBoxResult.Primary)
+                // Скачиваем пакет обновления с передачей прогресса (0-100)
+                await mgr.DownloadUpdatesAsync(newVersion, progress =>
                 {
-                    // Velopack мгновенно применит обновление и автоматически откроет программу заново
-                    mgr.ApplyUpdatesAndRestart(newVersion);
-                }
+                    Dispatcher.InvokeAsync(() =>
+                    {
+                        SplashProgressRing.Progress = progress;
+                        SplashPercentText.Text = $"{progress}%";
+                    }, System.Windows.Threading.DispatcherPriority.Background);
+                });
+
+                Logger.LogInfo("Velopack: Обновление скачано. Применение и перезапуск...");
+
+                await Dispatcher.InvokeAsync(() =>
+                {
+                    SplashStatusText.Text = "Установка и перезапуск...";
+                    SplashSubStatusText.Text = "Приложение откроется автоматически через секунду";
+                    SplashProgressRing.IsIndeterminate = true;
+                    SplashPercentText.Visibility = Visibility.Collapsed;
+                });
+
+                await Task.Delay(600);
+
+                // Применяем скачанные дельты/пакет и перезапускаем обновленное приложение
+                mgr.ApplyUpdatesAndRestart(newVersion);
+                return true;
             }
             catch (Exception ex)
             {
-                // Ошибки автообновления пишем в дебаг, чтобы не мешать пользователю, если, например, пропал интернет
-                Debug.WriteLine($"[Velopack] Ошибка автообновления: {ex.Message}");
+                Logger.LogWarning($"Velopack: Сбой проверки/загрузки обновления: {ex.Message}");
+                SetSplashStatus("Запуск в автономном режиме...");
+                await Task.Delay(300);
+                return false;
             }
         }
 
-
-        // === Вспомогательные классы и методы ===
-        public static class ThemeChanger
+        private void SetSplashStatus(string status)
         {
-            private const string PersonalizeKey = @"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize";
-            private const string SystemUsesLightThemeKey = "SystemUsesLightTheme";
-            private const string AppsUseLightThemeKey = "AppsUseLightTheme";
-
-            [DllImport("user32.dll", SetLastError = true)]
-            private static extern int SendMessageTimeout(IntPtr hWnd, uint Msg, IntPtr wParam, string lParam,
-                uint fuFlags, uint uTimeout, out IntPtr lpdwResult);
-            private const uint WM_SETTINGCHANGE = 0x001A;
-            private const uint SMTO_ABORTIFHUNG = 0x0002;
-
-            public static bool IsSystemInDarkMode()
+            Dispatcher.InvokeAsync(() =>
             {
-                try
-                {
-                    using (RegistryKey key = Registry.CurrentUser.OpenSubKey(PersonalizeKey))
-                    {
-                        object value = key?.GetValue(SystemUsesLightThemeKey);
-                        return value != null && value is int intValue && intValue == 0;
-                    }
-                }
-                catch { return false; }
-            }
-
-            public static void ToggleWindowsTheme()
-            {
-                bool isDark = IsSystemInDarkMode();
-                int newSystemValue = isDark ? 1 : 0;
-                int newAppsValue = newSystemValue;
-
-                try
-                {
-                    using (RegistryKey key = Registry.CurrentUser.CreateSubKey(PersonalizeKey, true))
-                    {
-                        key.SetValue(SystemUsesLightThemeKey, newSystemValue, RegistryValueKind.DWord);
-                        key.SetValue(AppsUseLightThemeKey, newAppsValue, RegistryValueKind.DWord);
-                    }
-                    SendMessageTimeout(new IntPtr(0xFFFF), WM_SETTINGCHANGE, IntPtr.Zero, "ImmersiveColorSet", SMTO_ABORTIFHUNG, 100, out _);
-
-                    isDark = IsSystemInDarkMode();
-                    if (!isDark) ApplicationThemeManager.Apply(ApplicationTheme.Light);
-                    if (isDark) ApplicationThemeManager.Apply(ApplicationTheme.Dark);
-                }
-                catch (Exception ex)
-                {
-                    CustomMessageBox.Show($"Ошибка при переключении темы: {ex.Message}", "", System.Windows.MessageBoxButton.OK);
-                }
-            }
+                SplashStatusText.Text = status;
+            });
         }
 
-        private async Task ConnectionCheck()
+        private async void Smtc_ButtonPressed(SystemMediaTransportControls sender, SystemMediaTransportControlsButtonPressedEventArgs args)
         {
-            // Список целей для проверки: (URL, Отображаемое имя)
-            var targets = new[]
+            await Dispatcher.InvokeAsync(async () =>
             {
-        ("https://google.com", "Интернет", 1),
-        ("https://github.com", "GitHub", 2),
-        ("https://massgrave.dev", "API Massgrave", 3)
-    };
-
-            bool allConnected = true;
-
-            // Используем один HttpClient для всех запросов, чтобы не создавать лишние сокеты
-            using (var client = new HttpClient())
-            {
-                client.Timeout = TimeSpan.FromSeconds(15); // Таймаут на каждый запрос
-
-                foreach (var (url, name, i) in targets)
+                switch (args.Button)
                 {
-                    desc.Text = $"Подключение: {name}";
-                    bool targetSuccess = false;
-                    int attempts = 0;
+                    case SystemMediaTransportControlsButton.Play:
+                        if (_waveOut != null && _waveOut.PlaybackState != PlaybackState.Playing)
+                        {
+                            _waveOut.Play();
+                            PlayIcon.Symbol = SymbolRegular.Pause48;
+                            SubscribeToRendering();
+                            if (_smtc != null) _smtc.PlaybackStatus = MediaPlaybackStatus.Playing;
+                        }
+                        break;
 
-                    // Пытаемся подключиться к конкретному сайту до 3 раз
-                    while (attempts < 3)
-                    {
+                    case SystemMediaTransportControlsButton.Pause:
+                        if (_waveOut != null && _waveOut.PlaybackState == PlaybackState.Playing)
+                        {
+                            _waveOut.Pause();
+                            PlayIcon.Symbol = SymbolRegular.Play48;
+                            UnsubscribeFromRendering();
+                            if (_smtc != null) _smtc.PlaybackStatus = MediaPlaybackStatus.Paused;
+                        }
+                        break;
+
+                    case SystemMediaTransportControlsButton.Next:
+                        await NextButton_Click_Async();
+                        break;
+
+                    case SystemMediaTransportControlsButton.Previous:
                         try
                         {
-                            loadingBar.Value = i;
-                            // Используем SendAsync с HEAD, чтобы скачивать только заголовки (быстрее), 
-                            // или GetAsync, если сервер не поддерживает HEAD.
-                            var response = await client.GetAsync(url);
-                            response.EnsureSuccessStatusCode();
-
-                            targetSuccess = true;
-                            break; // Успех, выходим из цикла попыток
+                            if (_isLoading) return;
+                            _currentTrackIndex = (_currentTrackIndex - 1 + _playlist.Count) % _playlist.Count;
+                            await LoadTrackAsync(_currentTrackIndex);
                         }
-                        catch (Exception ex)
-                        {
-                            attempts++;
-                            // Если это последняя попытка и она неудачная - выводим ошибку
-                            if (attempts >= 3)
-                            {
-                                info.Text = ex.Message; // Показываем ошибку
-                            }
-                            await Task.Delay(500); // Небольшая пауза перед повторной попыткой
-                        }
-                    }
-
-                    if (!targetSuccess)
-                    {
-                        // Если хоть один сервис не ответил
-                        allConnected = false;
-                        desc.Text = $"Ошибка: {name}";
-                        stat.Symbol = SymbolRegular.CloudError48;
-                        stat.Visibility = Visibility.Visible;
-                        ring.Visibility = Visibility.Collapsed;
+                        catch (Exception ex) { SongTitle.Text = ex.Message; }
                         break;
+                }
+            });
+        }
+
+        private async Task UpdateSmtcMetadataAsync(string artist, string title, byte[]? embeddedArtBytes)
+        {
+            if (_smtc == null) return;
+
+            try
+            {
+                var updater = _smtc.DisplayUpdater;
+                updater.Type = MediaPlaybackType.Music;
+                updater.MusicProperties.Artist = string.IsNullOrWhiteSpace(artist) ? "Helinstaller Player" : artist;
+                updater.MusicProperties.Title = string.IsNullOrWhiteSpace(title) ? "Без названия" : title;
+
+                if (embeddedArtBytes != null && embeddedArtBytes.Length > 0)
+                {
+                    try
+                    {
+                        string tempFolder = Path.GetTempPath();
+                        string tempFilePath = Path.Combine(tempFolder, "heli_current_cover.jpg");
+                        await File.WriteAllBytesAsync(tempFilePath, embeddedArtBytes);
+
+                        var file = await StorageFile.GetFileFromPathAsync(tempFilePath);
+                        updater.Thumbnail = RandomAccessStreamReference.CreateFromFile(file);
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"[SMTC Cover Save Error]: {ex.Message}");
+                        updater.Thumbnail = null;
                     }
                 }
+                else
+                {
+                    updater.Thumbnail = null;
+                }
+
+                updater.Update();
             }
-
-            if (allConnected)
+            catch (Exception ex)
             {
-                desc.Text = "Подключено!";
-                ring.Visibility = Visibility.Collapsed;
-                stat.Visibility = Visibility.Visible;
-                stat.Symbol = SymbolRegular.CloudCheckmark48;
-
-                // Задержка, чтобы пользователь успел увидеть галочку "ОК" перед входом
-                await Task.Delay(500);
-
-                // Анимация входа
-                MainGrid.Visibility = Visibility.Visible;
-                DoubleAnimation fadeIn = new DoubleAnimation(0.0, 1.0, TimeSpan.FromSeconds(1));
-                DoubleAnimation fadeOut = new DoubleAnimation(1.0, 0.0, TimeSpan.FromSeconds(1));
-
-                info.Visibility = Visibility.Collapsed;
-                fadeOut.Completed += (s, _) => LoadingPanel.Visibility = Visibility.Collapsed;
-
-                MainGrid.BeginAnimation(Grid.OpacityProperty, fadeIn);
-                LoadingPanel.BeginAnimation(Grid.OpacityProperty, fadeOut);
-            }
-            else
-            {
-                // Логика на случай провала:
-                // Либо оставляем висеть ошибку, либо пускаем в приложение с ограничениями.
-                // Если нужно пустить в приложение даже при ошибке, раскомментируй код ниже:
-
-
-                await Task.Delay(2000); // Даем прочитать ошибку
-                MainGrid.Visibility = Visibility.Visible;
-                DoubleAnimation fadeIn = new DoubleAnimation(0.0, 1.0, TimeSpan.FromSeconds(1));
-                DoubleAnimation fadeOut = new DoubleAnimation(1.0, 0.0, TimeSpan.FromSeconds(1));
-                fadeOut.Completed += (s, _) => LoadingPanel.Visibility = Visibility.Collapsed;
-                MainGrid.BeginAnimation(Grid.OpacityProperty, fadeIn);
-                LoadingPanel.BeginAnimation(Grid.OpacityProperty, fadeOut);
-                info.BeginAnimation(Grid.OpacityProperty, fadeOut);
-
+                Debug.WriteLine($"[SMTC Metadata Error]: {ex.Message}");
             }
         }
 
-        private async Task<Brush?> GetTrackCoverAsync(string url)
+        private void InitializeSmtc()
         {
             try
             {
-                using var client = new HttpClient();
-                client.DefaultRequestHeaders.Range = new System.Net.Http.Headers.RangeHeaderValue(0, 3000000);
+                IntPtr hwnd = new System.Windows.Interop.WindowInteropHelper(this).EnsureHandle();
+                _smtc = SmtcInteropHelper.GetForWindow(hwnd);
 
-                var response = await client.GetAsync(url);
-                if (!response.IsSuccessStatusCode) return null;
+                _smtc.IsPlayEnabled = true;
+                _smtc.IsPauseEnabled = true;
+                _smtc.IsNextEnabled = true;
+                _smtc.IsPreviousEnabled = true;
+
+                _smtc.ButtonPressed += Smtc_ButtonPressed;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[SMTC Init Error]: {ex.Message}");
+            }
+        }
+
+        private async Task AnimateSplashExitAsync()
+        {
+            MainGrid.Visibility = Visibility.Visible;
+
+            var duration = TimeSpan.FromMilliseconds(500);
+            var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
+
+            var fadeOut = new DoubleAnimation(1, 0, duration) { EasingFunction = ease };
+            var fadeInMain = new DoubleAnimation(0, 1, duration) { EasingFunction = ease };
+
+            var tcs = new TaskCompletionSource();
+            fadeOut.Completed += (s, e) =>
+            {
+                SplashContainer.Visibility = Visibility.Collapsed;
+                tcs.SetResult();
+            };
+
+            SplashContainer.BeginAnimation(OpacityProperty, fadeOut);
+            MainGrid.BeginAnimation(OpacityProperty, fadeInMain);
+
+            await tcs.Task;
+        }
+
+
+
+        private async void SplashRetry_Click(object sender, RoutedEventArgs e)
+        {
+            await RunStartupPipelineAsync();
+        }
+
+        private async void SplashContinueOffline_Click(object sender, RoutedEventArgs e)
+        {
+            Logger.LogInfo("Пользователь выбрал автономный запуск.");
+            SetSplashStatus("Загрузка плеера...");
+            await InitializePlayerAsync();
+            await AnimateSplashExitAsync();
+            CheckAndStartOnboardingTour();
+        }
+
+        private void SplashOpenLog_Click(object sender, RoutedEventArgs e)
+        {
+            Logger.OpenLogFile();
+        }
+
+        private async Task<(Brush? CoverBrush, byte[]? RawBytes)> GetTrackCoverAsync(string url)
+        {
+            try
+            {
+                using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
+                client.DefaultRequestHeaders.Range = new System.Net.Http.Headers.RangeHeaderValue(0, 1048576);
+
+                var response = await client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead);
+                if (!response.IsSuccessStatusCode) return (null, null);
 
                 var bytes = await response.Content.ReadAsByteArrayAsync();
                 using var ms = new MemoryStream(bytes);
@@ -1146,37 +1636,30 @@ namespace Helinstaller.Views.Windows
                         }
                         bitmap.Freeze();
 
-                        // === МАГИЯ КОМПОЗИЦИИ ДЛЯ ИСКЛЮЧЕНИЯ ПРОЗРАЧНОСТИ ===
                         var drawingGroup = new DrawingGroup();
-
-                        // 1. Создаем гарантированную сплошную темную подложку
                         var backgroundBrush = new SolidColorBrush(Color.FromRgb(18, 18, 18));
                         var backgroundGeometry = new RectangleGeometry(new Rect(0, 0, 1, 1));
                         var backgroundDrawing = new GeometryDrawing(backgroundBrush, null, backgroundGeometry);
                         drawingGroup.Children.Add(backgroundDrawing);
 
-                        // 2. Создаем рисунок обложки
                         var imageDrawing = new ImageDrawing(bitmap, new Rect(0, 0, 1, 1));
-
-                        // 3. Заворачиваем обложку в группу с Opacity = 0.4 (настраиваем степень затемнения)
                         var imageGroup = new DrawingGroup { Opacity = 0.4 };
                         imageGroup.Children.Add(imageDrawing);
                         drawingGroup.Children.Add(imageGroup);
 
-                        // 4. Помещаем скомпонованный рисунок в непрозрачную кисть
-                        var drawingBrush = new DrawingBrush(drawingGroup)
-                        {
-                            Stretch = Stretch.UniformToFill
-                        };
-                        drawingBrush.Freeze(); // Замораживаем для производительности
+                        var drawingBrush = new DrawingBrush(drawingGroup) { Stretch = Stretch.UniformToFill };
+                        drawingBrush.Freeze();
 
-                        return drawingBrush;
+                        return (drawingBrush, bin);
                     }
                 }
                 catch (TagLib.CorruptFileException) { }
             }
-            catch (Exception ex) { Debug.WriteLine("Ошибка сети/чтения: " + ex.Message); }
-            return null;
+            catch (Exception ex)
+            {
+                Logger.LogWarning($"Плеер: Не удалось загрузить обложку для трека: {ex.Message}");
+            }
+            return (null, null);
         }
 
         private class SimpleFileAbstraction : TagLib.File.IFileAbstraction
@@ -1192,6 +1675,7 @@ namespace Helinstaller.Views.Windows
             public Stream WriteStream { get; }
             public void CloseStream(Stream stream) { }
         }
+
         public static BitmapImage? GetUserAvatar()
         {
             string dir = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -1219,11 +1703,14 @@ namespace Helinstaller.Views.Windows
         public void SetPageService(INavigationViewPageProvider service) => RootNavigation.SetPageProviderService(service);
         public void ShowWindow() => Show();
         public void CloseWindow() => Close();
+        public void SetServiceProvider(IServiceProvider serviceProvider) => RootNavigation.SetServiceProvider(serviceProvider);
         #endregion
 
         protected override void OnClosed(EventArgs e)
         {
             _isClosed = true;
+            WingetService.KillStuckProcesses();
+
             UnsubscribeFromRendering();
             _waveOut?.Stop();
             _waveOut?.Dispose();
@@ -1232,18 +1719,12 @@ namespace Helinstaller.Views.Windows
             Application.Current.Shutdown();
         }
 
-        public void SetServiceProvider(IServiceProvider serviceProvider) => throw new NotImplementedException();
-        private void info_TextChanged(object sender, TextChangedEventArgs e) { info.Visibility = Visibility.Visible; }
-
         private void Donate_Click(object sender, RoutedEventArgs e)
         {
             Navigate(typeof(Helinstaller.Views.Pages.Donate));
         }
     }
 
-    /// <summary>
-    /// Провайдер FFT
-    /// </summary>
     public class VisualizationProvider : ISampleProvider
     {
         private readonly ISampleProvider _source;
@@ -1256,6 +1737,7 @@ namespace Helinstaller.Views.Windows
         private readonly int _channels;
         public float[] FftData => _fftData;
         public WaveFormat WaveFormat => _source.WaveFormat;
+
         public VisualizationProvider(ISampleProvider source)
         {
             _source = source;
@@ -1265,6 +1747,7 @@ namespace Helinstaller.Views.Windows
             _audioBuffer = new float[_fftLength];
             _fftData = new float[_fftLength / 2];
         }
+
         public int Read(float[] buffer, int offset, int count)
         {
             int samplesRead = _source.Read(buffer, offset, count);
@@ -1286,6 +1769,7 @@ namespace Helinstaller.Views.Windows
             }
             return samplesRead;
         }
+
         private void ProcessFft()
         {
             for (int i = 0; i < _fftLength; i++)

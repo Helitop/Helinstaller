@@ -1,85 +1,264 @@
 [
   {
-    "name": "WinRAR",
-    "title": "WinRAR",
-    "description": "Популярнейший архиватор, сжиматор и ваще всё чё угодно упаковатор.",
-    "iconPath": "/Assets/winrar.png",
-    "downloadUrl": "winget:RARLab.WinRAR"
+    "name": "Visual C++ 2015-2022 x64",
+    "title": "Visual C++ 2015-2022 (x64)",
+    "description": "Критически важный 64-битный набор библиотек C++ для работы большинства современных программ и игр.",
+    "iconPath": "/Assets/vs.png",
+    "downloadUrl": "winget:Microsoft.VCRedist.2015+.x64",
+    "category": "Рантаймы и библиотеки",
+    "layout": "grid"
+  },
+  {
+    "name": "Visual C++ 2015-2022 x86",
+    "title": "Visual C++ 2015-2022 (x86)",
+    "description": "32-битный набор библиотек C++ для запуска классических и 32-разрядных приложений.",
+    "iconPath": "/Assets/vs.png",
+    "downloadUrl": "winget:Microsoft.VCRedist.2015+.x86",
+    "category": "Рантаймы и библиотеки",
+    "layout": "grid"
+  },
+  {
+    "name": "DirectX End-User Runtime",
+    "title": "DirectX End-User Runtimes",
+    "description": "Исполняемые библиотеки DirectX 9.0c / 10 / 11 для исправления ошибок отсутствующих .dll (d3dx9_xx.dll).",
+    "iconPath": "/Assets/directx.png",
+    "downloadUrl": "winget:Microsoft.DirectX",
+    "category": "Рантаймы и библиотеки",
+    "layout": "grid"
+  },
+  {
+    "name": ".NET Desktop Runtime 8.0",
+    "title": ".NET Desktop Runtime 8.0 (LTS)",
+    "description": "Среда выполнения для запуска современных настольных приложений Windows, написанных на .NET 8.",
+    "iconPath": "/Assets/vs.png",
+    "downloadUrl": "winget:Microsoft.DotNet.DesktopRuntime.8",
+    "category": "Рантаймы и библиотеки",
+    "layout": "grid"
+  },
+  {
+    "name": ".NET Desktop Runtime 9.0",
+    "title": ".NET Desktop Runtime 9.0 (Current)",
+    "description": "Новейшая среда выполнения .NET 9 с улучшенной производительностью графических приложений.",
+    "iconPath": "/Assets/vs.png",
+    "downloadUrl": "winget:Microsoft.DotNet.DesktopRuntime.9",
+    "category": "Рантаймы и библиотеки",
+    "layout": "grid"
   },
   {
     "name": "Google Chrome",
-    "title": "Chrome",
+    "title": "Google Chrome",
     "description": "Лучший браузер... после Edge и Firefox",
     "iconPath": "/Assets/chrome.png",
-    "downloadUrl": "winget:Google.Chrome"
+    "downloadUrl": "winget:Google.Chrome",
+    "category": "Интернет и сеть"
   },
   {
-    "name": "Discord",
-    "title": "Discord",
-    "description": "А кто не знает? Захотелось в Доту с друзяками - заходишь сюда.",
-    "iconPath": "/Assets/discord.png",
-    "downloadUrl": "winget:Discord.Discord"
+    "name": "Mozilla Firefox",
+    "title": "Mozilla Firefox",
+    "description": "Быстрый, независимый браузер с открытым исходным кодом и мощной защитой приватности.",
+    "iconPath": "/Assets/firefox.png",
+    "downloadUrl": "winget:Mozilla.Firefox",
+    "category": "Интернет и сеть"
   },
   {
-    "name": "Steam",
-    "title": "Steam",
-    "description": "Тут игрушки качаешь, увы конечно платно.",
-    "iconPath": "/Assets/steam.png",
-    "downloadUrl": "winget:Valve.Steam"
+    "name": "Tor Browser",
+    "title": "Tor Browser",
+    "description": "Браузер со своей пиринговой сетью, короче для крутых",
+    "iconPath": "/Assets/tor.png",
+    "downloadUrl": "winget:TorProject.TorBrowser",
+    "category": "Интернет и сеть"
   },
   {
-    "name": "Office",
-    "title": "Office",
-    "description": "Набор офисных приложений: Word, Excel, Powerpoint, Access, Visio - Всё тут.",
-    "iconPath": "/Assets/office.png"
-  },
-  {
-    "name": "Visual Studio",
-    "title": "Visual Studio",
-    "description": "Полноценная IDE для разработки.",
-    "iconPath": "/Assets/vs.png",
-    "downloadUrl": "winget:Microsoft.VisualStudio.Community"
-  },
-  {
-    "name": "Visual Studio Code",
-    "title": "Visual Studio Code",
-    "description": "Лёгкий и универсальный редактор кода.",
-    "iconPath": "/Assets/vscode.png",
-    "downloadUrl": "winget:Microsoft.VisualStudioCode"
+    "name": "WARP",
+    "title": "WARP",
+    "description": "В наше время один из способов пользоваться интернетом с удовольствием",
+    "iconPath": "/Assets/warp.png",
+    "downloadUrl": "winget:Cloudflare.Warp",
+    "category": "Интернет и сеть"
   },
   {
     "name": "qBittorrent",
     "title": "qBittorrent",
     "description": "Как раз тот случай когда хочется юзать стим, а денюжки нет.",
     "iconPath": "/Assets/qbittorrent.png",
-    "downloadUrl": "winget:qBittorrent.qBittorrent"
-  },
-  {
-    "name": "PT",
-    "title": "PowerToys",
-    "description": "Много различных инструментов прям в Винде. К примеру пипетка и линейка экрана по пикселям.",
-    "iconPath": "/Assets/powertoys.png",
-    "downloadUrl": "winget:Microsoft.PowerToys"
-  },
-  {
-    "name": "Windhawk",
-    "title": "Windhawk",
-    "description": "Модификация и кастомизация Windows. Схоже с ExplorerPatcher",
-    "iconPath": "/Assets/windhawk.png",
-    "downloadUrl": "winget:RamenSoftware.Windhawk"
-  },
-  {
-    "name": "TB",
-    "title": "TranslucentTB",
-    "description": "Прозрачная панель задач.",
-    "iconPath": "/Assets/translucenttb.png",
-    "downloadUrl": "winget:CharlesMilette.TranslucentTB"
+    "downloadUrl": "winget:qBittorrent.qBittorrent",
+    "category": "Интернет и сеть"
   },
   {
     "name": "Radmin VPN",
     "title": "Radmin VPN",
     "description": "Утилита для создания виртуальной локальной сети - в Майнкрафт с друганами сыграть самое то",
     "iconPath": "/Assets/radmin.png",
-    "downloadUrl": "winget:Famatech.RadminVPN"
+    "downloadUrl": "winget:Famatech.RadminVPN",
+    "category": "Интернет и сеть"
+  },
+  {
+    "name": "Discord",
+    "title": "Discord",
+    "description": "А кто не знает? Захотелось в Доту с друзяками - заходишь сюда.",
+    "iconPath": "/Assets/discord.png",
+    "downloadUrl": "winget:Discord.Discord",
+    "category": "Общение"
+  },
+  {
+    "name": "Vencord",
+    "title": "Vencord",
+    "description": "Движок для кастомизации и установки плагинов на Discord",
+    "iconPath": "/Assets/vencord.png",
+    "downloadUrl": "winget:Vendicated.Vencord",
+    "category": "Общение"
+  },
+  {
+    "name": "Unigram",
+    "title": "Telegram",
+    "description": "Удачи найти прокси, благо я же добавил такой функционал, м?",
+    "iconPath": "/Assets/telegram.png",
+    "downloadUrl": "msstore:9N97ZCKPD60Q",
+    "category": "Общение",
+    "checkPattern": "unigram|telegram|9N97ZCKPD60Q"
+  },
+  {
+    "name": "Steam",
+    "title": "Steam",
+    "description": "Тут игрушки качаешь, увы конечно платно.",
+    "iconPath": "/Assets/steam.png",
+    "downloadUrl": "winget:Valve.Steam",
+    "category": "Игры"
+  },
+  {
+    "name": "Epic Games",
+    "title": "Epic Games",
+    "description": "Тут игрушки получше качаешь, увы конечно платно.",
+    "iconPath": "/Assets/epic.png",
+    "downloadUrl": "winget:EpicGames.EpicGamesLauncher",
+    "category": "Игры"
+  },
+  {
+    "name": "Prism Launcher",
+    "title": "Prism Launcher",
+    "description": "Лучший свободный лаунчер Minecraft: поддержка любых модов, сборок с Modrinth/CurseForge и аккаунтов.",
+    "iconPath": "/Assets/prism.png",
+    "downloadUrl": "winget:PrismLauncher.PrismLauncher",
+    "category": "Игры"
+  },
+  {
+    "name": "OBS Studio",
+    "title": "OBS Studio",
+    "description": "Профессиональный софт для стриминга, захвата экрана и записи геймплея без потери качества.",
+    "iconPath": "/Assets/obs.png",
+    "downloadUrl": "winget:OBSProject.OBSStudio",
+    "category": "Медиа и звук"
+  },
+  {
+    "name": "CrystalDiskInfo",
+    "title": "CrystalDiskInfo",
+    "description": "Проверка здоровья (S.M.A.R.T.), температуры и остаточного ресурса ваших SSD и жестких дисков.",
+    "iconPath": "/Assets/crystaldisk.png",
+    "downloadUrl": "winget:CrystalDewWorld.CrystalDiskInfo",
+    "category": "Диагностика"
+  },
+  {
+    "name": "CPU-Z",
+    "title": "CPU-Z",
+    "description": "Полная информация о процессоре: модель, архитектура, степпинг, сокет, частоты и тайминги ОЗУ.",
+    "iconPath": "/Assets/cpuz.png",
+    "downloadUrl": "winget:CPUID.CPU-Z",
+    "category": "Диагностика"
+  },
+  {
+    "name": "GPU-Z",
+    "title": "GPU-Z",
+    "description": "Детальная диагностика видеокарты: тип памяти, видеочип, версия BIOS, датчики температур и частоты.",
+    "iconPath": "/Assets/gpuz.png",
+    "downloadUrl": "winget:TechPowerUp.GPU-Z",
+    "category": "Диагностика"
+  },
+  {
+    "name": "MSI Afterburner",
+    "title": "MSI Afterburner",
+    "description": "Отображение FPS, температур и нагрузки в играх (RTSS), а также андервольтинг и разгон видеокарт.",
+    "iconPath": "/Assets/afterburner.png",
+    "downloadUrl": "winget:Guru3D.MSIAfterburner",
+    "category": "Диагностика"
+  },
+  {
+    "name": "WinRAR",
+    "title": "WinRAR",
+    "description": "Популярнейший архиватор, сжиматор и ваще всё чё угодно упаковатор.",
+    "iconPath": "/Assets/winrar.png",
+    "downloadUrl": "winget:RARLab.WinRAR",
+    "category": "Утилиты"
+  },
+  {
+    "name": "Revo Uninstaller",
+    "title": "Revo Uninstaller",
+    "description": "Глубокая деинсталляция программ с полной очисткой всех скрытых файлов, хвостов и записей в реестре.",
+    "iconPath": "/Assets/revo.png",
+    "downloadUrl": "winget:RevoUninstaller.RevoUninstaller",
+    "category": "Утилиты"
+  },
+  {
+    "name": "PT",
+    "title": "PowerToys",
+    "description": "Много различных инструментов прям в Винде. К примеру пипетка и линейка экрана по пикселям.",
+    "iconPath": "/Assets/powertoys.png",
+    "downloadUrl": "winget:Microsoft.PowerToys",
+    "category": "Утилиты"
+  },
+  {
+    "name": "Windhawk",
+    "title": "Windhawk",
+    "description": "Модификация и кастомизация Windows. Схоже с ExplorerPatcher",
+    "iconPath": "/Assets/windhawk.png",
+    "downloadUrl": "winget:RamenSoftware.Windhawk",
+    "category": "Утилиты"
+  },
+  {
+    "name": "TB",
+    "title": "TranslucentTB",
+    "description": "Прозрачная панель задач.",
+    "iconPath": "/Assets/translucenttb.png",
+    "downloadUrl": "winget:CharlesMilette.TranslucentTB",
+    "category": "Утилиты"
+  },
+  {
+    "name": "Office",
+    "title": "Office",
+    "description": "Набор офисных приложений: Word, Excel, Powerpoint, Access, Visio - Всё тут.",
+    "iconPath": "/Assets/office.png",
+    "downloadUrl": "",
+    "category": "Офис и учеба"
+  },
+  {
+    "name": "Git",
+    "title": "Git",
+    "description": "Распределенная система контроля версий для разработчиков (Git CLI, Git Bash и GUI инструменты).",
+    "iconPath": "/Assets/git.png",
+    "downloadUrl": "winget:Git.Git",
+    "category": "Разработка"
+  },
+  {
+    "name": "Visual Studio Code",
+    "title": "Visual Studio Code",
+    "description": "Лёгкий и универсальный редактор кода.",
+    "iconPath": "/Assets/vscode.png",
+    "downloadUrl": "winget:Microsoft.VisualStudioCode",
+    "category": "Разработка"
+  },
+  {
+    "name": "Visual Studio",
+    "title": "Visual Studio",
+    "description": "Полноценная IDE для разработки.",
+    "iconPath": "/Assets/vs.png",
+    "downloadUrl": "winget:Microsoft.VisualStudio.Community",
+    "category": "Разработка"
+  },
+  {
+    "name": "Android Studio",
+    "title": "Android Studio",
+    "description": "IDE для разработки приложений на Java/Kotlin.",
+    "iconPath": "/Assets/androidstudio.png",
+    "downloadUrl": "winget:Google.AndroidStudio",
+    "category": "Разработка"
   }
 ]

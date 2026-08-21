@@ -22,6 +22,12 @@ namespace Helinstaller.ViewModels.Windows
         {
             new NavigationViewItem()
             {
+                Content = "Главная",
+                Icon = new SymbolIcon { Symbol = SymbolRegular.Home24 },
+                TargetPageType = typeof(Views.Pages.SystemDashboardPage),
+            },
+            new NavigationViewItem()
+            {
                 Content = "Приложения",
                 Icon = new SymbolIcon { Symbol = SymbolRegular.Apps48 },
                 TargetPageType = typeof(Views.Pages.DashboardPage),
@@ -41,18 +47,17 @@ namespace Helinstaller.ViewModels.Windows
             },
             new NavigationViewItem()
             {
+                Content = "Прокси Telegram",
+                Icon = new SymbolIcon { Symbol = SymbolRegular.ShieldGlobe24 },
+                TargetPageType = typeof(Views.Pages.ProxyPage)
+            },
+            new NavigationViewItem()
+            {
                 Content = "Установка Windows",
                 Icon = new SymbolIcon { Symbol = SymbolRegular.WindowSettings20 },
                 TargetPageType = typeof(Views.Pages.Ventoy)
 
             },
-
-            new NavigationViewItem()
-            {
-                Content = "Пожертвование",
-                Visibility = Visibility.Collapsed,
-                TargetPageType = typeof(Views.Pages.Donate)
-            }
         };
 
         [ObservableProperty]
@@ -71,11 +76,6 @@ namespace Helinstaller.ViewModels.Windows
                 TargetPageType = typeof(Views.Pages.DownloadsPage)
 
             },
-                        new NavigationViewItem()
-            {
-                Content = "Обновления",
-                Icon = new SymbolIcon { Symbol = SymbolRegular.ArrowClockwise48 },
-            }
         };
 
         [ObservableProperty]

@@ -6,17 +6,35 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
     mc:Ignorable="d" Title="Advices"
-    d:DesignHeight="450" d:DesignWidth="800">
+    d:DesignHeight="550" d:DesignWidth="800"
+    ui:Design.Background="{DynamicResource ApplicationBackgroundBrush}"
+    ui:Design.Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+    Foreground="{DynamicResource TextFillColorPrimaryBrush}">
 
-    <Grid>
-        <!-- ScrollViewer — единственный хозяин прокрутки здесь -->
-        <ui:DynamicScrollViewer x:Name="MainScroll" 
-                      VerticalScrollBarVisibility="Auto" 
-                      HorizontalScrollBarVisibility="Disabled">
+    <Grid Margin="12,8,12,12">
+        <Grid.RowDefinitions>
+            <!-- 0. Шапка страницы -->
+            <RowDefinition Height="Auto"/>
+            <!-- 1. Сетка карточек с советами -->
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
 
-            <ItemsControl ItemsSource="{Binding AdviceItems}" Margin="10,10,10,20">
+        <!-- 0. ШАПКА СТРАНИЦЫ -->
+        <DockPanel Grid.Row="0" LastChildFill="False" Margin="8,6,8,10">
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                <ui:SymbolIcon Symbol="Lightbulb24" FontSize="20" Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                <TextBlock Text="Советы и полезные лайфхаки" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center"/>
+            </StackPanel>
+        </DockPanel>
 
-                <!-- Делаем сетку: 3 колонки. UniformGrid сделает ВСЕ карточки одного размера -->
+        <!-- 1. КОНТРОЛ СКРОЛЛА С СЕТКОЙ КАРТОЧЕК -->
+        <ui:DynamicScrollViewer Grid.Row="1" 
+                                VerticalScrollBarVisibility="Auto" 
+                                HorizontalScrollBarVisibility="Disabled">
+
+            <ItemsControl ItemsSource="{Binding AdviceItems}" Margin="4,0,4,16">
+
+                <!-- 3 колонки одинакового размера -->
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
                         <UniformGrid Columns="3" VerticalAlignment="Top"/>
@@ -25,37 +43,93 @@
 
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                        <ui:Card Margin="6" Padding="18" VerticalAlignment="Stretch">
+                        <ui:Card Margin="5" 
+                                 Padding="16" 
+                                 VerticalAlignment="Stretch"
+                                 RenderTransformOrigin="0.5,0.5">
+                            <ui:Card.RenderTransform>
+                                <ScaleTransform ScaleX="1" ScaleY="1"/>
+                            </ui:Card.RenderTransform>
+
+                            <ui:Card.Style>
+                                <Style TargetType="ui:Card" BasedOn="{StaticResource {x:Type ui:Card}}">
+                                    <Style.Triggers>
+                                        <!-- Плавное приподнимание при наведении -->
+                                        <EventTrigger RoutedEvent="MouseEnter">
+                                            <BeginStoryboard>
+                                                <Storyboard>
+                                                    <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)" To="1.025" Duration="0:0:0.18">
+                                                        <DoubleAnimation.EasingFunction>
+                                                            <CubicEase EasingMode="EaseOut"/>
+                                                        </DoubleAnimation.EasingFunction>
+                                                    </DoubleAnimation>
+                                                    <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)" To="1.025" Duration="0:0:0.18">
+                                                        <DoubleAnimation.EasingFunction>
+                                                            <CubicEase EasingMode="EaseOut"/>
+                                                        </DoubleAnimation.EasingFunction>
+                                                    </DoubleAnimation>
+                                                </Storyboard>
+                                            </BeginStoryboard>
+                                        </EventTrigger>
+                                        <EventTrigger RoutedEvent="MouseLeave">
+                                            <BeginStoryboard>
+                                                <Storyboard>
+                                                    <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)" To="1.0" Duration="0:0:0.18">
+                                                        <DoubleAnimation.EasingFunction>
+                                                            <CubicEase EasingMode="EaseOut"/>
+                                                        </DoubleAnimation.EasingFunction>
+                                                    </DoubleAnimation>
+                                                    <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)" To="1.0" Duration="0:0:0.18">
+                                                        <DoubleAnimation.EasingFunction>
+                                                            <CubicEase EasingMode="EaseOut"/>
+                                                        </DoubleAnimation.EasingFunction>
+                                                    </DoubleAnimation>
+                                                </Storyboard>
+                                            </BeginStoryboard>
+                                        </EventTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </ui:Card.Style>
+
                             <Grid>
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto"/>
-                                    <!-- Иконка -->
                                     <RowDefinition Height="Auto"/>
-                                    <!-- Заголовок -->
                                     <RowDefinition Height="*"/>
-                                    <!-- Текст -->
                                 </Grid.RowDefinitions>
 
-                                <ui:SymbolIcon Grid.Row="0" 
-                                               Symbol="{Binding Icon}" 
-                                               FontSize="28" 
-                                               Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" 
-                                               HorizontalAlignment="Left"/>
+                                <!-- Иконка в красивом полупрозрачном контейнере -->
+                                <Border Grid.Row="0" 
+                                        Width="38" Height="38" 
+                                        CornerRadius="10" 
+                                        Background="#15FFFFFF" 
+                                        HorizontalAlignment="Left"
+                                        VerticalAlignment="Center">
+                                    <ui:SymbolIcon Symbol="{Binding Icon}" 
+                                                   FontSize="20" 
+                                                   Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" 
+                                                   HorizontalAlignment="Center" 
+                                                   VerticalAlignment="Center"/>
+                                </Border>
 
+                                <!-- Заголовок -->
                                 <TextBlock Grid.Row="1" 
                                            Text="{Binding Title}" 
                                            FontWeight="Bold" 
-                                           Margin="0,12,0,6" 
-                                           FontSize="14" 
-                                           TextWrapping="Wrap"/>
+                                           Margin="0,12,0,5" 
+                                           FontSize="13.5" 
+                                           TextWrapping="Wrap"
+                                           Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
 
+                                <!-- Описание -->
                                 <TextBlock Grid.Row="2" 
                                            Text="{Binding Description}" 
                                            TextWrapping="Wrap" 
-                                           Opacity="0.7" 
-                                           FontSize="12" 
+                                           Opacity="0.75" 
+                                           FontSize="11.5" 
                                            LineHeight="16"
-                                           VerticalAlignment="Top"/>
+                                           VerticalAlignment="Top"
+                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
                             </Grid>
                         </ui:Card>
                     </DataTemplate>

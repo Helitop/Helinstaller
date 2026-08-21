@@ -6,12 +6,10 @@
     xmlns:local="clr-namespace:Helinstaller.Views.Windows"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
-
     Title="{Binding ViewModel.ApplicationTitle, Mode=OneWay}"
     Width="1100"
     Height="650"
-    d:DataContext="{d:DesignInstance local:MainWindow,
-                                     IsDesignTimeCreatable=True}"
+    d:DataContext="{d:DesignInstance local:MainWindow, IsDesignTimeCreatable=True}"
     d:DesignHeight="450"
     d:DesignWidth="800"
     ui:Design.Background="{DynamicResource ApplicationBackgroundBrush}"
@@ -20,128 +18,125 @@
     WindowBackdropType="Tabbed"
     WindowCornerPreference="Round"
     WindowStartupLocation="CenterScreen"
-    
-    
-    mc:Ignorable="d" ResizeMode="NoResize" MaxHeight="650" MaxWidth="1100" ExtendsContentIntoTitleBar="True" Initialized="FluentWindow_Initialized">
+    mc:Ignorable="d" 
+    ResizeMode="NoResize" 
+    MaxHeight="650" 
+    MaxWidth="1100" 
+    ExtendsContentIntoTitleBar="True" 
+    Initialized="FluentWindow_Initialized">
+
+    <Window.TaskbarItemInfo>
+        <TaskbarItemInfo x:Name="TaskbarProgress"/>
+    </Window.TaskbarItemInfo>
+
     <Grid>
         <Grid x:Name="MainGrid" Visibility="Hidden" Opacity="0">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
-            
-
 
             <ui:NavigationView
-            x:Name="RootNavigation"
-            Grid.Row="1"
-            Padding="10,0,10,0"
-            BreadcrumbBar="{Binding ElementName=BreadcrumbBar}"
-            FooterMenuItemsSource="{Binding ViewModel.FooterMenuItems, Mode=OneWay}"
-            FrameMargin="5"
-            IsBackButtonVisible="Collapsed"
-            IsPaneToggleVisible="True"
-            IsPaneOpen="False"
-            MenuItemsSource="{Binding ViewModel.MenuItems, Mode=OneWay}"
-            PaneDisplayMode="Left" TransitionDuration="500" Transition="FadeIn" OpenPaneLength="200">
-                <ui:NavigationView.Header>
+                x:Name="RootNavigation"
+                Grid.Row="1"
+                Padding="10,0,10,0"
+                BreadcrumbBar="{Binding ElementName=BreadcrumbBar}"
+                FooterMenuItemsSource="{Binding ViewModel.FooterMenuItems, Mode=OneWay}"
+                FrameMargin="10"
+                IsBackButtonVisible="Collapsed"
+                IsPaneToggleVisible="True"
+                IsPaneOpen="False"
+                MenuItemsSource="{Binding ViewModel.MenuItems, Mode=OneWay}"
+                PaneDisplayMode="Left" 
+                TransitionDuration="500" 
+                Transition="SlideLeft" 
+                OpenPaneLength="200">
 
+                <ui:NavigationView.Header>
                     <ui:BreadcrumbBar x:Name="BreadcrumbBar" Margin="42,32,42,20" Visibility="Collapsed"/>
                 </ui:NavigationView.Header>
+
                 <ui:NavigationView.ContentOverlay>
                     <Grid x:Name="ContentGrid">
                         <ui:SnackbarPresenter x:Name="SnackbarPresenter"/>
                     </Grid>
                 </ui:NavigationView.ContentOverlay>
-
             </ui:NavigationView>
 
-
             <ContentPresenter
-            x:Name="RootContentDialog"
-            Grid.Row="0"
-            Grid.RowSpan="2"/>
+                x:Name="RootContentDialog"
+                Grid.Row="0"
+                Grid.RowSpan="2"/>
 
             <ui:TitleBar
-    x:Name="TitleBar"
-    Title="{Binding ViewModel.ApplicationTitle}"
-    Grid.Row="0"
-    HorizontalAlignment="Stretch"
-    HorizontalContentAlignment="Center"
-    CloseWindowByDoubleClickOnIcon="True" 
-    ShowMaximize="False">
+                x:Name="TitleBar"
+                Title="{Binding ViewModel.ApplicationTitle}"
+                Grid.Row="0"
+                HorizontalAlignment="Stretch"
+                HorizontalContentAlignment="Center"
+                CloseWindowByDoubleClickOnIcon="True" 
+                ShowMaximize="False">
                 <ui:TitleBar.Icon>
                     <ui:ImageIcon Source="/Assets/wpfui-icon.ico"/>
                 </ui:TitleBar.Icon>
                 <ui:TitleBar.CenterContent>
-                    <!-- НЕВИДИМЫЙ ТРИГГЕР (Датчик мыши) -->
                     <Border x:Name="HubTrigger"
-                Background="Transparent"
-                Width="220" Height="40"
-                MouseEnter="HubTrigger_MouseEnter" />
+                            Background="Transparent"
+                            Width="220" Height="40"
+                            MouseEnter="HubTrigger_MouseEnter" />
                 </ui:TitleBar.CenterContent>
                 <ui:TitleBar.TrailingContent>
                     <ui:Button BorderBrush="Transparent" Background="Transparent" Appearance="Transparent" Width="42" Height="30" Padding="0" VerticalAlignment="Top" Margin="0,0,0,0" Click="Donate_Click">
                         <ui:SymbolIcon Filled="True" Symbol="Heart48" Foreground="{DynamicResource TextFillColorPrimaryBrush}" VerticalAlignment="Center"/>
                         <Button.Template>
                             <ControlTemplate TargetType="Button">
-                                <!-- Border — это и есть фон нашей кнопки -->
                                 <Border x:Name="border" 
-                    Background="{TemplateBinding Background}" 
-                    BorderThickness="0" 
-                    SnapsToDevicePixels="true">
+                                        Background="{TemplateBinding Background}" 
+                                        BorderThickness="0" 
+                                        SnapsToDevicePixels="true">
                                     <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                 </Border>
-
                                 <ControlTemplate.Triggers>
-                                    <!-- Эффект при наведении (как у кнопки свернуть) -->
                                     <Trigger Property="IsMouseOver" Value="True">
-                                        <!-- #1AFFFFFF — это белый цвет с прозрачностью 10%. 
-                         Дает тот самый эффект "подсветки" на темном фоне -->
                                         <Setter TargetName="border" Property="Background" Value="#1AFFFFFF"/>
                                     </Trigger>
-
-                                    <!-- Эффект при нажатии -->
                                     <Trigger Property="IsPressed" Value="True">
                                         <Setter TargetName="border" Property="Background" Value="#33FFFFFF"/>
                                     </Trigger>
                                 </ControlTemplate.Triggers>
                             </ControlTemplate>
                         </Button.Template>
-
                     </ui:Button>
                 </ui:TitleBar.TrailingContent>
             </ui:TitleBar>
+
+            <!-- ДИНАМИЧЕСКИЙ ОСТРОВОК (DYNAMIC ISLAND) -->
             <Border x:Name="HubCard" 
-Grid.Row="0" Grid.RowSpan="2"
-WindowChrome.IsHitTestVisibleInChrome="True"
-HorizontalAlignment="Center" 
-VerticalAlignment="Top"
-Margin="0,7,0,0" 
-Width="180" Height="40" 
-CornerRadius="20" 
-Panel.ZIndex="9999"
-IsHitTestVisible="True" 
-MouseEnter="HubCard_MouseEnter" 
-MouseLeave="HubCard_MouseLeave" 
-SizeChanged="HubCard_SizeChanged"
->
+                    Grid.Row="0" Grid.RowSpan="2"
+                    WindowChrome.IsHitTestVisibleInChrome="True"
+                    HorizontalAlignment="Center" 
+                    VerticalAlignment="Top"
+                    Margin="0,7,0,0" 
+                    Width="180" Height="40" 
+                    CornerRadius="20" 
+                    Panel.ZIndex="9999"
+                    IsHitTestVisible="True" 
+                    MouseEnter="HubCard_MouseEnter" 
+                    MouseLeave="HubCard_MouseLeave" 
+                    SizeChanged="HubCard_SizeChanged">
 
                 <Grid>
                     <Border x:Name="HubBorder" 
-        CornerRadius="20" 
-        ClipToBounds="True"
-        Background="Black"
-        RenderTransformOrigin="0.5,0.5">
-
-
+                            CornerRadius="20" 
+                            ClipToBounds="True"
+                            Background="Black"
+                            RenderTransformOrigin="0.5,0.5">
                         <Grid Visibility="Hidden">
                             <Border x:Name="MaskConstraint" 
-                Background="Black"
-                
-                CornerRadius="20"
-                Width="{Binding ElementName=HubBorder, Path=ActualWidth}"
-                Height="{Binding ElementName=HubBorder, Path=ActualHeight}"/>
+                                    Background="Black"
+                                    CornerRadius="20"
+                                    Width="{Binding ElementName=HubBorder, Path=ActualWidth}"
+                                    Height="{Binding ElementName=HubBorder, Path=ActualHeight}"/>
                         </Grid>
                     </Border>
 
@@ -151,19 +146,18 @@ SizeChanged="HubCard_SizeChanged"
                             <RowDefinition Height="*"/>
                         </Grid.RowDefinitions>
 
-                        <!-- ВЕРХНЯЯ ПАНЕЛЬ (Видна всегда) -->
+                        <!-- ВЕРХНЯЯ СТРОКА ОСТРОВКА (Ряд 0) -->
                         <Grid Grid.Row="0">
                             <Grid.ColumnDefinitions>
-                                <!-- Сделали колонку чуть шире, чтобы волнам было куда расходиться -->
                                 <ColumnDefinition Width="40"/>
                                 <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="40"/>
                             </Grid.ColumnDefinitions>
 
-                            <!-- 1. НОВЫЙ КОНТЕЙНЕР АВАТАРКИ (Сабвуфер) -->
+                            <!-- 1. ЛЕВЫЙ БЛОК: Идеально круглая аватарка пользователя (28x28) + Ударная волна + Тост -->
                             <Grid Grid.Column="0" Width="28" Height="28" HorizontalAlignment="Center" VerticalAlignment="Center">
-                                <!-- Кольцо ударной волны -->
-                                <Ellipse x:Name="AvatarRing" Fill="{DynamicResource SystemAccentColorPrimaryBrush}" Opacity="0" RenderTransformOrigin="0.5,0.5">
+                                <!-- Кольцо ударной волны слева -->
+                                <Ellipse x:Name="AvatarRing" Opacity="0" RenderTransformOrigin="0.5,0.5" Fill="{DynamicResource {x:Static SystemColors.AccentColorBrushKey}}">
                                     <Ellipse.RenderTransform>
                                         <ScaleTransform x:Name="RingScale" ScaleX="1" ScaleY="1"/>
                                     </Ellipse.RenderTransform>
@@ -172,58 +166,92 @@ SizeChanged="HubCard_SizeChanged"
                                     </Ellipse.Effect>
                                 </Ellipse>
 
-                                <!-- Сама картинка -->
-                                <ui:Image x:Name="Picture" Width="28" Height="28" CornerRadius="14" RenderTransformOrigin="0.5,0.5">
+                                <!-- Аватарка пользователя Windows (Круг CornerRadius="14") -->
+                                <ui:Image x:Name="Picture" 
+                                          Width="28" Height="28" 
+                                          CornerRadius="14" 
+                                          Stretch="UniformToFill"
+                                          RenderOptions.BitmapScalingMode="HighQuality"
+                                          RenderTransformOrigin="0.5,0.5">
                                     <ui:Image.RenderTransform>
                                         <ScaleTransform x:Name="AvatarScale" ScaleX="1" ScaleY="1"/>
                                     </ui:Image.RenderTransform>
                                 </ui:Image>
+
+                                <!-- ЗНАЧОК СОБЫТИЯ / ТОСТА (Появляется поверх аватарки при уведомлениях) -->
+                                <Border x:Name="LeftToastBadge" 
+                                        Width="28" Height="28" 
+                                        CornerRadius="14" 
+                                        Background="#254CD964" 
+                                        Opacity="0" 
+                                        Visibility="Collapsed"
+                                        VerticalAlignment="Center" 
+                                        HorizontalAlignment="Center">
+                                    <ui:SymbolIcon x:Name="ToastStatusIcon" 
+                                                   Symbol="Checkmark24" 
+                                                   FontSize="16" 
+                                                   Foreground="#4CD964" 
+                                                   HorizontalAlignment="Center" 
+                                                   VerticalAlignment="Center"/>
+                                </Border>
                             </Grid>
 
-                            <!-- 2. ИДЕАЛЬНО ЧИСТЫЙ ТЕКСТ -->
-                            <Grid Grid.Column="1" Margin="5,0">
+                            <!-- 2. ЦЕНТРАЛЬНЫЙ БЛОК: Текст (Лирика / Название трека / Сообщение тоста) -->
+                            <Grid Grid.Column="1" Margin="2,0">
                                 <Grid x:Name="LyricsOuterContainer" VerticalAlignment="Center">
                                     <ui:TextBlock x:Name="LyricsDisplay"
-                          FontSize="14" 
-                          Foreground="White"
-                          FontWeight="SemiBold"
-                          VerticalAlignment="Center"
-                          HorizontalAlignment="Center" 
-                          TextAlignment="Center"
-                          TextWrapping="NoWrap"
-                          Opacity="0"
-                          RenderTransformOrigin="0.5,0.5">
+                                                  FontSize="13" 
+                                                  Foreground="White"
+                                                  FontWeight="SemiBold"
+                                                  VerticalAlignment="Center"
+                                                  HorizontalAlignment="Center" 
+                                                  TextAlignment="Center"
+                                                  TextWrapping="NoWrap"
+                                                  Opacity="0"
+                                                  RenderTransformOrigin="0.5,0.5">
                                         <ui:TextBlock.Effect>
-                                            <DropShadowEffect BlurRadius="10" Direction="0" Opacity="0.5"/>
+                                            <DropShadowEffect BlurRadius="8" Direction="0" Opacity="0.4"/>
                                         </ui:TextBlock.Effect>
                                     </ui:TextBlock>
                                 </Grid>
                             </Grid>
 
-                            <Grid Grid.Column="2" Width="24" Height="24" VerticalAlignment="Center" Margin="5,0,0,0">
-                                <!-- Иконка музыки (видна по умолчанию) -->
-                                <ui:SymbolIcon x:Name="MusicIcon" Symbol="MusicNote216" FontSize="18" Foreground="White" 
-                    VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                            <!-- 3. ПРАВЫЙ БЛОК: 4 полосочки эквалайзера (iOS Waveform) + Загрузка -->
+                            <Grid Grid.Column="2" Width="28" Height="28" HorizontalAlignment="Center" VerticalAlignment="Center">
 
-                                <!-- Прогресс-ринг загрузок (скрыт по умолчанию) -->
-                                <ui:ProgressRing x:Name="DownloadProgressRing" Width="20" Height="20" 
-                      IsIndeterminate="True" Opacity="0" 
-                      VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                <!-- 4 полоски эквалайзера -->
+                                <StackPanel x:Name="EqContainer" 
+                                            Orientation="Horizontal" 
+                                            HorizontalAlignment="Center" 
+                                            VerticalAlignment="Center"
+                                            Height="16">
+                                    <Border x:Name="EqBar1" Width="2.5" Height="3" CornerRadius="1.2" Margin="1,0" Background="{DynamicResource TextFillColorPrimaryBrush}" VerticalAlignment="Center"/>
+                                    <Border x:Name="EqBar2" Width="2.5" Height="3" CornerRadius="1.2" Margin="1,0" Background="{DynamicResource TextFillColorPrimaryBrush}" VerticalAlignment="Center"/>
+                                    <Border x:Name="EqBar3" Width="2.5" Height="3" CornerRadius="1.2" Margin="1,0" Background="{DynamicResource TextFillColorPrimaryBrush}" VerticalAlignment="Center"/>
+                                    <Border x:Name="EqBar4" Width="2.5" Height="3" CornerRadius="1.2" Margin="1,0" Background="{DynamicResource TextFillColorPrimaryBrush}" VerticalAlignment="Center"/>
+                                </StackPanel>
 
-                                <!-- Зеленая галочка успеха (скрыта по умолчанию) -->
-                                <ui:SymbolIcon x:Name="SuccessIcon" Symbol="Checkmark24" FontSize="18" Foreground="LightGreen" 
-                    Opacity="0" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                <!-- Прогресс-ринг загрузок (если идет скачивание) -->
+                                <ui:ProgressRing x:Name="DownloadProgressRing" Width="18" Height="18" 
+                                                 IsIndeterminate="True" Opacity="0" 
+                                                 VerticalAlignment="Center" HorizontalAlignment="Center"/>
 
-                                <!-- Красный крестик ошибки (скрыта по умолчанию) -->
-                                <ui:SymbolIcon x:Name="ErrorIcon" Symbol="Dismiss24" FontSize="18" Foreground="#FFFC3D39" 
-                    Opacity="0" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                <!-- Текст-счетчик очереди -->
+                                <TextBlock x:Name="QueueCounterText" FontSize="8" FontWeight="Bold" Foreground="White" 
+                                           VerticalAlignment="Center" HorizontalAlignment="Center" Opacity="0" Text="0"/>
+
+                                <!-- Иконки успеха/ошибки очереди скачивания -->
+                                <ui:SymbolIcon x:Name="SuccessIcon" Symbol="Checkmark24" FontSize="14" Foreground="#4CD964" 
+                                               Opacity="0" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+
+                                <ui:SymbolIcon x:Name="ErrorIcon" Symbol="Dismiss24" FontSize="14" Foreground="#FF3B30" 
+                                               Opacity="0" VerticalAlignment="Center" HorizontalAlignment="Center"/>
                             </Grid>
                         </Grid>
 
-                        <!-- ПЛЕЕР (Скрыт по дефолту) -->
+                        <!-- НИЖНЯЯ ПАНЕЛЬ ПЛЕЕРА -->
                         <Grid x:Name="playerBadge" Grid.Row="1" Margin="0,10,0,0" Opacity="0" IsHitTestVisible="False">
                             <StackPanel Orientation="Vertical">
-                                <!-- Заголовок берем только из имени файла -->
                                 <ui:TextBlock x:Name="ArtistTitle" Text="" Appearance="Tertiary" FontSize="10" HorizontalAlignment="Center" Margin="0,0,0,2"/>
                                 <ui:TextBlock x:Name="SongTitle" Text="..." FontSize="14" Foreground="White" FontWeight="Bold" HorizontalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="280"/>
 
@@ -244,17 +272,164 @@ SizeChanged="HubCard_SizeChanged"
                     </Grid>
                 </Grid>
             </Border>
-            
 
+            <!-- ОНБОРДИНГ ТУР -->
+            <Grid x:Name="TourOverlay"
+                  Grid.Row="1"
+                  VerticalAlignment="Bottom"
+                  HorizontalAlignment="Center"
+                  Margin="0,0,0,25"
+                  Panel.ZIndex="10000"
+                  Visibility="Collapsed"
+                  RenderTransformOrigin="0.5,1">
+
+                <Grid.RenderTransform>
+                    <ScaleTransform x:Name="TourScale" ScaleX="1" ScaleY="1"/>
+                </Grid.RenderTransform>
+
+                <Grid.Effect>
+                    <DropShadowEffect BlurRadius="40" Direction="270" ShadowDepth="10" Opacity="0.6" Color="Black"/>
+                </Grid.Effect>
+
+                <Border CornerRadius="18"
+                        BorderThickness="1"
+                        BorderBrush="#40FFFFFF"
+                        Background="#F5151518"
+                        Width="480"
+                        Padding="20,16">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <DockPanel Grid.Row="0" Margin="0,0,0,6">
+                            <ui:Badge x:Name="TourStepBadge" Content="Шаг 1 из 5" DockPanel.Dock="Left" VerticalAlignment="Center"/>
+                            <TextBlock x:Name="TourTitleText" 
+                                       Text="🌡️ Чё с компом вообще?" 
+                                       FontSize="15" 
+                                       FontWeight="Bold" 
+                                       Margin="10,0,0,0"
+                                       Foreground="{DynamicResource TextFillColorPrimaryBrush}" 
+                                       VerticalAlignment="Center"/>
+                        </DockPanel>
+
+                        <TextBlock x:Name="TourDescriptionText" 
+                                   Grid.Row="1" 
+                                   Text="Тут датчики твоего железа в реальном времени."
+                                   FontSize="12" 
+                                   Opacity="0.75" 
+                                   TextWrapping="Wrap" 
+                                   LineHeight="17"
+                                   Margin="0,0,0,14"
+                                   Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+
+                        <Grid Grid.Row="2">
+                            <ui:Button Content="Пропустить (я не тупой)" 
+                                       Appearance="Transparent" 
+                                       FontSize="11" 
+                                       Opacity="0.6"
+                                       Click="SkipTour_Click"
+                                       HorizontalAlignment="Left" 
+                                       Padding="6,4"/>
+
+                            <ui:Button x:Name="NextTourBtn"
+                                       Content="Погнали дальше →" 
+                                       Appearance="Primary" 
+                                       FontWeight="SemiBold"
+                                       Click="NextTourStep_Click"
+                                       HorizontalAlignment="Right" 
+                                       Padding="16,6"/>
+                        </Grid>
+                    </Grid>
+                </Border>
+            </Grid>
         </Grid>
-        <StackPanel x:Name="LoadingPanel" VerticalAlignment="Center">
-            <ui:TextBlock x:Name="desc" TextWrapping="Wrap" Text="Подключение..." FontSize="24" HorizontalAlignment="Center" TextAlignment="Center" VerticalAlignment="Center" Margin="0,0,0,20"/>
-            <ui:SymbolIcon x:Name="stat" MaxHeight="60" MaxWidth="60" Visibility="Collapsed" Symbol="CloudCheckmark48" VerticalAlignment="Center" Foreground="{DynamicResource {x:Static SystemColors.AccentColorBrushKey}}" FontSize="64"/>
-            <ui:ProgressRing x:Name="ring" MaxHeight="60" MaxWidth="60" IsIndeterminate="True" VerticalAlignment="Center"/>
-            <ProgressBar x:Name="loadingBar" Maximum="3" Width="340" Margin="0,25,0,0"/>
-        </StackPanel>
-        <ui:TextBox Opacity="0.3" x:Name="info" Margin="0,10,0,0" TextChanged="info_TextChanged" Visibility="Hidden" HorizontalContentAlignment="Center" PlaceholderEnabled="False" ClearButtonEnabled="False" SelectionOpacity="2" IsReadOnly="True" VerticalAlignment="Bottom" HorizontalAlignment="Center" TextWrapping="WrapWithOverflow" IsTextSelectionEnabled="True" AcceptsReturn="True"/>
-        
+
+        <!-- ========================================================================= -->
+        <!-- НАТИВНЫЙ ПОЛНОЭКРАННЫЙ СПЛЕШ С ИНДИКАЦИЕЙ ОБНОВЛЕНИЙ VELOPACK            -->
+        <!-- ========================================================================= -->
+        <Grid x:Name="SplashContainer" 
+              Panel.ZIndex="10000"
+              >
+
+            <!-- ЦЕНТРАЛЬНЫЙ БЛОК: ЛОГОТИП, СПИННЕР И СТАТУС -->
+            <StackPanel HorizontalAlignment="Center" 
+                        VerticalAlignment="Center">
+
+                <!-- Логотип приложения -->
+                <Grid Margin="0,0,0,28">
+                    <Image x:Name="SplashAppIcon"
+                           Source="/Assets/wpfui-icon.ico"
+                           Width="84" Height="84"
+                           Stretch="Uniform"
+                           RenderOptions.BitmapScalingMode="HighQuality"
+                           HorizontalAlignment="Center"/>
+                </Grid>
+
+                <!-- Индикатор загрузки / прогресс-бар скачивания обновления -->
+                <Grid Width="54" Height="54" HorizontalAlignment="Center" Margin="0,0,0,18">
+                    <ui:ProgressRing x:Name="SplashProgressRing"
+                                     Width="54" Height="54"
+                                     IsIndeterminate="True"
+                                     HorizontalAlignment="Center"
+                                     VerticalAlignment="Center"/>
+
+                    <!-- Текстовый процент загрузки внутри кольца при скачивании -->
+                    <TextBlock x:Name="SplashPercentText"
+                               Text="0%"
+                               FontSize="11"
+                               FontWeight="Bold"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"
+                               Visibility="Collapsed"
+                               Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                </Grid>
+
+                <!-- Текстовый статус текущего действия -->
+                <ui:TextBlock x:Name="SplashStatusText"
+                              Text="Запуск приложения..." 
+                              FontSize="13" 
+                              FontWeight="Medium"
+                              Opacity="0.85"
+                              HorizontalAlignment="Center"
+                              TextAlignment="Center"
+                              Margin="0,0,0,4" FontTypography="Subtitle"/>
+
+                <ui:TextBlock x:Name="SplashSubStatusText"
+                              Text="" 
+                              FontSize="11" 
+                              Opacity="0.5"
+                              HorizontalAlignment="Center"
+                              TextAlignment="Center"
+                              Visibility="Collapsed"/>
+            </StackPanel>
+
+            <!-- АККУРАТНЫЙ ПОДВАЛ ПРИ ОШИБКЕ СЕТИ -->
+            <StackPanel x:Name="SplashErrorPanel"
+                        VerticalAlignment="Bottom"
+                        HorizontalAlignment="Center"
+                        Margin="0,0,0,36"
+                        Visibility="Collapsed">
+                <TextBlock x:Name="SplashErrorText"
+                           Text="Не удалось проверить соединение с сетью" 
+                           FontSize="12" 
+                           Opacity="0.65"
+                           HorizontalAlignment="Center"
+                           Margin="0,0,0,12"/>
+
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                    <ui:Button Content="Повторить" 
+                               Appearance="Secondary"
+                               Margin="0,0,8,0"
+                               Click="SplashRetry_Click"/>
+
+                    <ui:Button Content="Продолжить автономно" 
+                               Appearance="Primary"
+                               Click="SplashContinueOffline_Click"/>
+                </StackPanel>
+            </StackPanel>
+        </Grid>
     </Grid>
-    
 </ui:FluentWindow>
